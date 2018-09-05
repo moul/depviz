@@ -1,6 +1,8 @@
 # depviz
 dependency visualizer (auto roadmap)
 
+**work in progress**: I'm already using this tool on a daily basis, but I know it lacks a lot of work to make it cool for other people too
+
 `depviz` aggregates issues from multiple repositories and outputs a visual representation of the dependencies.
 
 ## Example
