@@ -15,7 +15,7 @@
   <a href="https://circleci.com/gh/moul/depviz">
     <img src="https://circleci.com/gh/moul/depviz.svg?style=shield"
          alt="Build Status">
-  </a> 
+  </a>
   <a href="https://goreportcard.com/report/moul.io/depviz">
     <img src="https://goreportcard.com/badge/moul.io/depviz"
          alt="Go Report Card">
@@ -31,7 +31,7 @@
 </p>
 
 <p align="center"><b>
-    <a href="https://moul.io/depviz">Website</a> •  
+    <a href="https://moul.io/depviz">Website</a> •
     <a href="https://twitter.com/moul">Twitter</a>
 </b></p>
 
@@ -56,11 +56,25 @@ _inspired by this discussion: [jbenet/random-ideas#37](https://github.com/jbenet
 
 ```console
 $ export GITHUB_TOKEN=xxxx
+
+# render and display the roadmap
 $ depviz render --repos=moul/depviz | dot -Tpng > depviz-roadmap.png
 $ open depviz-roadmap.png
+
+# render and display the orphans
 $ depviz render --repos=moul/depviz -t orphans | dot -Tpng > depviz-orphans.png
 $ open depviz-orphans.png
 ```
+
+### Preview image withing iterm2
+
+```console
+# install imgcat
+$ go get github.com/olivere/iterm2-imagetools/cmd/imgcat
+$ depviz render | dot -Tpng | imgcat
+```
+
+![](https://raw.githubusercontent.com/moul/depviz/master/examples/imgcat.png)
 
 ## License
 
