@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
@@ -24,6 +25,11 @@ type fetchOptions struct {
 	Repos       []string
 	GithubToken string `mapstructure:"github-token"`
 	// includeExternalDeps bool
+}
+
+func (opts fetchOptions) String() string {
+	out, _ := json.Marshal(opts)
+	return string(out)
 }
 
 func fetchSetupFlags(flags *pflag.FlagSet, opts *fetchOptions) {
@@ -49,7 +55,7 @@ func newFetchCommand() *cobra.Command {
 }
 
 func fetch(opts *fetchOptions) error {
-	log.Printf("fetch(%v)", *opts)
+	logger().Debug("fetch", zap.Stringer("opts", *opts))
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: opts.GithubToken})
 	tc := oauth2.NewClient(ctx, ts)
@@ -77,7 +83,11 @@ func fetch(opts *fetchOptions) error {
 					return
 				}
 				total += len(issues)
-				log.Printf("repo:%s new-issues:%d total:%d", repo, len(issues), total)
+				logger().Debug("paginate",
+					zap.String("repo", repo),
+					zap.Int("new-issues", len(issues)),
+					zap.Int("total-issues", total),
+				)
 				out <- issues
 				if resp.NextPage == 0 {
 					break
@@ -97,6 +107,6 @@ func fetch(opts *fetchOptions) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("GitHub API Rate limit: %s", rateLimits.GetCore().String())
+	logger().Debug("github API rate limiting", zap.Stringer("limit", rateLimits.GetCore()))
 	return errors.Wrap(ioutil.WriteFile(opts.DBOpts.Path, issuesJson, 0644), "failed to write db file")
 }

@@ -5,4 +5,4 @@ install:
 .PHONY: update_examples
 update_examples:
 	for dir in $(wildcard examples/*); do (cd $$dir && make); done
-	git commit examples -m "chore: update examples"
+	echo "now you can run 'git commit examples -m \"chore: update examples\"'"

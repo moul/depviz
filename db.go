@@ -4,17 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 type dbOptions struct {
 	Path string `mapstructure:"db-path"`
+}
+
+func (opts dbOptions) String() string {
+	out, _ := json.Marshal(opts)
+	return string(out)
 }
 
 func dbSetupFlags(flags *pflag.FlagSet, opts *dbOptions) {
@@ -46,7 +51,7 @@ func newDBDumpCommand() *cobra.Command {
 }
 
 func dbDump(opts *dbOptions) error {
-	log.Printf("dbDump(%v)", *opts)
+	logger().Debug("dbDump", zap.Stringer("opts", *opts))
 	issues, err := dbLoad(opts)
 	if err != nil {
 		return err
@@ -60,13 +65,13 @@ func dbDump(opts *dbOptions) error {
 }
 
 func dbExists(opts *dbOptions) bool {
-	log.Printf("dbExists(%v)", *opts)
+	logger().Debug("dbExists", zap.Stringer("opts", *opts))
 	_, err := os.Stat(opts.Path)
 	return err == nil
 }
 
 func dbLoad(opts *dbOptions) (Issues, error) {
-	log.Printf("dbLoad(%v)", *opts)
+	logger().Debug("dbLoad", zap.Stringer("opts", *opts))
 	var issues []*Issue
 	content, err := ioutil.ReadFile(opts.Path)
 	if err != nil {

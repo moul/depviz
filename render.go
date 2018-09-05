@@ -1,15 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 type renderOptions struct {
@@ -27,6 +28,11 @@ type renderOptions struct {
 	EpicLabel   string
 	Destination string
 	//Preview     bool
+}
+
+func (opts renderOptions) String() string {
+	out, _ := json.Marshal(opts)
+	return string(out)
 }
 
 func renderSetupFlags(flags *pflag.FlagSet, opts *renderOptions) {
@@ -65,7 +71,7 @@ func newRenderCommand() *cobra.Command {
 }
 
 func render(opts *renderOptions) error {
-	log.Printf("render(%v)", *opts)
+	logger().Debug("render", zap.Stringer("opts", *opts))
 	if opts.ForceFetch || !dbExists(&opts.DBOpts) {
 		if err := fetch(&opts.FetchOpts); err != nil {
 			return err
