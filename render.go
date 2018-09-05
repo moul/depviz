@@ -37,7 +37,7 @@ func renderSetupFlags(flags *pflag.FlagSet, opts *renderOptions) {
 	flags.StringVarP(&opts.EpicLabel, "epic-label", "", "", "label used for epics (empty means issues with dependencies but without dependants)")
 	flags.StringVarP(&opts.Destination, "destination", "", "-", "destination ('-' for stdout)")
 	//flags.BoolVarP(&opts.Preview, "preview", "p", false, "preview result")
-	vph.BindPFlags(flags)
+	viper.BindPFlags(flags)
 }
 
 func newRenderCommand() *cobra.Command {
