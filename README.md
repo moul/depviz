@@ -5,6 +5,8 @@ dependency visualizer (auto roadmap)
 
 `depviz` aggregates issues from multiple repositories and outputs a visual representation of the dependencies.
 
+_inspired by this discussion: [jbenet/random-ideas#37](https://github.com/jbenet/random-ideas/issues/37)_
+
 ## Example
 
 ![](https://raw.githubusercontent.com/moul/depviz/master/examples/depviz/depviz.svg?sanitize=true)
