@@ -1,4 +1,41 @@
-# depviz
+<h1 align="center">
+  <!--
+    <br>
+    <img src="docs/logo.png" alt="depviz" height="60px">
+    <br>
+  -->
+  <br>
+  DepViz
+  <br>
+</h1>
+
+<h3 align="center">👓 Issue dependency visualizer, a.k.a. "auto-roadmap".</h3>
+
+<p align="center">
+  <a href="https://circleci.com/gh/moul/depviz">
+    <img src="https://circleci.com/gh/moul/depviz.svg?style=shield"
+         alt="Build Status">
+  </a> 
+  <a href="https://goreportcard.com/report/moul.io/depviz">
+    <img src="https://goreportcard.com/badge/moul.io/depviz"
+         alt="Go Report Card">
+  </a>
+  <a href="https://github.com/moul/depviz/releases">
+    <img src="https://badge.fury.io/gh/moul%2Fdepviz.svg"
+         alt="GitHub version">
+  </a>
+  <a href="https://godoc.org/moul.io/depviz">
+    <img src="https://godoc.org/moul.io/depviz?status.svg"
+         alt="GoDoc">
+  </a>
+</p>
+
+<p align="center"><b>
+    <a href="https://moul.io/depviz">Website</a> •  
+    <a href="https://twitter.com/moul">Twitter</a>
+</b></p>
+
+## Introduction
 dependency visualizer (auto roadmap)
 
 **work in progress**: I'm already using this tool on a daily basis, but I know it lacks a lot of work to make it cool for other people too
