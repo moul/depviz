@@ -13,5 +13,5 @@ repos: moul/depviz
 ## command
 
 ```console
-$ depviz render -t orphans -f | dot -Tsvg > depviz.svg
+$ depviz render -f | dot -Tsvg > depviz.svg
 ```

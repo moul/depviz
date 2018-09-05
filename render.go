@@ -22,7 +22,7 @@ type renderOptions struct {
 
 	// render
 	RenderType  string
-	ShowClosed  bool
+	ShowClosed  bool `mapstructure:"show-closed"`
 	ShowOrphans bool
 	EpicLabel   string
 	Destination string
