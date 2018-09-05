@@ -177,7 +177,7 @@ func (i Issue) AddNodeToGraph(g *gographviz.Graph, parent string) error {
 	attrs["shape"] = "record"
 	attrs["style"] = `"rounded,filled"`
 	attrs["color"] = "lightblue"
-	attrs["href"] = escape(*i.URL)
+	attrs["href"] = escape(*i.HTMLURL)
 
 	if i.IsEpic() {
 		attrs["shape"] = "oval"
