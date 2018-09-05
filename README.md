@@ -1,9 +1,7 @@
 <h1 align="center">
-  <!--
-    <br>
-    <img src="docs/logo.png" alt="depviz" height="60px">
-    <br>
-  -->
+  <br>
+  <img src="https://raw.githubusercontent.com/moul/depviz/master/assets/depviz.svg?sanitize=true" alt="depviz" height="60px">
+  <br>
   <br>
   DepViz
   <br>

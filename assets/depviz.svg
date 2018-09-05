@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="646px" height="242px" viewBox="0 0 646 242" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 51.2 (57519) - http://www.bohemiancoding.com/sketch -->
+    <title>depviz</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group-Copy">
+            <text id="DEPVIZ" font-family="Intro-Inline, Intro Inline" font-size="106" font-weight="normal" fill="#2D6FE2">
+                <tspan x="0" y="105">DEPV</tspan>
+                <tspan x="290.228" y="105">I</tspan>
+                <tspan x="334.112" y="105">Z</tspan>
+            </text>
+            <g id="Group-3" transform="translate(351.000000, 57.000000)" fill-rule="nonzero">
+                <circle id="Oval-2" fill="#2D6FE2" cx="132" cy="39" r="39"></circle>
+                <circle id="Oval-2-Copy" stroke="#FFFFFF" cx="131.5" cy="39.5" r="29.5"></circle>
+                <rect id="Rectangle" fill="#2D6FE2" x="8" y="31" width="91" height="17"></rect>
+                <path d="M0.5,39.5 L101.5,39.5" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+            </g>
+            <g id="Group-2" transform="translate(501.000000, 0.000000)" fill-rule="nonzero">
+                <circle id="Oval-2-Copy-3" fill="#2D6FE2" cx="49.5" cy="25.5" r="25.5"></circle>
+                <circle id="Oval-2-Copy-2" stroke="#FFFFFF" cx="49.5" cy="25.5" r="16.5"></circle>
+                <rect id="Rectangle-Copy" fill="#2D6FE2" transform="translate(21.799395, 55.435219) rotate(-46.000000) translate(-21.799395, -55.435219) " x="0.416809071" y="46.9352194" width="42.7651719" height="17"></rect>
+                <path d="M3,75.1056757 L38.5,38.5" id="Line-Copy" stroke="#FFFFFF" stroke-linecap="square"></path>
+            </g>
+            <g id="Group" transform="translate(505.000000, 114.000000)" fill-rule="nonzero">
+                <circle id="Oval-2-Copy-5" fill="#2D6FE2" cx="86" cy="72" r="55"></circle>
+                <circle id="Oval-2-Copy-4" stroke="#FFFFFF" cx="85.5" cy="71.5" r="41.5"></circle>
+                <rect id="Rectangle-Copy-2" fill="#2D6FE2" transform="translate(27.571816, 25.571786) rotate(41.000000) translate(-27.571816, -25.571786) " x="-1.20441272" y="17.0717862" width="57.5524568" height="17"></rect>
+                <path d="M0.499300287,2 L51.5,46.5" id="Line-Copy-2" stroke="#FFFFFF" stroke-linecap="square"></path>
+            </g>
+        </g>
+    </g>
+</svg>
