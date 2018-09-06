@@ -62,7 +62,7 @@ func (i Issue) IsReady() bool {
 }
 
 func (i Issue) NodeName() string {
-	return fmt.Sprintf(`"%s#%d"`, i.FullRepo(), *i.Number)
+	return fmt.Sprintf(`%s#%d`, i.FullRepo(), *i.Number)
 }
 
 func (i Issue) NodeTitle() string {
@@ -159,8 +159,8 @@ func (i Issue) AddEdgesToGraph(g *gographviz.Graph) error {
 		}
 		//log.Print("edge", i.NodeName(), "->", dependency.NodeName())
 		if err := g.AddEdge(
-			i.NodeName(),
-			dependency.NodeName(),
+			escape(i.NodeName()),
+			escape(dependency.NodeName()),
 			true,
 			attrs,
 		); err != nil {
@@ -202,7 +202,7 @@ func (i Issue) AddNodeToGraph(g *gographviz.Graph, parent string) error {
 	//log.Print("node", i.NodeName(), parent)
 	return g.AddNode(
 		parent,
-		i.NodeName(),
+		escape(i.NodeName()),
 		attrs,
 	)
 }
@@ -249,11 +249,11 @@ func (issues Issues) prepare() error {
 		for _, match := range dependsOnRegex.FindAllStringSubmatch(*issue.Body, -1) {
 			num := match[len(match)-1]
 			if num[0] == '#' {
-				num = fmt.Sprintf(`"%s%s"`, issue.FullRepo(), num)
+				num = fmt.Sprintf(`%s%s`, issue.FullRepo(), num)
 			}
 			dep, found := issues[num]
 			if !found {
-				issue.Errors = append(issue.Errors, fmt.Errorf("dep %q not found", num))
+				issue.Errors = append(issue.Errors, fmt.Errorf("parent %q not found", num))
 				continue
 			}
 			issue.DependsOn = append(issue.DependsOn, dep)
@@ -265,11 +265,11 @@ func (issues Issues) prepare() error {
 		for _, match := range blocksRegex.FindAllStringSubmatch(*issue.Body, -1) {
 			num := match[len(match)-1]
 			if num[0] == '#' {
-				num = fmt.Sprintf(`"%s%s"`, issue.FullRepo(), num)
+				num = fmt.Sprintf(`%s%s`, issue.FullRepo(), num)
 			}
 			dep, found := issues[num]
 			if !found {
-				issue.Errors = append(issue.Errors, fmt.Errorf("dep %q not found", num))
+				issue.Errors = append(issue.Errors, fmt.Errorf("child %q not found", num))
 				continue
 			}
 			issues[num].DependsOn = append(dep.DependsOn, issue)
