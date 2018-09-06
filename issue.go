@@ -14,8 +14,8 @@ import (
 
 type Issue struct {
 	github.Issue
-	DependsOn        []*Issue
-	Blocks           []*Issue
+	DependsOn        IssueSlice
+	Blocks           IssueSlice
 	weightMultiplier int
 	BaseWeight       int
 	IsOrphan         bool
@@ -25,7 +25,29 @@ type Issue struct {
 	Errors           []error
 }
 
+type IssueSlice []*Issue
+
+func (s IssueSlice) Unique() IssueSlice {
+	return s.ToMap().ToSlice()
+}
+
 type Issues map[string]*Issue
+
+func (m Issues) ToSlice() IssueSlice {
+	slice := IssueSlice{}
+	for _, issue := range m {
+		slice = append(slice, issue)
+	}
+	return slice
+}
+
+func (s IssueSlice) ToMap() Issues {
+	m := Issues{}
+	for _, issue := range s {
+		m[issue.NodeName()] = issue
+	}
+	return m
+}
 
 func (i Issue) IsEpic() bool {
 	for _, label := range i.Labels {
@@ -119,7 +141,7 @@ func (i Issue) DependsOnAnEpic() bool {
 
 func (i Issue) Weight() int {
 	weight := i.BaseWeight
-	for _, dep := range i.Blocks {
+	for _, dep := range i.Blocks.Unique() {
 		weight += dep.Weight()
 	}
 	return weight * i.WeightMultiplier()
@@ -127,7 +149,7 @@ func (i Issue) Weight() int {
 
 func (i Issue) WeightMultiplier() int {
 	multiplier := i.weightMultiplier
-	for _, dep := range i.Blocks {
+	for _, dep := range i.Blocks.Unique() {
 		multiplier *= dep.WeightMultiplier()
 	}
 	return multiplier

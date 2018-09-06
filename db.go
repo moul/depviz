@@ -72,7 +72,7 @@ func dbExists(opts *dbOptions) bool {
 
 func dbLoad(opts *dbOptions) (Issues, error) {
 	logger().Debug("dbLoad", zap.Stringer("opts", *opts))
-	var issues []*Issue
+	var issues IssueSlice
 	content, err := ioutil.ReadFile(opts.Path)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to open db file")
@@ -80,9 +80,5 @@ func dbLoad(opts *dbOptions) (Issues, error) {
 	if err := json.Unmarshal(content, &issues); err != nil {
 		return nil, errors.Wrap(err, "failed to parse db file")
 	}
-	m := make(Issues)
-	for _, issue := range issues {
-		m[issue.NodeName()] = issue
-	}
-	return m, nil
+	return issues.ToMap(), nil
 }
