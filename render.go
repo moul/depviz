@@ -15,8 +15,8 @@ import (
 
 type renderOptions struct {
 	// fetch
-	FetchOpts  fetchOptions
-	ForceFetch bool
+	FetchOpts fetchOptions
+	NoFetch   bool
 
 	// db
 	DBOpts dbOptions
@@ -36,7 +36,7 @@ func (opts renderOptions) String() string {
 }
 
 func renderSetupFlags(flags *pflag.FlagSet, opts *renderOptions) {
-	flags.BoolVarP(&opts.ForceFetch, "fetch", "f", false, "force fetch before rendering")
+	flags.BoolVarP(&opts.NoFetch, "no-fetch", "f", false, "do not fetch new issues before rendering")
 	flags.StringVarP(&opts.RenderType, "type", "t", "roadmap", "graph type ('roadmap', 'orphans')")
 	flags.BoolVarP(&opts.ShowClosed, "show-closed", "", false, "show closed issues")
 	flags.BoolVarP(&opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
@@ -72,7 +72,7 @@ func newRenderCommand() *cobra.Command {
 
 func render(opts *renderOptions) error {
 	logger().Debug("render", zap.Stringer("opts", *opts))
-	if opts.ForceFetch || !dbExists(&opts.DBOpts) {
+	if !opts.NoFetch || !dbExists(&opts.DBOpts) {
 		if err := fetch(&opts.FetchOpts); err != nil {
 			return err
 		}
