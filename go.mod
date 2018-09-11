@@ -3,6 +3,7 @@ module moul.io/depviz
 require (
 	github.com/awalterschulze/gographviz v0.0.0-20180813113015-16ed621cdb51
 	github.com/fsnotify/fsnotify v1.4.7 // indirect
+	github.com/gilliek/go-opml v1.0.0
 	github.com/golang/protobuf v1.2.0 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v0.0.0-20170111101155-53e6ce116135 // indirect
@@ -18,6 +19,7 @@ require (
 	github.com/spf13/jwalterweatherman v0.0.0-20180814060501-14d3d4c51834 // indirect
 	github.com/spf13/pflag v1.0.2
 	github.com/spf13/viper v1.1.0
+	github.com/xanzy/go-gitlab v0.11.0
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1

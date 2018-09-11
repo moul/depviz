@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
-	"strings"
+	"os"
 	"sync"
 
 	"github.com/google/go-github/github"
@@ -13,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	gitlab "github.com/xanzy/go-gitlab"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -56,45 +58,95 @@ func newFetchCommand() *cobra.Command {
 
 func fetch(opts *fetchOptions) error {
 	logger().Debug("fetch", zap.Stringer("opts", *opts))
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: opts.GithubToken})
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
 
 	var (
 		wg        sync.WaitGroup
-		allIssues []*github.Issue
-		out       = make(chan []*github.Issue, 100)
+		allIssues []*Issue
+		out       = make(chan []*Issue, 100)
 	)
 	wg.Add(len(opts.Repos))
-	for _, repo := range opts.Repos {
-		parts := strings.Split(repo, "/")
-		organization := parts[0]
-		repo := parts[1]
+	for _, repoURL := range opts.Repos {
+		repo := NewRepo(repoURL)
+		switch repo.Provider() {
+		case GitHubProvider:
+			ctx := context.Background()
+			ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: opts.GithubToken})
+			tc := oauth2.NewClient(ctx, ts)
+			client := github.NewClient(tc)
 
-		go func(repo string) {
-			total := 0
-			defer wg.Done()
-			opts := &github.IssueListByRepoOptions{State: "all"}
-			for {
-				issues, resp, err := client.Issues.ListByRepo(ctx, organization, repo, opts)
-				if err != nil {
-					log.Fatal(err)
-					return
+			go func(repo Repo) {
+				total := 0
+				defer wg.Done()
+				opts := &github.IssueListByRepoOptions{State: "all"}
+				for {
+					issues, resp, err := client.Issues.ListByRepo(ctx, repo.Namespace(), repo.Project(), opts)
+					if err != nil {
+						log.Fatal(err)
+						return
+					}
+					total += len(issues)
+					logger().Debug("paginate",
+						zap.String("provider", "github"),
+						zap.String("repo", repo.Canonical()),
+						zap.Int("new-issues", len(issues)),
+						zap.Int("total-issues", total),
+					)
+					normalizedIssues := []*Issue{}
+					for _, issue := range issues {
+						normalizedIssues = append(normalizedIssues, FromGitHubIssue(issue))
+					}
+					out <- normalizedIssues
+					if resp.NextPage == 0 {
+						break
+					}
+					opts.Page = resp.NextPage
 				}
-				total += len(issues)
-				logger().Debug("paginate",
-					zap.String("repo", repo),
-					zap.Int("new-issues", len(issues)),
-					zap.Int("total-issues", total),
-				)
-				out <- issues
-				if resp.NextPage == 0 {
-					break
+				if rateLimits, _, err := client.RateLimits(ctx); err == nil {
+					logger().Debug("github API rate limiting", zap.Stringer("limit", rateLimits.GetCore()))
 				}
-				opts.Page = resp.NextPage
-			}
-		}(repo)
+			}(repo)
+		case GitLabProvider:
+			go func(repo Repo) {
+				client := gitlab.NewClient(nil, os.Getenv("GITLAB_TOKEN"))
+				client.SetBaseURL(fmt.Sprintf("%s/api/v4", repo.SiteURL()))
+
+				//projectID := url.QueryEscape(repo.RepoPath())
+				projectID := repo.RepoPath()
+				total := 0
+				defer wg.Done()
+				opts := &gitlab.ListProjectIssuesOptions{
+					ListOptions: gitlab.ListOptions{
+						PerPage: 30,
+						Page:    1,
+					},
+				}
+				for {
+					issues, resp, err := client.Issues.ListProjectIssues(projectID, opts)
+					if err != nil {
+						logger().Error("failed to fetch issues", zap.Error(err))
+						return
+					}
+					total += len(issues)
+					logger().Debug("paginate",
+						zap.String("provider", "gitlab"),
+						zap.String("repo", repo.Canonical()),
+						zap.Int("new-issues", len(issues)),
+						zap.Int("total-issues", total),
+					)
+					normalizedIssues := []*Issue{}
+					for _, issue := range issues {
+						normalizedIssues = append(normalizedIssues, FromGitLabIssue(issue))
+					}
+					out <- normalizedIssues
+					if resp.NextPage == 0 {
+						break
+					}
+					opts.ListOptions.Page = resp.NextPage
+				}
+			}(repo)
+		default:
+			panic("should not happen")
+		}
 	}
 	wg.Wait()
 	close(out)
@@ -103,10 +155,5 @@ func fetch(opts *fetchOptions) error {
 	}
 
 	issuesJson, _ := json.MarshalIndent(allIssues, "", "  ")
-	rateLimits, _, err := client.RateLimits(ctx)
-	if err != nil {
-		return err
-	}
-	logger().Debug("github API rate limiting", zap.Stringer("limit", rateLimits.GetCore()))
-	return errors.Wrap(ioutil.WriteFile(opts.DBOpts.Path, issuesJson, 0644), "failed to write db file")
+	return errors.Wrap(ioutil.WriteFile(opts.DBOpts.Path, issuesJson, 0644), "failed to write db")
 }

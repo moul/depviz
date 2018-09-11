@@ -106,7 +106,7 @@ func roadmapGraph(issues Issues, opts *renderOptions) (string, error) {
 	// issue nodes
 	issueNumbers := []string{}
 	for _, issue := range issues {
-		issueNumbers = append(issueNumbers, issue.NodeName())
+		issueNumbers = append(issueNumbers, issue.URL)
 	}
 	sort.Strings(issueNumbers)
 	for _, id := range issueNumbers {
