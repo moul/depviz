@@ -77,6 +77,18 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 		Labels:    make([]*IssueLabel, 0),
 		Assignees: make([]*Profile, 0),
 	}
+	for _, label := range input.Labels {
+		issue.Labels = append(issue.Labels, &IssueLabel{
+			Name:  *label.Name,
+			Color: *label.Color,
+		})
+	}
+	for _, assignee := range input.Assignees {
+		issue.Assignees = append(issue.Assignees, &Profile{
+			Name:     *assignee.Name,
+			Username: *assignee.Login,
+		})
+	}
 	return issue
 }
 
@@ -92,6 +104,18 @@ func FromGitLabIssue(input *gitlab.Issue) *Issue {
 		RepoURL:   input.Links.Project,
 		Labels:    make([]*IssueLabel, 0),
 		Assignees: make([]*Profile, 0),
+	}
+	for _, label := range input.Labels {
+		issue.Labels = append(issue.Labels, &IssueLabel{
+			Name:  label,
+			Color: "cccccc",
+		})
+	}
+	for _, assignee := range input.Assignees {
+		issue.Assignees = append(issue.Assignees, &Profile{
+			Name:     assignee.Name,
+			Username: assignee.Username,
+		})
 	}
 	return issue
 }
