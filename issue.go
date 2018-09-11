@@ -84,8 +84,12 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 		})
 	}
 	for _, assignee := range input.Assignees {
+		name := *assignee.Login
+		if assignee.Name != nil {
+			name = *assignee.Name
+		}
 		issue.Assignees = append(issue.Assignees, &Profile{
-			Name:     *assignee.Name,
+			Name:     name,
 			Username: *assignee.Login,
 		})
 	}
@@ -172,12 +176,8 @@ func (i Issue) Repo() string {
 	return strings.Split(i.URL, "/")[5]
 }
 
-func (i Issue) FullRepo() string {
-	return fmt.Sprintf("%s/%s", i.Owner(), i.Repo())
-}
-
 func (i Issue) RepoID() string {
-	id := i.FullRepo()
+	id := i.Path()[1:]
 	id = strings.Replace(id, "/", "", -1)
 	id = strings.Replace(id, "-", "", -1)
 	return id
@@ -196,7 +196,7 @@ func (i Issue) IsReady() bool {
 }
 
 func (i Issue) NodeName() string {
-	return fmt.Sprintf(`%s#%d`, i.FullRepo(), i.Number)
+	return fmt.Sprintf(`%s#%d`, i.Path()[1:], i.Number)
 }
 
 func (i Issue) NodeTitle() string {

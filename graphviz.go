@@ -39,7 +39,7 @@ func orphansGraph(issues Issues, opts *renderOptions) (string, error) {
 			continue
 		}
 		panicIfErr(issue.AddNodeToGraph(g, fmt.Sprintf("cluster_%s", issue.RepoID())))
-		repos[issue.RepoID()] = issue.FullRepo()
+		repos[issue.RepoID()] = issue.Path()
 	}
 
 	for id, repo := range repos {
