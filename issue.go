@@ -96,7 +96,7 @@ func FromGitLabIssue(input *gitlab.Issue) *Issue {
 	issue := &Issue{
 		Provider:  GitLabProvider,
 		GitLab:    input,
-		Number:    input.ID,
+		Number:    input.IID,
 		Title:     input.Title,
 		State:     input.State,
 		URL:       input.WebURL,
