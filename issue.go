@@ -468,3 +468,12 @@ func (issues Issues) HideOrphans() {
 		}
 	}
 }
+
+func (issues Issues) HideEpicLess() {
+	for _, issue := range issues {
+		if !issue.LinkedWithEpic {
+			issue.Hidden = true
+		}
+	}
+	issues.processEpicLinks()
+}

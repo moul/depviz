@@ -66,6 +66,7 @@ func roadmapGraph(issues Issues, opts *renderOptions) (string, error) {
 	}
 	if !opts.ShowOrphans {
 		issues.HideOrphans()
+		issues.HideEpicLess()
 	}
 	issues.processEpicLinks()
 
