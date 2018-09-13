@@ -56,11 +56,11 @@ _inspired by this discussion: [jbenet/random-ideas#37](https://github.com/jbenet
 $ export GITHUB_TOKEN=xxxx
 
 # render and display the roadmap
-$ depviz render --repos=moul/depviz | dot -Tpng > depviz-roadmap.png
+$ depviz run moul/depviz | dot -Tpng > depviz-roadmap.png
 $ open depviz-roadmap.png
 
 # render and display the orphans
-$ depviz render --repos=moul/depviz -t orphans | dot -Tpng > depviz-orphans.png
+$ depviz run moul/depviz --show-orphans | dot -Tpng > depviz-orphans.png
 $ open depviz-orphans.png
 ```
 
@@ -69,7 +69,7 @@ $ open depviz-orphans.png
 ```console
 # install imgcat
 $ go get github.com/olivere/iterm2-imagetools/cmd/imgcat
-$ depviz render | dot -Tpng | imgcat
+$ depviz run https://github.com/moul/depviz/issues/42 | dot -Tpng | imgcat
 ```
 
 ![](https://raw.githubusercontent.com/moul/depviz/master/examples/imgcat.png)

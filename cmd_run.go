@@ -13,67 +13,69 @@ import (
 	"go.uber.org/zap"
 )
 
-type renderOptions struct {
-	// fetch
-	FetchOpts fetchOptions
-	NoFetch   bool
+type runOptions struct {
+	// pull
+	PullOpts pullOptions
+	NoPull   bool
 
 	// db
 	DBOpts dbOptions
 
-	// render
-	RenderType  string
+	// run
 	ShowClosed  bool `mapstructure:"show-closed"`
 	ShowOrphans bool
 	EpicLabel   string
 	Destination string
+
+	Targets []string
 	//Preview     bool
 }
 
-func (opts renderOptions) String() string {
+func (opts runOptions) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
 }
 
-func renderSetupFlags(flags *pflag.FlagSet, opts *renderOptions) {
-	flags.BoolVarP(&opts.NoFetch, "no-fetch", "f", false, "do not fetch new issues before rendering")
-	flags.StringVarP(&opts.RenderType, "type", "t", "roadmap", "graph type ('roadmap', 'orphans')")
+func runSetupFlags(flags *pflag.FlagSet, opts *runOptions) {
+	flags.BoolVarP(&opts.NoPull, "no-pull", "f", false, "do not pull new issues before runing")
 	flags.BoolVarP(&opts.ShowClosed, "show-closed", "", false, "show closed issues")
 	flags.BoolVarP(&opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
-	flags.StringVarP(&opts.EpicLabel, "epic-label", "", "", "label used for epics (empty means issues with dependencies but without dependants)")
+	flags.StringVarP(&opts.EpicLabel, "epic-label", "", "epic", "label used for epics (empty means issues with dependencies but without dependants)")
 	flags.StringVarP(&opts.Destination, "destination", "", "-", "destination ('-' for stdout)")
 	//flags.BoolVarP(&opts.Preview, "preview", "p", false, "preview result")
 	viper.BindPFlags(flags)
 }
 
-func newRenderCommand() *cobra.Command {
-	opts := &renderOptions{}
+func newRunCommand() *cobra.Command {
+	opts := &runOptions{}
 	cmd := &cobra.Command{
-		Use: "render",
+		Use: "run",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := viper.Unmarshal(opts); err != nil {
 				return err
 			}
-			if err := viper.Unmarshal(&opts.FetchOpts); err != nil {
+			if err := viper.Unmarshal(&opts.PullOpts); err != nil {
 				return err
 			}
 			if err := viper.Unmarshal(&opts.DBOpts); err != nil {
 				return err
 			}
-			opts.FetchOpts.DBOpts = opts.DBOpts
-			return render(opts)
+			opts.PullOpts.DBOpts = opts.DBOpts
+			opts.PullOpts.Targets = args
+			opts.Targets = args
+			return run(opts)
 		},
 	}
-	renderSetupFlags(cmd.Flags(), opts)
-	fetchSetupFlags(cmd.Flags(), &opts.FetchOpts)
+	runSetupFlags(cmd.Flags(), opts)
+	pullSetupFlags(cmd.Flags(), &opts.PullOpts)
 	dbSetupFlags(cmd.Flags(), &opts.DBOpts)
 	return cmd
 }
 
-func render(opts *renderOptions) error {
-	logger().Debug("render", zap.Stringer("opts", *opts))
-	if !opts.NoFetch || !dbExists(&opts.DBOpts) {
-		if err := fetch(&opts.FetchOpts); err != nil {
+func run(opts *runOptions) error {
+	logger().Debug("run", zap.Stringer("opts", *opts))
+	if !opts.NoPull || !dbExists(&opts.DBOpts) {
+		if err := pull(&opts.PullOpts); err != nil {
 			return err
 		}
 	}
@@ -87,18 +89,16 @@ func render(opts *renderOptions) error {
 		return errors.Wrap(err, "failed to prepare issues")
 	}
 
-	var out string
-	switch opts.RenderType {
-	case "roadmap":
-		out, err = roadmapGraph(issues, opts)
-	case "orphans":
-		out, err = orphansGraph(issues, opts)
-	default:
-		err = fmt.Errorf("unknown graph type: %q", opts.RenderType)
+	issues.processEpicLinks()
+	if !opts.ShowClosed {
+		issues.HideClosed()
 	}
-	if err != nil {
-		return errors.Wrap(err, "failed to render graph")
+	if !opts.ShowOrphans && issues.HasNonOrphans() {
+		issues.HideOrphans()
 	}
+	issues.processEpicLinks()
+
+	out, err := graphviz(issues, opts)
 
 	var dest io.WriteCloser
 	switch opts.Destination {

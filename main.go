@@ -64,8 +64,8 @@ func newRootCommand() *cobra.Command {
 		return nil
 	}
 	cmd.AddCommand(
-		newFetchCommand(),
-		newRenderCommand(),
+		newPullCommand(),
+		newRunCommand(),
 		newDBCommand(),
 	)
 	viper.AutomaticEnv()

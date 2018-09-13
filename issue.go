@@ -463,17 +463,26 @@ func (issues Issues) HideClosed() {
 
 func (issues Issues) HideOrphans() {
 	for _, issue := range issues {
-		if issue.IsOrphan {
+		if issue.IsOrphan || !issue.LinkedWithEpic {
 			issue.Hidden = true
 		}
 	}
 }
 
-func (issues Issues) HideEpicLess() {
+func (issues Issues) HasOrphans() bool {
 	for _, issue := range issues {
-		if !issue.LinkedWithEpic {
-			issue.Hidden = true
+		if !issue.Hidden && issue.IsOrphan {
+			return true
 		}
 	}
-	issues.processEpicLinks()
+	return false
+}
+
+func (issues Issues) HasNonOrphans() bool {
+	for _, issue := range issues {
+		if !issue.Hidden && !issue.IsOrphan && issue.LinkedWithEpic {
+			return true
+		}
+	}
+	return false
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/awalterschulze/gographviz"
 )
 
-func orphansGraph(issues Issues, opts *renderOptions) (string, error) {
+func orphansGraph(issues Issues, opts *runOptions) (string, error) {
 	if !opts.ShowClosed {
 		issues.HideClosed()
 	}
@@ -60,16 +60,7 @@ func orphansGraph(issues Issues, opts *renderOptions) (string, error) {
 	return g.String(), nil
 }
 
-func roadmapGraph(issues Issues, opts *renderOptions) (string, error) {
-	if !opts.ShowClosed {
-		issues.HideClosed()
-	}
-	if !opts.ShowOrphans {
-		issues.HideOrphans()
-		issues.HideEpicLess()
-	}
-	issues.processEpicLinks()
-
+func graphviz(issues Issues, opts *runOptions) (string, error) {
 	var (
 		invisStyle = map[string]string{"style": "invis"}
 		weightMap  = map[int]bool{}
@@ -129,7 +120,7 @@ func roadmapGraph(issues Issues, opts *renderOptions) (string, error) {
 	}
 
 	// orphans cluster and placeholder
-	if opts.ShowOrphans {
+	if issues.HasOrphans() {
 		panicIfErr(g.AddSubGraph("G", "cluster_orphans", map[string]string{"label": "orphans", "style": "dashed"}))
 		panicIfErr(g.AddNode("cluster_orphans", "placeholder_orphans", invisStyle))
 		panicIfErr(g.AddEdge(
