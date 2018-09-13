@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -33,4 +34,21 @@ func panicIfErr(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func getReposFromTargets(targets []string) []string {
+	reposMap := map[string]bool{}
+
+	for _, target := range targets {
+		if _, err := os.Stat(target); err == nil {
+			logger().Fatal("filesystem target are not yet supported")
+		}
+		repo := strings.Split(target, "/issues")[0]
+		reposMap[repo] = true
+	}
+	repos := []string{}
+	for repo := range reposMap {
+		repos = append(repos, repo)
+	}
+	return repos
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"sync"
 
 	"github.com/google/go-github/github"
@@ -19,53 +18,60 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type fetchOptions struct {
+type pullOptions struct {
 	// db
 	DBOpts dbOptions
 
-	// fetch
+	// pull
 	Repos       []string
 	GithubToken string `mapstructure:"github-token"`
+	GitlabToken string `mapstructure:"gitlab-token"`
 	// includeExternalDeps bool
+
+	Targets []string
 }
 
-func (opts fetchOptions) String() string {
+func (opts pullOptions) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
 }
 
-func fetchSetupFlags(flags *pflag.FlagSet, opts *fetchOptions) {
-	flags.StringSliceVarP(&opts.Repos, "repos", "r", []string{}, "list of repositories to aggregate issues from") // FIXME: get the default value dynamically from .git, if present
+func pullSetupFlags(flags *pflag.FlagSet, opts *pullOptions) {
 	flags.StringVarP(&opts.GithubToken, "github-token", "", "", "GitHub Token with 'issues' access")
+	flags.StringVarP(&opts.GitlabToken, "gitlab-token", "", "", "GitLab Token with 'issues' access")
 	viper.BindPFlags(flags)
 }
 
-func newFetchCommand() *cobra.Command {
-	opts := &fetchOptions{}
+func newPullCommand() *cobra.Command {
+	opts := &pullOptions{}
 	cmd := &cobra.Command{
-		Use: "fetch",
+		Use: "pull",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := viper.Unmarshal(opts); err != nil {
 				return err
 			}
-			return fetch(opts)
+			opts.Targets = args
+			return pull(opts)
 		},
 	}
-	fetchSetupFlags(cmd.Flags(), opts)
+	pullSetupFlags(cmd.Flags(), opts)
 	dbSetupFlags(cmd.Flags(), &opts.DBOpts)
 	return cmd
 }
 
-func fetch(opts *fetchOptions) error {
-	logger().Debug("fetch", zap.Stringer("opts", *opts))
+func pull(opts *pullOptions) error {
+	logger().Debug("pull", zap.Stringer("opts", *opts))
 
 	var (
 		wg        sync.WaitGroup
 		allIssues []*Issue
 		out       = make(chan []*Issue, 100)
 	)
-	wg.Add(len(opts.Repos))
-	for _, repoURL := range opts.Repos {
+
+	repos := getReposFromTargets(opts.Targets)
+
+	wg.Add(len(repos))
+	for _, repoURL := range repos {
 		repo := NewRepo(repoURL)
 		switch repo.Provider() {
 		case GitHubProvider:
@@ -107,7 +113,7 @@ func fetch(opts *fetchOptions) error {
 			}(repo)
 		case GitLabProvider:
 			go func(repo Repo) {
-				client := gitlab.NewClient(nil, os.Getenv("GITLAB_TOKEN"))
+				client := gitlab.NewClient(nil, opts.GitlabToken)
 				client.SetBaseURL(fmt.Sprintf("%s/api/v4", repo.SiteURL()))
 
 				//projectID := url.QueryEscape(repo.RepoPath())
@@ -123,7 +129,7 @@ func fetch(opts *fetchOptions) error {
 				for {
 					issues, resp, err := client.Issues.ListProjectIssues(projectID, opts)
 					if err != nil {
-						logger().Error("failed to fetch issues", zap.Error(err))
+						logger().Error("failed to pull issues", zap.Error(err))
 						return
 					}
 					total += len(issues)
