@@ -65,6 +65,7 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 	if input.Body != nil {
 		body = *input.Body
 	}
+	parts := strings.Split(*input.HTMLURL, "/")
 	issue := &Issue{
 		Provider:  GitHubProvider,
 		GitHub:    input,
@@ -72,8 +73,8 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 		Title:     *input.Title,
 		State:     *input.State,
 		Body:      body,
-		URL:       *input.HTMLURL,
-		RepoURL:   *input.RepositoryURL,
+		URL:       strings.Replace(*input.HTMLURL, "/pull/", "/issues/", -1),
+		RepoURL:   strings.Join(parts[0:len(parts)-2], "/"),
 		Labels:    make([]*IssueLabel, 0),
 		Assignees: make([]*Profile, 0),
 	}
@@ -239,6 +240,12 @@ func (i Issue) GetRelativeIssueURL(target string) string {
 		return target
 	}
 
+	if target[0] == '#' {
+		return fmt.Sprintf("%s/issues/%s", i.RepoURL, target[1:])
+	}
+
+	//target = strings.Replace(target, "#", "issues/", -1)
+
 	u, err := url.Parse(target)
 	if err != nil {
 		return ""
@@ -248,7 +255,7 @@ func (i Issue) GetRelativeIssueURL(target string) string {
 		path = i.Path()
 	}
 
-	return fmt.Sprintf("%s%s/issues/%s", i.ProviderURL(), path, u.Fragment)
+	return fmt.Sprintf("%s/%s/issues/%s", i.ProviderURL(), path, u.Fragment)
 }
 
 func (i Issue) BlocksAnEpic() bool {
@@ -360,9 +367,9 @@ func (i Issue) AddNodeToGraph(g *gographviz.Graph, parent string) error {
 
 func (issues Issues) prepare() error {
 	var (
-		dependsOnRegex, _        = regexp.Compile(`(?i)(require|requires|blocked by|block by|depend on|depends on|parent of) ([a-z0-9:/_.-]+|[a-z0-9/_-]*#[0-9]+)`)
-		blocksRegex, _           = regexp.Compile(`(?i)(blocks|block|address|addresses|part of|child of|fix|fixes) ([a-z0-9:/_.-]+|[a-z0-9/_-]*#[0-9]+)`)
-		isDuplicateRegex, _      = regexp.Compile(`(?i)(duplicates|duplicate|dup of|dup|duplicate of) ([a-z0-9:/_.-]+|[a-z0-9/_-]*#[0-9]+)`)
+		dependsOnRegex, _        = regexp.Compile(`(?i)(require|requires|blocked by|block by|depend on|depends on|parent of) ([a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
+		blocksRegex, _           = regexp.Compile(`(?i)(blocks|block|address|addresses|part of|child of|fix|fixes) ([a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
+		isDuplicateRegex, _      = regexp.Compile(`(?i)(duplicates|duplicate|dup of|dup|duplicate of) ([a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
 		weightMultiplierRegex, _ = regexp.Compile(`(?i)(depviz.weight_multiplier[:= ]+)([0-9]+)`)
 		baseWeightRegex, _       = regexp.Compile(`(?i)(depviz.base_weight[:= ]+)([0-9]+)`)
 		hideFromRoadmapRegex, _  = regexp.Compile(`(?i)(depviz.hide_from_roadmap)`) // FIXME: use label
@@ -400,7 +407,6 @@ func (issues Issues) prepare() error {
 		for _, match := range dependsOnRegex.FindAllStringSubmatch(issue.Body, -1) {
 			num := issue.GetRelativeIssueURL(match[len(match)-1])
 			dep, found := issues[num]
-			//fmt.Println(issue.URL, num, found, match[len(match)-1])
 			if !found {
 				issue.Errors = append(issue.Errors, fmt.Errorf("parent %q not found", num))
 				continue
