@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -14,6 +15,11 @@ import (
 
 func main() {
 	defer logger().Sync()
+	defer func() {
+		if db != nil {
+			db.Close()
+		}
+	}()
 	rootCmd := newRootCommand()
 	if err := rootCmd.Execute(); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -24,6 +30,8 @@ func main() {
 var (
 	verbose bool
 	cfgFile string
+	dbFile  string
+	db      *gorm.DB
 )
 
 func newRootCommand() *cobra.Command {
@@ -33,6 +41,7 @@ func newRootCommand() *cobra.Command {
 	cmd.PersistentFlags().BoolP("help", "h", false, "print usage")
 	cmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose mode")
 	cmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./.depviz.yml)")
+	//cmd.PersistentFlags().StringVarP(&cfgFile, "db-path", "", "$HOME/.depviz.db", "database file")
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// configure zap
 		config := zap.NewDevelopmentConfig()
@@ -61,6 +70,13 @@ func newRootCommand() *cobra.Command {
 				return errors.Wrap(err, "cannot read config")
 			}
 		}
+
+		// configure gorm
+		//dbFile = os.ExpandEnv(dbFile)
+		//db, err = gorm.Open("sqlite3", dbFile)
+		//if err != nil {
+		//	return err
+		//}
 		return nil
 	}
 	cmd.AddCommand(

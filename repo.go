@@ -6,6 +6,14 @@ import (
 	"strings"
 )
 
+type Provider string
+
+const (
+	UnknownProvider Provider = "unknown"
+	GitHubProvider           = "github"
+	GitLabProvider           = "gitlab"
+)
+
 type Repo string
 
 func NewRepo(path string) Repo {
