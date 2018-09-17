@@ -26,6 +26,7 @@ type runOptions struct {
 	ShowOrphans bool
 	EpicLabel   string
 	Destination string
+	DebugGraph  bool
 
 	Targets []string
 	//Preview     bool
@@ -39,6 +40,7 @@ func (opts runOptions) String() string {
 func runSetupFlags(flags *pflag.FlagSet, opts *runOptions) {
 	flags.BoolVarP(&opts.NoPull, "no-pull", "f", false, "do not pull new issues before runing")
 	flags.BoolVarP(&opts.ShowClosed, "show-closed", "", false, "show closed issues")
+	flags.BoolVarP(&opts.DebugGraph, "debug-graph", "", false, "debug graph")
 	flags.BoolVarP(&opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
 	flags.StringVarP(&opts.EpicLabel, "epic-label", "", "epic", "label used for epics (empty means issues with dependencies but without dependants)")
 	flags.StringVarP(&opts.Destination, "destination", "", "-", "destination ('-' for stdout)")

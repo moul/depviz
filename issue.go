@@ -372,7 +372,7 @@ func (issues Issues) prepare() error {
 		isDuplicateRegex, _      = regexp.Compile(`(?i)(duplicates|duplicate|dup of|dup|duplicate of) ([a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
 		weightMultiplierRegex, _ = regexp.Compile(`(?i)(depviz.weight_multiplier[:= ]+)([0-9]+)`)
 		baseWeightRegex, _       = regexp.Compile(`(?i)(depviz.base_weight[:= ]+)([0-9]+)`)
-		hideFromRoadmapRegex, _  = regexp.Compile(`(?i)(depviz.hide_from_roadmap)`) // FIXME: use label
+		hideFromRoadmapRegex, _  = regexp.Compile(`(?i)(depviz.hide)`) // FIXME: use label
 	)
 
 	for _, issue := range issues {

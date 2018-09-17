@@ -11,10 +11,12 @@ import (
 func graphviz(issues Issues, opts *runOptions) (string, error) {
 	var (
 		invisStyle = map[string]string{"style": "invis", "label": escape("")}
-		//invisStyle = map[string]string{}
-		weightMap = map[int]bool{}
-		weights   = []int{}
+		weightMap  = map[int]bool{}
+		weights    = []int{}
 	)
+	if opts.DebugGraph {
+		invisStyle = map[string]string{}
+	}
 	for _, issue := range issues {
 		if issue.Hidden {
 			continue
