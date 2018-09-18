@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
+	"log"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -13,6 +15,8 @@ import (
 	"github.com/spf13/viper"
 	gitlab "github.com/xanzy/go-gitlab"
 )
+
+var debugFetch = false
 
 type Provider string
 
@@ -29,15 +33,15 @@ type Issue struct {
 
 	// internal
 	Provider         Provider
-	DependsOn        IssueSlice
-	Blocks           IssueSlice
-	weightMultiplier int
-	BaseWeight       int
-	IsOrphan         bool
-	Hidden           bool
-	Duplicates       []string
-	LinkedWithEpic   bool
-	Errors           []error
+	DependsOn        IssueSlice `json:"-"`
+	Blocks           IssueSlice `json:"-"`
+	weightMultiplier int        `json:"-"`
+	BaseWeight       int        `json:"-"`
+	IsOrphan         bool       `json:"-"`
+	Hidden           bool       `json:"-"`
+	Duplicates       []string   `json:"-"`
+	LinkedWithEpic   bool       `json:"-"`
+	Errors           []error    `json:"-"`
 
 	// mapping
 	Number    int
@@ -98,6 +102,14 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 }
 
 func FromGitLabIssue(input *gitlab.Issue) *Issue {
+	if debugFetch {
+		out, _ := json.MarshalIndent(input, "", "  ")
+		log.Println(string(out))
+	}
+	repoURL := input.Links.Project
+	if repoURL == "" {
+		repoURL = strings.Replace(input.WebURL, fmt.Sprintf("/issues/%d", input.IID), "", -1)
+	}
 	issue := &Issue{
 		Provider:  GitLabProvider,
 		GitLab:    input,
@@ -106,7 +118,7 @@ func FromGitLabIssue(input *gitlab.Issue) *Issue {
 		State:     input.State,
 		URL:       input.WebURL,
 		Body:      input.Description,
-		RepoURL:   input.Links.Project,
+		RepoURL:   repoURL,
 		Labels:    make([]*IssueLabel, 0),
 		Assignees: make([]*Profile, 0),
 	}
