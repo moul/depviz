@@ -44,11 +44,26 @@ func getReposFromTargets(targets []string) []string {
 			logger().Fatal("filesystem target are not yet supported")
 		}
 		repo := strings.Split(target, "/issues")[0]
+		repo = strings.Split(target, "#")[0]
 		reposMap[repo] = true
 	}
 	repos := []string{}
 	for repo := range reposMap {
 		repos = append(repos, repo)
 	}
-	return repos
+	return uniqueStrings(repos)
+}
+
+func uniqueStrings(input []string) []string {
+	u := make([]string, 0, len(input))
+	m := make(map[string]bool)
+
+	for _, val := range input {
+		if _, ok := m[val]; !ok {
+			m[val] = true
+			u = append(u, val)
+		}
+	}
+
+	return u
 }

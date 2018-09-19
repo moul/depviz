@@ -15,18 +15,20 @@ import (
 
 type runOptions struct {
 	// pull
-	PullOpts pullOptions
-	NoPull   bool
+	PullOpts     pullOptions
+	NoPull       bool
+	ReposToFetch []string
 
 	// db
 	DBOpts dbOptions
 
 	// run
-	ShowClosed  bool `mapstructure:"show-closed"`
-	ShowOrphans bool
-	EpicLabel   string
-	Destination string
-	DebugGraph  bool
+	ShowClosed      bool `mapstructure:"show-closed"`
+	ShowOrphans     bool
+	AdditionalPulls []string
+	EpicLabel       string
+	Destination     string
+	DebugGraph      bool
 
 	Targets []string
 	//Preview     bool
@@ -44,6 +46,7 @@ func runSetupFlags(flags *pflag.FlagSet, opts *runOptions) {
 	flags.BoolVarP(&opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
 	flags.StringVarP(&opts.EpicLabel, "epic-label", "", "epic", "label used for epics (empty means issues with dependencies but without dependants)")
 	flags.StringVarP(&opts.Destination, "destination", "", "-", "destination ('-' for stdout)")
+	flags.StringSliceVarP(&opts.AdditionalPulls, "additional-pull", "", []string{}, "additional pull that won't necessarily be displayed on the graph")
 	//flags.BoolVarP(&opts.Preview, "preview", "p", false, "preview result")
 	viper.BindPFlags(flags)
 }
@@ -63,7 +66,7 @@ func newRunCommand() *cobra.Command {
 				return err
 			}
 			opts.PullOpts.DBOpts = opts.DBOpts
-			opts.PullOpts.Targets = args
+			opts.PullOpts.Targets = append(args, opts.AdditionalPulls...)
 			opts.Targets = args
 			return run(opts)
 		},
@@ -91,14 +94,13 @@ func run(opts *runOptions) error {
 		return errors.Wrap(err, "failed to prepare issues")
 	}
 
-	issues.processEpicLinks()
 	if !opts.ShowClosed {
 		issues.HideClosed()
 	}
-	if !opts.ShowOrphans && issues.HasNonOrphans() {
-		issues.HideOrphans()
+	issues.filterByTargets(opts.Targets)
+	if opts.ShowOrphans {
+		logger().Warn("--show-orphans is deprecated and will be removed")
 	}
-	issues.processEpicLinks()
 
 	out, err := graphviz(issues, opts)
 

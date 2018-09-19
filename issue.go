@@ -471,6 +471,40 @@ func (issues Issues) processEpicLinks() {
 	}
 }
 
+func (issues Issues) filterByTargets(targets []string) {
+	for _, issue := range issues {
+		if issue.Hidden {
+			continue
+		}
+		issue.Hidden = !issue.MatchesWithATarget(targets)
+	}
+}
+
+func (i Issue) MatchesWithATarget(targets []string) bool {
+	issueParts := strings.Split(strings.TrimRight(i.URL, "/"), "/")
+	for _, target := range targets {
+		fullTarget := i.GetRelativeIssueURL(target)
+		targetParts := strings.Split(strings.TrimRight(fullTarget, "/"), "/")
+		if len(issueParts) == len(targetParts) {
+			if i.URL == fullTarget {
+				return true
+			}
+		} else {
+			if i.URL[:len(fullTarget)] == fullTarget {
+				return true
+			}
+		}
+	}
+
+	for _, parent := range i.Blocks {
+		if parent.MatchesWithATarget(targets) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (issues Issues) HideClosed() {
 	for _, issue := range issues {
 		if issue.IsClosed() {
