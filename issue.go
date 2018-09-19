@@ -242,7 +242,7 @@ func (i Issue) NodeTitle() string {
 		for _, err := range i.Errors {
 			errors = append(errors, err.Error())
 		}
-		errorsText = fmt.Sprintf(`<tr><td bgcolor="red">ERR: %s</td></tr>`, strings.Join(errors, "; "))
+		errorsText = fmt.Sprintf(`<tr><td bgcolor="red">ERR: %s</td></tr>`, strings.Join(errors, ";<br />ERR: "))
 	}
 	return fmt.Sprintf(`<<table><tr><td>%s</td></tr>%s%s%s</table>>`, title, labelsText, assigneeText, errorsText)
 }
@@ -469,6 +469,40 @@ func (issues Issues) processEpicLinks() {
 		issue.LinkedWithEpic = !issue.Hidden && (issue.IsEpic() || issue.BlocksAnEpic() || issue.DependsOnAnEpic())
 
 	}
+}
+
+func (issues Issues) filterByTargets(targets []string) {
+	for _, issue := range issues {
+		if issue.Hidden {
+			continue
+		}
+		issue.Hidden = !issue.MatchesWithATarget(targets)
+	}
+}
+
+func (i Issue) MatchesWithATarget(targets []string) bool {
+	issueParts := strings.Split(strings.TrimRight(i.URL, "/"), "/")
+	for _, target := range targets {
+		fullTarget := i.GetRelativeIssueURL(target)
+		targetParts := strings.Split(strings.TrimRight(fullTarget, "/"), "/")
+		if len(issueParts) == len(targetParts) {
+			if i.URL == fullTarget {
+				return true
+			}
+		} else {
+			if i.URL[:len(fullTarget)] == fullTarget {
+				return true
+			}
+		}
+	}
+
+	for _, parent := range i.Blocks {
+		if parent.MatchesWithATarget(targets) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (issues Issues) HideClosed() {
