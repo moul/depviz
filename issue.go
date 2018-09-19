@@ -242,7 +242,7 @@ func (i Issue) NodeTitle() string {
 		for _, err := range i.Errors {
 			errors = append(errors, err.Error())
 		}
-		errorsText = fmt.Sprintf(`<tr><td bgcolor="red">ERR: %s</td></tr>`, strings.Join(errors, "; "))
+		errorsText = fmt.Sprintf(`<tr><td bgcolor="red">ERR: %s</td></tr>`, strings.Join(errors, ";<br />ERR: "))
 	}
 	return fmt.Sprintf(`<<table><tr><td>%s</td></tr>%s%s%s</table>>`, title, labelsText, assigneeText, errorsText)
 }

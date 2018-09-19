@@ -6,10 +6,17 @@ import (
 	"sort"
 
 	"github.com/awalterschulze/gographviz"
+	"go.uber.org/zap"
 )
 
 func graphviz(issues Issues, opts *runOptions) (string, error) {
 	var (
+		stats = map[string]int{
+			"nodes":     0,
+			"edges":     0,
+			"hidden":    0,
+			"subgraphs": 0,
+		}
 		invisStyle = map[string]string{"style": "invis", "label": escape("")}
 		weightMap  = map[int]bool{}
 		weights    = []int{}
@@ -19,6 +26,7 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 	}
 	for _, issue := range issues {
 		if issue.Hidden {
+			stats["hidden"]++
 			continue
 		}
 		weightMap[issue.Weight()] = true
@@ -83,11 +91,13 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 		}
 
 		panicIfErr(issue.AddNodeToGraph(g, parent))
+		stats["nodes"]++
 	}
 
 	// issue relationships
 	for _, issue := range issues {
 		panicIfErr(issue.AddEdgesToGraph(g))
+		stats["edges"]++
 	}
 
 	// orphans cluster and placeholder
@@ -97,18 +107,21 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 			"cluster_orphans_without_links",
 			map[string]string{"label": escape("orphans without links"), "style": "dashed"},
 		))
+		stats["subgraphs"]++
 
 		panicIfErr(g.AddSubGraph(
 			"cluster_orphans_without_links",
 			"cluster_orphans_without_links_0",
 			invisStyle,
 		))
+		stats["subgraphs"]++
 		for i := 0; i < orphansCols; i++ {
 			panicIfErr(g.AddNode(
 				fmt.Sprintf("cluster_orphans_without_links_%d", i),
 				fmt.Sprintf("placeholder_orphans_without_links_%d", i),
 				invisStyle,
 			))
+			stats["nodes"]++
 		}
 
 		panicIfErr(g.AddEdge(
@@ -117,6 +130,7 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 			true,
 			invisStyle,
 		))
+		stats["edges"]++
 
 		for i := 1; i < orphansCols; i++ {
 			panicIfErr(g.AddSubGraph(
@@ -124,29 +138,38 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 				fmt.Sprintf("cluster_orphans_without_links_%d", i),
 				invisStyle,
 			))
+			stats["subgraphs"]++
 			panicIfErr(g.AddEdge(
 				fmt.Sprintf("placeholder_orphans_without_links_%d", i-1),
 				fmt.Sprintf("placeholder_orphans_without_links_%d", i),
 				true,
 				invisStyle,
 			))
+			stats["edges"]++
 		}
 	}
 	if hasOrphansWithLinks {
 		panicIfErr(g.AddSubGraph("G", "cluster_orphans_with_links", map[string]string{"label": escape("orphans with links"), "style": "dashed"}))
+		stats["subgraphs"]++
+
 		panicIfErr(g.AddNode("cluster_orphans_with_links", "placeholder_orphans_with_links", invisStyle))
+		stats["nodes"]++
+
 		panicIfErr(g.AddEdge(
 			"placeholder_orphans_with_links",
 			fmt.Sprintf("placeholder_%d", weights[0]),
 			true,
 			invisStyle,
 		))
+		stats["edges"]++
 	}
 
 	// set weights clusters and placeholders
 	for _, weight := range weights {
 		clusterName := fmt.Sprintf("anon%d", weight)
 		panicIfErr(g.AddSubGraph("G", clusterName, map[string]string{"rank": "same"}))
+		stats["subgraphs"]++
+
 		//clusterName := fmt.Sprintf("cluster_w%d", weight)
 		//panicIfErr(g.AddSubGraph("G", clusterName, map[string]string{"label": fmt.Sprintf("w%d", weight)}))
 		panicIfErr(g.AddNode(
@@ -157,6 +180,7 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 				"label": fmt.Sprintf(`"weight=%d"`, weight),
 			},
 		))
+		stats["nodes"]++
 	}
 	for i := 0; i < len(weights)-1; i++ {
 		panicIfErr(g.AddEdge(
@@ -165,7 +189,9 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 			true,
 			invisStyle,
 		))
+		stats["edges"]++
 	}
 
+	logger().Debug("graph stats", zap.Any("stats", stats))
 	return g.String(), nil
 }
