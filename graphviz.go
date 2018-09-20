@@ -41,7 +41,9 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 	panicIfErr(g.SetName("G"))
 	attrs := map[string]string{}
 	attrs["truecolor"] = "true"
-	attrs["overlap"] = "false"
+	attrs["overlap"] = "compress"
+	attrs["sep"] = "-0.7"
+	attrs["compound"] = "true"
 	attrs["splines"] = "true"
 	attrs["rankdir"] = "RL"
 	attrs["ranksep"] = "0.3"
@@ -79,7 +81,7 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 		if issue.Hidden {
 			continue
 		}
-		parent := fmt.Sprintf("anon%d", issue.Weight())
+		parent := fmt.Sprintf("cluster_weight_%d", issue.Weight())
 		if issue.IsOrphan || !issue.LinkedWithEpic {
 			if len(issue.DependsOn) > 0 || len(issue.Blocks) > 0 {
 				parent = "cluster_orphans_with_links"
@@ -149,7 +151,10 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 		}
 	}
 	if hasOrphansWithLinks {
-		panicIfErr(g.AddSubGraph("G", "cluster_orphans_with_links", map[string]string{"label": escape("orphans with links"), "style": "dashed"}))
+		attrs := map[string]string{}
+		attrs["label"] = escape("orphans with links")
+		attrs["style"] = "dashed"
+		panicIfErr(g.AddSubGraph("G", "cluster_orphans_with_links", attrs))
 		stats["subgraphs"]++
 
 		panicIfErr(g.AddNode("cluster_orphans_with_links", "placeholder_orphans_with_links", invisStyle))
@@ -166,19 +171,19 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 
 	// set weights clusters and placeholders
 	for _, weight := range weights {
-		clusterName := fmt.Sprintf("anon%d", weight)
-		panicIfErr(g.AddSubGraph("G", clusterName, map[string]string{"rank": "same"}))
+		clusterName := fmt.Sprintf("cluster_weight_%d", weight)
+		attrs := invisStyle
+		attrs["rank"] = "same"
+		panicIfErr(g.AddSubGraph("G", clusterName, attrs))
 		stats["subgraphs"]++
 
-		//clusterName := fmt.Sprintf("cluster_w%d", weight)
-		//panicIfErr(g.AddSubGraph("G", clusterName, map[string]string{"label": fmt.Sprintf("w%d", weight)}))
+		attrs = invisStyle
+		attrs["shape"] = "none"
+		attrs["label"] = fmt.Sprintf(`"weight=%d"`, weight)
 		panicIfErr(g.AddNode(
 			clusterName,
 			fmt.Sprintf("placeholder_%d", weight),
-			map[string]string{
-				"shape": "none",
-				"label": fmt.Sprintf(`"weight=%d"`, weight),
-			},
+			attrs,
 		))
 		stats["nodes"]++
 	}
