@@ -247,31 +247,31 @@ func (i Issue) NodeTitle() string {
 	return fmt.Sprintf(`<<table><tr><td>%s</td></tr>%s%s%s</table>>`, title, labelsText, assigneeText, errorsText)
 }
 
+func normalizeURL(input string) string {
+	parts := strings.Split(input, "://")
+	output := fmt.Sprintf("%s://%s", parts[0], strings.Replace(parts[1], "//", "/", -1))
+	output = strings.TrimRight(output, "#")
+	output = strings.TrimRight(output, "/")
+	return output
+}
+
 func (i Issue) GetRelativeIssueURL(target string) string {
 	if strings.Contains(target, "://") {
-		return target
+		return normalizeURL(target)
 	}
 
 	if target[0] == '#' {
 		return fmt.Sprintf("%s/issues/%s", i.RepoURL, target[1:])
 	}
 
-	//target = strings.Replace(target, "#", "issues/", -1)
+	target = strings.Replace(target, "#", "/issues/", -1)
 
-	if len(strings.Split(target, "/")) > 3 {
-		target = fmt.Sprintf("http://%s", target)
+	parts := strings.Split(target, "/")
+	if strings.Contains(parts[0], ".") && isDNSName(parts[0]) {
+		return fmt.Sprintf("https://%s", target)
 	}
 
-	u, err := url.Parse(target)
-	if err != nil {
-		return ""
-	}
-	path := u.Path
-	if path == "" {
-		path = i.Path()
-	}
-
-	return fmt.Sprintf("%s/%s/issues/%s", strings.TrimRight(i.ProviderURL(), "/"), path, u.Fragment)
+	return fmt.Sprintf("%s/%s", strings.TrimRight(i.ProviderURL(), "/"), target)
 }
 
 func (i Issue) BlocksAnEpic() bool {

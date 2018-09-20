@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -66,4 +67,10 @@ func uniqueStrings(input []string) []string {
 	}
 
 	return u
+}
+
+var rxDNSName = regexp.MustCompile(`^([a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62}){1}(\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*[\._]?$`)
+
+func isDNSName(input string) bool {
+	return rxDNSName.MatchString(input)
 }
