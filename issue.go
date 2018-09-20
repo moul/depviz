@@ -258,6 +258,10 @@ func (i Issue) GetRelativeIssueURL(target string) string {
 
 	//target = strings.Replace(target, "#", "issues/", -1)
 
+	if len(strings.Split(target, "/")) > 3 {
+		target = fmt.Sprintf("http://%s", target)
+	}
+
 	u, err := url.Parse(target)
 	if err != nil {
 		return ""
@@ -267,7 +271,7 @@ func (i Issue) GetRelativeIssueURL(target string) string {
 		path = i.Path()
 	}
 
-	return fmt.Sprintf("%s/%s/issues/%s", i.ProviderURL(), path, u.Fragment)
+	return fmt.Sprintf("%s/%s/issues/%s", strings.TrimRight(i.ProviderURL(), "/"), path, u.Fragment)
 }
 
 func (i Issue) BlocksAnEpic() bool {
@@ -490,7 +494,7 @@ func (i Issue) MatchesWithATarget(targets []string) bool {
 				return true
 			}
 		} else {
-			if i.URL[:len(fullTarget)] == fullTarget {
+			if len(fullTarget) <= len(i.URL) && i.URL[:len(fullTarget)] == fullTarget {
 				return true
 			}
 		}
