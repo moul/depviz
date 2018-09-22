@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"sync"
 
 	"github.com/google/go-github/github"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -160,6 +158,10 @@ func pull(opts *pullOptions) error {
 		allIssues = append(allIssues, issues...)
 	}
 
-	issuesJson, _ := json.MarshalIndent(allIssues, "", "  ")
-	return errors.Wrap(ioutil.WriteFile(opts.DBOpts.Path, issuesJson, 0644), "failed to write db")
+	for _, issue := range allIssues {
+		if err := db.Save(issue).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

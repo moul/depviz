@@ -79,18 +79,18 @@ func newRunCommand() *cobra.Command {
 
 func run(opts *runOptions) error {
 	logger().Debug("run", zap.Stringer("opts", *opts))
-	if !opts.NoPull || !dbExists(&opts.DBOpts) {
+	if !opts.NoPull {
 		if err := pull(&opts.PullOpts); err != nil {
 			return err
 		}
 	}
 
-	issues, err := dbLoad(&opts.DBOpts)
+	issues, err := loadIssues(db)
 	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
 
-	if err = issues.prepare(); err != nil {
+	if err := issues.prepare(); err != nil {
 		return errors.Wrap(err, "failed to prepare issues")
 	}
 
@@ -103,6 +103,9 @@ func run(opts *runOptions) error {
 	}
 
 	out, err := graphviz(issues, opts)
+	if err != nil {
+		return err
+	}
 
 	var dest io.WriteCloser
 	switch opts.Destination {

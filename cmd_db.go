@@ -3,18 +3,17 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
 
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 )
 
 type dbOptions struct {
-	Path string `mapstructure:"db-path"`
+	Path    string `mapstructure:"dbpath"`
+	Verbose bool
 }
 
 func (opts dbOptions) String() string {
@@ -23,7 +22,7 @@ func (opts dbOptions) String() string {
 }
 
 func dbSetupFlags(flags *pflag.FlagSet, opts *dbOptions) {
-	flags.StringVarP(&opts.Path, "db-path", "", "./depviz.db", "depviz database path")
+
 	viper.BindPFlags(flags)
 }
 
@@ -51,10 +50,9 @@ func newDBDumpCommand() *cobra.Command {
 }
 
 func dbDump(opts *dbOptions) error {
-	logger().Debug("dbDump", zap.Stringer("opts", *opts))
-	issues, err := dbLoad(opts)
-	if err != nil {
-		return err
+	var issues IssueSlice
+	if err := db.Find(&issues).Error; err != nil {
+		return errors.Wrap(err, "failed to load issues")
 	}
 	out, err := json.MarshalIndent(issues, "", "  ")
 	if err != nil {
@@ -64,21 +62,11 @@ func dbDump(opts *dbOptions) error {
 	return nil
 }
 
-func dbExists(opts *dbOptions) bool {
-	logger().Debug("dbExists", zap.Stringer("opts", *opts))
-	_, err := os.Stat(opts.Path)
-	return err == nil
-}
-
-func dbLoad(opts *dbOptions) (Issues, error) {
-	logger().Debug("dbLoad", zap.Stringer("opts", *opts))
-	var issues IssueSlice
-	content, err := ioutil.ReadFile(opts.Path)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to open db file")
+func loadIssues(db *gorm.DB) (Issues, error) {
+	var issues []*Issue
+	if err := db.Find(&issues).Error; err != nil {
+		return nil, err
 	}
-	if err := json.Unmarshal(content, &issues); err != nil {
-		return nil, errors.Wrap(err, "failed to parse db file")
-	}
-	return issues.ToMap(), nil
+	slice := IssueSlice(issues)
+	return slice.ToMap(), nil
 }
