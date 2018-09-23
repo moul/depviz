@@ -118,6 +118,8 @@ func FromGitLabIssue(input *gitlab.Issue) *Issue {
 		repoURL = strings.Replace(input.WebURL, fmt.Sprintf("/issues/%d", input.IID), "", -1)
 	}
 	issue := &Issue{
+		CreatedAt: *input.CreatedAt,
+		UpdatedAt: *input.UpdatedAt,
 		Provider:  GitLabProvider,
 		GitLab:    input,
 		Number:    input.IID,

@@ -131,6 +131,12 @@ func pull(opts *pullOptions) error {
 						Page:    1,
 					},
 				}
+
+				var lastEntry Issue
+				if err := db.Where("repo_url = ?", repo.Canonical()).Order("updated_at desc").First(&lastEntry).Error; err == nil {
+					opts.UpdatedAfter = &lastEntry.UpdatedAt
+				}
+
 				for {
 					issues, resp, err := client.Issues.ListProjectIssues(projectID, opts)
 					if err != nil {
