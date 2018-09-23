@@ -28,20 +28,20 @@ const (
 
 type Issue struct {
 	// proxy
-	GitHub *github.Issue
-	GitLab *gitlab.Issue
+	GitHub *github.Issue `json:"-" gorm:"-"`
+	GitLab *gitlab.Issue `json:"-" gorm:"-"`
 
 	// internal
 	Provider         Provider
-	DependsOn        IssueSlice `json:"-"`
-	Blocks           IssueSlice `json:"-"`
-	weightMultiplier int        `json:"-"`
-	BaseWeight       int        `json:"-"`
-	IsOrphan         bool       `json:"-"`
-	Hidden           bool       `json:"-"`
-	Duplicates       []string   `json:"-"`
-	LinkedWithEpic   bool       `json:"-"`
-	Errors           []error    `json:"-"`
+	DependsOn        IssueSlice `json:"-" gorm:"-"`
+	Blocks           IssueSlice `json:"-" gorm:"-"`
+	weightMultiplier int        `gorm:"-"`
+	BaseWeight       int        `json:"-" gorm:"-"`
+	IsOrphan         bool       `json:"-" gorm:"-"`
+	Hidden           bool       `json:"-" gorm:"-"`
+	Duplicates       []string   `json:"-" gorm:"-"`
+	LinkedWithEpic   bool       `json:"-" gorm:"-"`
+	Errors           []error    `json:"-" gorm:"-"`
 
 	// mapping
 	Number    int
@@ -49,19 +49,20 @@ type Issue struct {
 	State     string
 	Body      string
 	RepoURL   string
-	URL       string
-	Labels    []*IssueLabel
-	Assignees []*Profile
+	URL       string        `gorm:"primary_key"`
+	Labels    []*IssueLabel `gorm:"many2many:issue_labels;"`
+	Assignees []*Profile    `gorm:"many2many:issue_assignees;"`
+	IsPR      bool
 }
 
 type IssueLabel struct {
-	Name  string
+	Name  string `gorm:"primary_key"`
 	Color string
 }
 
 type Profile struct {
 	Name     string
-	Username string
+	Username string `gorm:"primary_key"`
 }
 
 func FromGitHubIssue(input *github.Issue) *Issue {
@@ -77,6 +78,7 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 		Title:     *input.Title,
 		State:     *input.State,
 		Body:      body,
+		IsPR:      input.PullRequestLinks != nil,
 		URL:       strings.Replace(*input.HTMLURL, "/pull/", "/issues/", -1),
 		RepoURL:   strings.Join(parts[0:len(parts)-2], "/"),
 		Labels:    make([]*IssueLabel, 0),
@@ -450,22 +452,12 @@ func (issues Issues) prepare() error {
 		if len(issue.Duplicates) > 0 {
 			issue.Hidden = true
 		}
-		if issue.IsPR() {
+		if issue.IsPR {
 			issue.Hidden = true
 		}
 	}
 	issues.processEpicLinks()
 	return nil
-}
-
-func (i Issue) IsPR() bool {
-	switch i.Provider {
-	case GitHubProvider:
-		return i.GitHub.PullRequestLinks != nil
-	case GitLabProvider:
-		return false // only fetching issues for now
-	}
-	panic("should not happen")
 }
 
 func (issues Issues) processEpicLinks() {
