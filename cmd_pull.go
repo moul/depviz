@@ -79,9 +79,16 @@ func pull(opts *pullOptions) error {
 			client := github.NewClient(tc)
 
 			go func(repo Repo) {
+
 				total := 0
 				defer wg.Done()
 				opts := &github.IssueListByRepoOptions{State: "all"}
+
+				var lastEntry Issue
+				if err := db.Where("repo_url = ?", repo.Canonical()).Order("updated_at desc").First(&lastEntry).Error; err == nil {
+					opts.Since = lastEntry.UpdatedAt
+				}
+
 				for {
 					issues, resp, err := client.Issues.ListByRepo(ctx, repo.Namespace(), repo.Project(), opts)
 					if err != nil {
