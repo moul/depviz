@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"moul.io/zapgorm"
 )
 
 func main() {
@@ -74,6 +75,7 @@ func newRootCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		db.SetLogger(zapgorm.New(zap.L().Named("vendor.gorm")))
 		db = db.Set("gorm:auto_preload", true)
 		db = db.Set("gorm:association_autoupdate", true)
 		db.BlockGlobalUpdate(true)
@@ -86,7 +88,6 @@ func newRootCommand() *cobra.Command {
 		).Error; err != nil {
 			return err
 		}
-		fmt.Println(dbPath, db)
 
 		return nil
 	}
