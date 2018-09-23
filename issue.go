@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/awalterschulze/gographviz"
 	"github.com/google/go-github/github"
@@ -44,6 +45,8 @@ type Issue struct {
 	Errors           []error    `json:"-" gorm:"-"`
 
 	// mapping
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	Number    int
 	Title     string
 	State     string
@@ -72,6 +75,8 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 	}
 	parts := strings.Split(*input.HTMLURL, "/")
 	issue := &Issue{
+		CreatedAt: *input.CreatedAt,
+		UpdatedAt: *input.UpdatedAt,
 		Provider:  GitHubProvider,
 		GitHub:    input,
 		Number:    *input.Number,
