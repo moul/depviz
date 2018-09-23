@@ -64,7 +64,7 @@ func dbDump(opts *dbOptions) error {
 
 func canonicalTargets(input []string) []string {
 	output := []string{}
-	base := Issue{RepoURL: "https://github.com/moul/depviz"}
+	base := Issue{RepoURL: "https://github.com/moul/depviz", URL: "https://github.com/moul/depviz/issues/1"}
 	for _, target := range input {
 		output = append(output, base.GetRelativeIssueURL(target))
 	}
@@ -80,7 +80,6 @@ func loadIssues(db *gorm.DB, targets []string) (Issues, error) {
 	if err := query.Find(&issues).Error; err != nil {
 		return nil, err
 	}
-	fmt.Println(targets, issues)
 	slice := IssueSlice(issues)
 	return slice.ToMap(), nil
 }
