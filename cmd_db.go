@@ -51,7 +51,7 @@ func newDBDumpCommand() *cobra.Command {
 
 func dbDump(opts *dbOptions) error {
 	var issues IssueSlice
-	if err := db.Find(&issues).Error; err != nil {
+	if err := db.Set("gorm:auto_preload", false).Find(&issues).Error; err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
 	out, err := json.MarshalIndent(issues, "", "  ")
@@ -62,11 +62,25 @@ func dbDump(opts *dbOptions) error {
 	return nil
 }
 
-func loadIssues(db *gorm.DB) (Issues, error) {
+func canonicalTargets(input []string) []string {
+	output := []string{}
+	base := Issue{RepoURL: "https://github.com/moul/depviz"}
+	for _, target := range input {
+		output = append(output, base.GetRelativeIssueURL(target))
+	}
+	return output
+}
+
+func loadIssues(db *gorm.DB, targets []string) (Issues, error) {
+	query := db
+	if len(targets) > 0 {
+		query = query.Where("repo_url IN (?)", canonicalTargets(targets))
+	}
 	var issues []*Issue
-	if err := db.Find(&issues).Error; err != nil {
+	if err := query.Find(&issues).Error; err != nil {
 		return nil, err
 	}
+	fmt.Println(targets, issues)
 	slice := IssueSlice(issues)
 	return slice.ToMap(), nil
 }

@@ -85,7 +85,7 @@ func run(opts *runOptions) error {
 		}
 	}
 
-	issues, err := loadIssues(db)
+	issues, err := loadIssues(db, opts.Targets)
 	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
