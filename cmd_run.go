@@ -29,6 +29,7 @@ type runOptions struct {
 	EpicLabel       string
 	Destination     string
 	DebugGraph      bool
+	NoCompress      bool
 
 	Targets []string
 	//Preview     bool
@@ -44,6 +45,7 @@ func runSetupFlags(flags *pflag.FlagSet, opts *runOptions) {
 	flags.BoolVarP(&opts.ShowClosed, "show-closed", "", false, "show closed issues")
 	flags.BoolVarP(&opts.DebugGraph, "debug-graph", "", false, "debug graph")
 	flags.BoolVarP(&opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
+	flags.BoolVarP(&opts.NoCompress, "no-compress", "", false, "do not compress graph (no overlap)")
 	flags.StringVarP(&opts.EpicLabel, "epic-label", "", "epic", "label used for epics (empty means issues with dependencies but without dependants)")
 	flags.StringVarP(&opts.Destination, "destination", "", "-", "destination ('-' for stdout)")
 	flags.StringSliceVarP(&opts.AdditionalPulls, "additional-pull", "", []string{}, "additional pull that won't necessarily be displayed on the graph")

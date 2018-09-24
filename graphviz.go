@@ -41,7 +41,6 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 	panicIfErr(g.SetName("G"))
 	attrs := map[string]string{}
 	attrs["truecolor"] = "true"
-	attrs["overlap"] = "compress"
 	attrs["sep"] = "-0.7"
 	attrs["compound"] = "true"
 	attrs["splines"] = "true"
@@ -51,6 +50,10 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 	attrs["margin"] = "0.2"
 	attrs["center"] = "true"
 	attrs["constraint"] = "false"
+	if !opts.NoCompress {
+		attrs["overlap"] = "compress"
+	}
+
 	for k, v := range attrs {
 		panicIfErr(g.AddAttr("G", k, v))
 	}
