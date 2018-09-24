@@ -41,17 +41,21 @@ func graphviz(issues Issues, opts *runOptions) (string, error) {
 	panicIfErr(g.SetName("G"))
 	attrs := map[string]string{}
 	attrs["truecolor"] = "true"
-	attrs["sep"] = "-0.7"
-	attrs["compound"] = "true"
-	attrs["splines"] = "true"
 	attrs["rankdir"] = "RL"
-	attrs["ranksep"] = "0.3"
-	attrs["nodesep"] = "0.1"
-	attrs["margin"] = "0.2"
-	attrs["center"] = "true"
-	attrs["constraint"] = "false"
+	attrs["constraint"] = "true"
+	attrs["compound"] = "true"
 	if !opts.NoCompress {
+		attrs["center"] = "true"
+		attrs["ranksep"] = "0.3"
+		attrs["nodesep"] = "0.1"
+		attrs["margin"] = "0.2"
+		attrs["sep"] = "-0.7"
+		attrs["constraint"] = "false"
+		attrs["splines"] = "true"
 		attrs["overlap"] = "compress"
+	}
+	if opts.DarkTheme {
+		attrs["bgcolor"] = "black"
 	}
 
 	for k, v := range attrs {
