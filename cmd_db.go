@@ -50,11 +50,11 @@ func newDBDumpCommand() *cobra.Command {
 }
 
 func dbDump(opts *dbOptions) error {
-	var issues IssueSlice
-	if err := db.Set("gorm:auto_preload", false).Find(&issues).Error; err != nil {
+	issues, err := loadIssues(db, nil)
+	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
-	out, err := json.MarshalIndent(issues, "", "  ")
+	out, err := json.MarshalIndent(issues.ToSlice(), "", "  ")
 	if err != nil {
 		return err
 	}
@@ -72,13 +72,27 @@ func canonicalTargets(input []string) []string {
 }
 
 func loadIssues(db *gorm.DB, targets []string) (Issues, error) {
-	query := db
+	query := db.Model(Issue{})
 	if len(targets) > 0 {
 		query = query.Where("repo_url IN (?)", canonicalTargets(targets))
 	}
-	var issues []*Issue
-	if err := query.Find(&issues).Error; err != nil {
+
+	/*var count int
+	if err := query.Count(&count).Error; err != nil {
 		return nil, err
+	}*/
+
+	perPage := 100
+	var issues []*Issue
+	for page := 0; ; page++ {
+		var newIssues []*Issue
+		if err := query.Limit(perPage).Offset(perPage * page).Find(&newIssues).Error; err != nil {
+			return nil, err
+		}
+		issues = append(issues, newIssues...)
+		if len(newIssues) < perPage {
+			break
+		}
 	}
 	slice := IssueSlice(issues)
 	return slice.ToMap(), nil
