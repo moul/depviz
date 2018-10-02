@@ -37,7 +37,7 @@ require (
 	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f // indirect
 	golang.org/x/sys v0.0.0-20180831094639-fa5fdf94c789 // indirect
 	golang.org/x/text v0.3.0 // indirect
-	google.golang.org/appengine v1.1.0 // indirect
+	google.golang.org/appengine v1.2.0 // indirect
 	gopkg.in/yaml.v2 v2.2.1 // indirect
 	moul.io/zapgorm v0.0.0-20180923113722-8436a28d1214
 )
