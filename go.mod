@@ -20,7 +20,7 @@ require (
 	github.com/lib/pq v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.0 // indirect
 	github.com/mattn/go-sqlite3 v1.9.0
-	github.com/mitchellh/mapstructure v1.0.0 // indirect
+	github.com/mitchellh/mapstructure v1.1.1 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pkg/errors v0.8.0
 	github.com/spf13/afero v1.1.1 // indirect
