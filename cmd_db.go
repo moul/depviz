@@ -12,8 +12,6 @@ import (
 )
 
 type dbOptions struct {
-	Path    string `mapstructure:"dbpath"`
-	Verbose bool
 }
 
 func (opts dbOptions) String() string {
@@ -22,7 +20,6 @@ func (opts dbOptions) String() string {
 }
 
 func dbSetupFlags(flags *pflag.FlagSet, opts *dbOptions) {
-
 	viper.BindPFlags(flags)
 }
 
