@@ -1,7 +1,7 @@
 module moul.io/depviz
 
 require (
-	cloud.google.com/go v0.28.0 // indirect
+	cloud.google.com/go v0.29.0 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/awalterschulze/gographviz v0.0.0-20180813113015-16ed621cdb51
 	github.com/denisenkom/go-mssqldb v0.0.0-20180901172138-1eb28afdf9b6 // indirect
