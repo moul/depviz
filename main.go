@@ -95,6 +95,7 @@ func newRootCommand() *cobra.Command {
 		newPullCommand(),
 		newRunCommand(),
 		newDBCommand(),
+		newWebCommand(),
 	)
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))

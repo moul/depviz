@@ -306,8 +306,16 @@ func (i Issue) blocksAnEpic(depth int) bool {
 }
 
 func (i Issue) DependsOnAnEpic() bool {
+	return i.dependsOnAnEpic(0)
+}
+
+func (i Issue) dependsOnAnEpic(depth int) bool {
+	if depth > 100 {
+		log.Printf("very high blocking depth (>100), do not continue. (issue=%s)", i)
+		return false
+	}
 	for _, dep := range i.DependsOn {
-		if dep.IsEpic() || dep.DependsOnAnEpic() {
+		if dep.IsEpic() || dep.dependsOnAnEpic(depth+1) {
 			return true
 		}
 	}

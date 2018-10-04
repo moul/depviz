@@ -6,10 +6,32 @@ import (
 	"sort"
 
 	"github.com/awalterschulze/gographviz"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
-func graphviz(issues Issues, opts *runOptions) (string, error) {
+type graphOptions struct {
+	DebugGraph  bool   `mapstructure:"debug-graph"`
+	NoCompress  bool   `mapstructure:"no-compress"`
+	DarkTheme   bool   `mapstructure:"dark-theme"`
+	ShowClosed  bool   `mapstructure:"show-closed"`
+	ShowOrphans bool   `mapstructure:"show-orphans"`
+	EpicLabel   string `mapstructure:"epic-label"`
+	Targets     []string
+}
+
+func graphSetupFlags(flags *pflag.FlagSet, opts *graphOptions) {
+	flags.BoolVarP(&opts.ShowClosed, "show-closed", "", false, "show closed issues")
+	flags.BoolVarP(&opts.DebugGraph, "debug-graph", "", false, "debug graph")
+	flags.BoolVarP(&opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
+	flags.BoolVarP(&opts.NoCompress, "no-compress", "", false, "do not compress graph (no overlap)")
+	flags.BoolVarP(&opts.DarkTheme, "dark-theme", "", false, "dark theme")
+	flags.StringVarP(&opts.EpicLabel, "epic-label", "", "epic", "label used for epics (empty means issues with dependencies but without dependants)")
+	viper.BindPFlags(flags)
+}
+
+func graphvizRender(issues Issues, opts *graphOptions) (string, error) {
 	var (
 		stats = map[string]int{
 			"nodes":     0,
