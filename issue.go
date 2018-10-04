@@ -284,8 +284,21 @@ func (i Issue) GetRelativeIssueURL(target string) string {
 }
 
 func (i Issue) BlocksAnEpic() bool {
+	return i.blocksAnEpic(0)
+}
+
+func (i Issue) String() string {
+	out, _ := json.Marshal(i)
+	return string(out)
+}
+
+func (i Issue) blocksAnEpic(depth int) bool {
+	if depth > 100 {
+		log.Printf("very high blocking depth (>100), do not continue. (issue=%s)", i)
+		return false
+	}
 	for _, dep := range i.Blocks {
-		if dep.IsEpic() || dep.BlocksAnEpic() {
+		if dep.IsEpic() || dep.blocksAnEpic(depth+1) {
 			return true
 		}
 	}
