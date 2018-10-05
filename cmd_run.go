@@ -20,19 +20,13 @@ type runOptions struct {
 	ReposToFetch []string
 
 	// db
-	DBOpts dbOptions
+	DBOpts    dbOptions
+	GraphOpts graphOptions
 
 	// run
-	ShowClosed      bool `mapstructure:"show-closed"`
-	ShowOrphans     bool
 	AdditionalPulls []string
-	EpicLabel       string
 	Destination     string
-	DebugGraph      bool
-	NoCompress      bool
-	DarkTheme       bool
 
-	Targets []string
 	//Preview     bool
 }
 
@@ -43,12 +37,6 @@ func (opts runOptions) String() string {
 
 func runSetupFlags(flags *pflag.FlagSet, opts *runOptions) {
 	flags.BoolVarP(&opts.NoPull, "no-pull", "f", false, "do not pull new issues before runing")
-	flags.BoolVarP(&opts.ShowClosed, "show-closed", "", false, "show closed issues")
-	flags.BoolVarP(&opts.DebugGraph, "debug-graph", "", false, "debug graph")
-	flags.BoolVarP(&opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
-	flags.BoolVarP(&opts.NoCompress, "no-compress", "", false, "do not compress graph (no overlap)")
-	flags.BoolVarP(&opts.DarkTheme, "dark-theme", "", false, "dark theme")
-	flags.StringVarP(&opts.EpicLabel, "epic-label", "", "epic", "label used for epics (empty means issues with dependencies but without dependants)")
 	flags.StringVarP(&opts.Destination, "destination", "", "-", "destination ('-' for stdout)")
 	flags.StringSliceVarP(&opts.AdditionalPulls, "additional-pull", "", []string{}, "additional pull that won't necessarily be displayed on the graph")
 	//flags.BoolVarP(&opts.Preview, "preview", "p", false, "preview result")
@@ -69,9 +57,12 @@ func newRunCommand() *cobra.Command {
 			if err := viper.Unmarshal(&opts.DBOpts); err != nil {
 				return err
 			}
+			if err := viper.Unmarshal(&opts.GraphOpts); err != nil {
+				return err
+			}
 			opts.PullOpts.DBOpts = opts.DBOpts
 			opts.PullOpts.Targets = append(args, opts.AdditionalPulls...)
-			opts.Targets = args
+			opts.GraphOpts.Targets = args
 			return run(opts)
 		},
 	}
@@ -81,21 +72,17 @@ func newRunCommand() *cobra.Command {
 	return cmd
 }
 
-func run(opts *runOptions) error {
-	logger().Debug("run", zap.Stringer("opts", *opts))
-	if !opts.NoPull {
-		if err := pull(&opts.PullOpts); err != nil {
-			return err
-		}
+func graphviz(opts *graphOptions) (string, error) {
+	if opts.Targets == nil || len(opts.Targets) < 1 || opts.Targets[0] == "" {
+		return "", fmt.Errorf("you need to specify at least one target")
 	}
-
 	issues, err := loadIssues(db, nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to load issues")
+		return "", errors.Wrap(err, "failed to load issues")
 	}
 
 	if err := issues.prepare(); err != nil {
-		return errors.Wrap(err, "failed to prepare issues")
+		return "", errors.Wrap(err, "failed to prepare issues")
 	}
 
 	if !opts.ShowClosed {
@@ -106,7 +93,18 @@ func run(opts *runOptions) error {
 		logger().Warn("--show-orphans is deprecated and will be removed")
 	}
 
-	out, err := graphviz(issues, opts)
+	return graphvizRender(issues, opts)
+}
+
+func run(opts *runOptions) error {
+	logger().Debug("run", zap.Stringer("opts", *opts))
+	if !opts.NoPull {
+		if err := pull(&opts.PullOpts); err != nil {
+			return err
+		}
+	}
+
+	out, err := graphviz(&opts.GraphOpts)
 	if err != nil {
 		return err
 	}
