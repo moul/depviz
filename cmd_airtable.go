@@ -216,5 +216,6 @@ func (a airtableIssue) Map() map[string]interface{} {
 		"Type":      a.Type,
 		"Labels":    a.Labels,
 		"Assignees": a.Assignees,
+		"Errors":    "",
 	}
 }
