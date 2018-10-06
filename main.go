@@ -96,6 +96,7 @@ func newRootCommand() *cobra.Command {
 		newRunCommand(),
 		newDBCommand(),
 		newWebCommand(),
+		newAirtableCommand(),
 	)
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
