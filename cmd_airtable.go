@@ -80,9 +80,9 @@ func airtableSync(opts *airtableOptions) error {
 	logger().Debug("fetched airtable records", zap.Int("count", len(records)))
 
 	for _, record := range records {
-		alreadyInAirtable[record.Fields.ID] = true
-		if issue, found := issues[record.Fields.ID]; !found {
-			logger().Debug("destroying airtable record", zap.String("ID", record.Fields.ID))
+		alreadyInAirtable[record.Fields.URL] = true
+		if issue, found := issues[record.Fields.URL]; !found {
+			logger().Debug("destroying airtable record", zap.String("ID", record.Fields.URL))
 			if err := at.DestroyRecord(opts.AirtableTableName, record.ID); err != nil {
 				return errors.Wrap(err, "failed to destroy record")
 			}
@@ -121,7 +121,7 @@ func (i Issue) ToAirtableRecord() airtableRecord {
 	return airtableRecord{
 		ID: "",
 		Fields: airtableIssue{
-			ID:      i.URL,
+			URL:     i.URL,
 			Created: i.CreatedAt,
 			Updated: i.UpdatedAt,
 			Title:   i.Title,
@@ -135,14 +135,14 @@ type airtableRecord struct {
 }
 
 type airtableIssue struct {
-	ID      string
+	URL     string
 	Created time.Time
 	Updated time.Time
 	Title   string
 }
 
 func (ai airtableIssue) Equals(other airtableIssue) bool {
-	return ai.ID == other.ID &&
+	return ai.URL == other.URL &&
 		ai.Created.Truncate(time.Millisecond).UTC() == other.Created.Truncate(time.Millisecond).UTC() &&
 		ai.Updated.Truncate(time.Millisecond).UTC() == other.Updated.Truncate(time.Millisecond).UTC() &&
 		ai.Title == other.Title
@@ -155,7 +155,7 @@ func (ai airtableIssue) String() string {
 
 func (a airtableIssue) Map() map[string]interface{} {
 	return map[string]interface{}{
-		"ID":      a.ID,
+		"URL":     a.URL,
 		"Created": a.Created,
 		"Updated": a.Updated,
 		"Title":   a.Title,
