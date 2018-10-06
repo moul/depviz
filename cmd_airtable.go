@@ -90,7 +90,11 @@ func airtableSync(opts *airtableOptions) error {
 			if issue.Hidden {
 				continue
 			}
-			// FIXME: check if entry changed before updating
+
+			if issue.ToAirtableRecord().Fields.Equals(record.Fields) {
+				continue
+			}
+
 			logger().Debug("updating airtable record", zap.String("ID", issue.URL))
 			if err := at.UpdateRecord(opts.AirtableTableName, record.ID, issue.ToAirtableRecord().Fields.Map(), &record); err != nil {
 				return errors.Wrap(err, "failed to update record")
@@ -135,6 +139,18 @@ type airtableIssue struct {
 	Created time.Time
 	Updated time.Time
 	Title   string
+}
+
+func (ai airtableIssue) Equals(other airtableIssue) bool {
+	return ai.ID == other.ID &&
+		ai.Created.Truncate(time.Millisecond).UTC() == other.Created.Truncate(time.Millisecond).UTC() &&
+		ai.Updated.Truncate(time.Millisecond).UTC() == other.Updated.Truncate(time.Millisecond).UTC() &&
+		ai.Title == other.Title
+}
+
+func (ai airtableIssue) String() string {
+	out, _ := json.Marshal(ai)
+	return string(out)
 }
 
 func (a airtableIssue) Map() map[string]interface{} {
