@@ -95,14 +95,21 @@ func airtableSync(opts *airtableOptions) error {
 			continue
 		}
 		logger().Debug("creating airtable record without slices", zap.String("URL", issue.URL))
-		r := issue.ToAirtableRecord()
-		r.Fields = airtableIssue{
-			URL: r.Fields.URL,
+		r := minimalAirtableRecord{
+			Fields: minimalAirtableIssue{
+				URL:    issue.URL,
+				Errors: "initialization",
+			},
 		}
 		if err := table.Create(&r); err != nil {
 			return err
 		}
-		records = append(records, r)
+		records = append(records, airtableRecord{
+			ID: r.ID,
+			Fields: airtableIssue{
+				URL: issue.URL,
+			},
+		})
 	}
 
 	// update/destroy existing ones
@@ -125,8 +132,11 @@ func airtableSync(opts *airtableOptions) error {
 			record.Fields = issue.ToAirtableRecord().Fields
 			if err := table.Update(&record); err != nil {
 				logger().Warn("failed to update record, retrying without slices", zap.String("URL", issue.URL), zap.Error(err))
-				record.Fields = airtableIssue{
-					URL: record.Fields.URL,
+				record := minimalAirtableRecord{
+					ID: record.ID,
+					Fields: minimalAirtableIssue{
+						URL: issue.URL,
+					},
 				}
 				if typedErr, ok := err.(airtable.ErrClientRequest); ok {
 					record.Fields.Errors = typedErr.Err.Error()
@@ -146,6 +156,11 @@ func airtableSync(opts *airtableOptions) error {
 type airtableRecord struct {
 	ID     string        `json:"id,omitempty"`
 	Fields airtableIssue `json:"fields,omitempty"`
+}
+
+type minimalAirtableRecord struct {
+	ID     string               `json:"id,omitempty"`
+	Fields minimalAirtableIssue `json:"fields,omitempty"`
 }
 
 func (ai airtableIssue) String() string {
@@ -199,6 +214,11 @@ type airtableIssue struct {
 	Labels    []string
 	Assignees []string
 	Errors    string
+}
+
+type minimalAirtableIssue struct {
+	URL    string
+	Errors string
 }
 
 func (ai airtableIssue) Equals(other airtableIssue) bool {
