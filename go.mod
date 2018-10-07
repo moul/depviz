@@ -4,11 +4,11 @@ require (
 	cloud.google.com/go v0.29.0 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/awalterschulze/gographviz v0.0.0-20180927133620-e69668a01397
+	github.com/brianloveswords/airtable v0.0.0-20180329193050-a39294038dd9
 	github.com/denisenkom/go-mssqldb v0.0.0-20180901172138-1eb28afdf9b6 // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
-	github.com/fabioberger/airtable-go v3.1.0+incompatible // indirect
 	github.com/go-chi/chi v3.3.3+incompatible
-	github.com/go-chi/docgen v1.0.2 // indirect
+	github.com/go-chi/docgen v1.0.2
 	github.com/go-chi/render v1.0.1
 	github.com/go-sql-driver/mysql v1.4.0 // indirect
 	github.com/google/go-cmp v0.2.0 // indirect
@@ -24,7 +24,9 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.2.1
+	github.com/uber-go/atomic v1.3.2 // indirect
 	github.com/xanzy/go-gitlab v0.11.1
+	go.uber.org/ratelimit v0.0.0-20180316092928-c15da0234277 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/crypto v0.0.0-20181001203147-e3636079e1a4 // indirect
 	golang.org/x/net v0.0.0-20181003013248-f5e5bdd77824 // indirect
