@@ -62,7 +62,7 @@ func airtableSync(opts *airtableOptions) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
-	if err := issues.prepare(); err != nil {
+	if err := issues.prepare(true); err != nil {
 		return errors.Wrap(err, "failed to prepare issues")
 	}
 	issues.filterByTargets(opts.Targets)
