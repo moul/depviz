@@ -81,7 +81,7 @@ func graphviz(opts *graphOptions) (string, error) {
 		return "", errors.Wrap(err, "failed to load issues")
 	}
 
-	if err := issues.prepare(); err != nil {
+	if err := issues.prepare(false); err != nil {
 		return "", errors.Wrap(err, "failed to prepare issues")
 	}
 

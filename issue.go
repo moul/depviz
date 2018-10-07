@@ -437,7 +437,7 @@ func (i Issue) AddNodeToGraph(g *gographviz.Graph, parent string) error {
 	)
 }
 
-func (issues Issues) prepare() error {
+func (issues Issues) prepare(includePRs bool) error {
 	var (
 		dependsOnRegex, _        = regexp.Compile(`(?i)(require|requires|blocked by|block by|depend on|depends on|parent of) ([a-z0-9:/_.-]+issues/[0-9]+|[a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
 		blocksRegex, _           = regexp.Compile(`(?i)(blocks|block|address|addresses|part of|child of|fix|fixes) ([a-z0-9:/_.-]+issues/[0-9]+|[a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
@@ -506,7 +506,7 @@ func (issues Issues) prepare() error {
 		if len(issue.Duplicates) > 0 {
 			issue.Hidden = true
 		}
-		if issue.IsPR {
+		if !includePRs && issue.IsPR {
 			issue.Hidden = true
 		}
 	}
@@ -531,6 +531,14 @@ func (issues Issues) filterByTargets(targets []string) {
 }
 
 func (i Issue) MatchesWithATarget(targets []string) bool {
+	return i.matchesWithATarget(targets, 0)
+}
+
+func (i Issue) matchesWithATarget(targets []string, depth int) bool {
+	if depth > 100 {
+		log.Printf("very high blocking depth (>100), do not continue. (issue=%s)", i)
+		return false
+	}
 	issueParts := strings.Split(strings.TrimRight(i.URL, "/"), "/")
 	for _, target := range targets {
 		fullTarget := i.GetRelativeIssueURL(target)
@@ -547,7 +555,7 @@ func (i Issue) MatchesWithATarget(targets []string) bool {
 	}
 
 	for _, parent := range i.Blocks {
-		if parent.MatchesWithATarget(targets) {
+		if parent.matchesWithATarget(targets, depth+1) {
 			return true
 		}
 	}
