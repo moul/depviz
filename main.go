@@ -2,6 +2,8 @@ package main // import "moul.io/depviz"
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 
@@ -75,6 +77,10 @@ func newRootCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		log.SetOutput(ioutil.Discard)
+		db.Callback().Create().Remove("gorm:update_time_stamp")
+		db.Callback().Update().Remove("gorm:update_time_stamp")
+		log.SetOutput(os.Stderr)
 		db.SetLogger(zapgorm.New(zap.L().Named("vendor.gorm")))
 		db = db.Set("gorm:auto_preload", true)
 		db = db.Set("gorm:association_autoupdate", true)
