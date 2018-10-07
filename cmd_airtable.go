@@ -160,11 +160,11 @@ func (i Issue) ToAirtableRecord() airtableRecord {
 	}
 	labels := []string{}
 	for _, label := range i.Labels {
-		labels = append(labels, label.Name)
+		labels = append(labels, label.ID)
 	}
 	assignees := []string{}
 	for _, assignee := range i.Assignees {
-		assignees = append(assignees, assignee.Username)
+		assignees = append(assignees, assignee.ID)
 	}
 
 	return airtableRecord{
@@ -181,6 +181,12 @@ func (i Issue) ToAirtableRecord() airtableRecord {
 			RepoURL:   i.RepoURL,
 			Body:      i.Body,
 			State:     i.State,
+			Locked:    i.Locked,
+			Author:    i.AuthorID,
+			Comments:  i.Comments,
+			Milestone: i.Milestone,
+			Upvotes:   i.Upvotes,
+			Downvotes: i.Downvotes,
 			Errors:    "",
 		},
 	}
@@ -196,6 +202,12 @@ type airtableIssue struct {
 	Body      string
 	RepoURL   string
 	Type      string
+	Locked    bool
+	Author    string
+	Comments  int
+	Milestone string
+	Upvotes   int
+	Downvotes int
 	Labels    []string
 	Assignees []string
 	Errors    string
@@ -222,6 +234,12 @@ func (ai airtableIssue) Equals(other airtableIssue) bool {
 		ai.Body == other.Body &&
 		ai.RepoURL == other.RepoURL &&
 		ai.Type == other.Type &&
+		ai.Locked == other.Locked &&
+		ai.Author == other.Author &&
+		ai.Comments == other.Comments &&
+		ai.Milestone == other.Milestone &&
+		ai.Upvotes == other.Upvotes &&
+		ai.Downvotes == other.Downvotes &&
 		sameSlice(ai.Labels, other.Labels) &&
 		sameSlice(ai.Assignees, other.Assignees) &&
 		ai.Errors == other.Errors

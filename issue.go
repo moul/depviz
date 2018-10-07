@@ -56,16 +56,24 @@ type Issue struct {
 	Labels    []*IssueLabel `gorm:"many2many:issue_labels;"`
 	Assignees []*Profile    `gorm:"many2many:issue_assignees;"`
 	IsPR      bool
+
+	Locked    bool
+	Author    Profile
+	AuthorID  string
+	Comments  int
+	Milestone string
+	Upvotes   int
+	Downvotes int
 }
 
 type IssueLabel struct {
-	Name  string `gorm:"primary_key"`
+	ID    string `gorm:"primary_key"`
 	Color string
 }
 
 type Profile struct {
-	Name     string
-	Username string `gorm:"primary_key"`
+	ID   string `gorm:"primary_key"`
+	Name string
 }
 
 func FromGitHubIssue(input *github.Issue) *Issue {
@@ -74,6 +82,10 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 		body = *input.Body
 	}
 	parts := strings.Split(*input.HTMLURL, "/")
+	authorName := *input.User.Login
+	if input.User.Name != nil {
+		authorName = *input.User.Name
+	}
 	issue := &Issue{
 		CreatedAt: *input.CreatedAt,
 		UpdatedAt: *input.UpdatedAt,
@@ -88,10 +100,21 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 		RepoURL:   strings.Join(parts[0:len(parts)-2], "/"),
 		Labels:    make([]*IssueLabel, 0),
 		Assignees: make([]*Profile, 0),
+		Locked:    *input.Locked,
+		Comments:  *input.Comments,
+		Upvotes:   *input.Reactions.PlusOne,
+		Downvotes: *input.Reactions.MinusOne,
+		Author: Profile{
+			ID:   *input.User.Login,
+			Name: authorName,
+		},
+	}
+	if input.Milestone != nil {
+		issue.Milestone = *input.Milestone.Title
 	}
 	for _, label := range input.Labels {
 		issue.Labels = append(issue.Labels, &IssueLabel{
-			Name:  *label.Name,
+			ID:    *label.Name,
 			Color: *label.Color,
 		})
 	}
@@ -101,8 +124,8 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 			name = *assignee.Name
 		}
 		issue.Assignees = append(issue.Assignees, &Profile{
-			Name:     name,
-			Username: *assignee.Login,
+			ID:   *assignee.Login,
+			Name: name,
 		})
 	}
 	return issue
@@ -136,14 +159,14 @@ func FromGitLabIssue(input *gitlab.Issue) *Issue {
 	}
 	for _, label := range input.Labels {
 		issue.Labels = append(issue.Labels, &IssueLabel{
-			Name:  label,
+			ID:    label,
 			Color: "cccccc",
 		})
 	}
 	for _, assignee := range input.Assignees {
 		issue.Assignees = append(issue.Assignees, &Profile{
-			Name:     assignee.Name,
-			Username: assignee.Username,
+			Name: assignee.Name,
+			ID:   assignee.Username,
 		})
 	}
 	return issue
@@ -189,7 +212,7 @@ func (i Issue) ProviderURL() string {
 
 func (i Issue) IsEpic() bool {
 	for _, label := range i.Labels {
-		if label.Name == viper.GetString("epic-label") {
+		if label.ID == viper.GetString("epic-label") {
 			return true
 		}
 	}
@@ -230,11 +253,11 @@ func (i Issue) NodeTitle() string {
 	title = strings.Replace(html.EscapeString(wrap(title, 20)), "\n", "<br/>", -1)
 	labels := []string{}
 	for _, label := range i.Labels {
-		switch label.Name {
-		case "t/step", "t/epic":
+		switch label.ID {
+		case "t/step", "t/epic", "epic":
 			continue
 		}
-		labels = append(labels, fmt.Sprintf(`<td bgcolor="#%s">%s</td>`, label.Color, label.Name))
+		labels = append(labels, fmt.Sprintf(`<td bgcolor="#%s">%s</td>`, label.Color, label.ID))
 	}
 	labelsText := ""
 	if len(labels) > 0 {
@@ -244,7 +267,7 @@ func (i Issue) NodeTitle() string {
 	if len(i.Assignees) > 0 {
 		assignees := []string{}
 		for _, assignee := range i.Assignees {
-			assignees = append(assignees, assignee.Username)
+			assignees = append(assignees, assignee.ID)
 		}
 		assigneeText = fmt.Sprintf(`<tr><td><font color="purple"><i>@%s</i></font></td></tr>`, strings.Join(assignees, ", @"))
 	}
