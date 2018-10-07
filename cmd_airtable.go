@@ -96,8 +96,9 @@ func airtableSync(opts *airtableOptions) error {
 		}
 		logger().Debug("creating airtable record without slices", zap.String("URL", issue.URL))
 		r := issue.ToAirtableRecord()
-		r.Fields.Labels = []string{}
-		r.Fields.Assignees = []string{}
+		r.Fields = airtableIssue{
+			URL: r.Fields.URL,
+		}
 		if err := table.Create(&r); err != nil {
 			return err
 		}
@@ -124,8 +125,9 @@ func airtableSync(opts *airtableOptions) error {
 			record.Fields = issue.ToAirtableRecord().Fields
 			if err := table.Update(&record); err != nil {
 				logger().Warn("failed to update record, retrying without slices", zap.String("URL", issue.URL), zap.Error(err))
-				record.Fields.Labels = []string{}
-				record.Fields.Assignees = []string{}
+				record.Fields = airtableIssue{
+					URL: record.Fields.URL,
+				}
 				if typedErr, ok := err.(airtable.ErrClientRequest); ok {
 					record.Fields.Errors = typedErr.Err.Error()
 				} else {
