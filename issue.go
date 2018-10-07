@@ -131,6 +131,9 @@ func FromGitLabIssue(input *gitlab.Issue) *Issue {
 		Labels:    make([]*IssueLabel, 0),
 		Assignees: make([]*Profile, 0),
 	}
+	if issue.State == "opened" {
+		issue.State = "open"
+	}
 	for _, label := range input.Labels {
 		issue.Labels = append(issue.Labels, &IssueLabel{
 			Name:  label,
