@@ -69,6 +69,7 @@ func newRunCommand() *cobra.Command {
 	runSetupFlags(cmd.Flags(), opts)
 	pullSetupFlags(cmd.Flags(), &opts.PullOpts)
 	dbSetupFlags(cmd.Flags(), &opts.DBOpts)
+	graphSetupFlags(cmd.Flags(), &opts.GraphOpts)
 	return cmd
 }
 
