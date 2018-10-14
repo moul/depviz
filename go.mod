@@ -5,7 +5,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/awalterschulze/gographviz v0.0.0-20180927133620-e69668a01397
 	github.com/brianloveswords/airtable v0.0.0-20180329193050-a39294038dd9
-	github.com/denisenkom/go-mssqldb v0.0.0-20180901172138-1eb28afdf9b6 // indirect
+	github.com/denisenkom/go-mssqldb v0.0.0-20181014153815-4e0d7dc8888f // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/go-chi/chi v3.3.3+incompatible
 	github.com/go-chi/docgen v1.0.2
