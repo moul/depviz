@@ -45,17 +45,18 @@ type Issue struct {
 	Errors           []error    `json:"-" gorm:"-"`
 
 	// mapping
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Number    int
-	Title     string
-	State     string
-	Body      string
-	RepoURL   string
-	URL       string        `gorm:"primary_key"`
-	Labels    []*IssueLabel `gorm:"many2many:issue_labels;"`
-	Assignees []*Profile    `gorm:"many2many:issue_assignees;"`
-	IsPR      bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	CompletedAt time.Time
+	Number      int
+	Title       string
+	State       string
+	Body        string
+	RepoURL     string
+	URL         string        `gorm:"primary_key"`
+	Labels      []*IssueLabel `gorm:"many2many:issue_labels;"`
+	Assignees   []*Profile    `gorm:"many2many:issue_assignees;"`
+	IsPR        bool
 
 	Locked    bool
 	Author    Profile
@@ -87,23 +88,24 @@ func FromGitHubIssue(input *github.Issue) *Issue {
 		authorName = *input.User.Name
 	}
 	issue := &Issue{
-		CreatedAt: *input.CreatedAt,
-		UpdatedAt: *input.UpdatedAt,
-		Provider:  GitHubProvider,
-		GitHub:    input,
-		Number:    *input.Number,
-		Title:     *input.Title,
-		State:     *input.State,
-		Body:      body,
-		IsPR:      input.PullRequestLinks != nil,
-		URL:       strings.Replace(*input.HTMLURL, "/pull/", "/issues/", -1),
-		RepoURL:   strings.Join(parts[0:len(parts)-2], "/"),
-		Labels:    make([]*IssueLabel, 0),
-		Assignees: make([]*Profile, 0),
-		Locked:    *input.Locked,
-		Comments:  *input.Comments,
-		Upvotes:   *input.Reactions.PlusOne,
-		Downvotes: *input.Reactions.MinusOne,
+		CreatedAt:   *input.CreatedAt,
+		UpdatedAt:   *input.UpdatedAt,
+		CompletedAt: input.GetClosedAt(),
+		Provider:    GitHubProvider,
+		GitHub:      input,
+		Number:      *input.Number,
+		Title:       *input.Title,
+		State:       *input.State,
+		Body:        body,
+		IsPR:        input.PullRequestLinks != nil,
+		URL:         strings.Replace(*input.HTMLURL, "/pull/", "/issues/", -1),
+		RepoURL:     strings.Join(parts[0:len(parts)-2], "/"),
+		Labels:      make([]*IssueLabel, 0),
+		Assignees:   make([]*Profile, 0),
+		Locked:      *input.Locked,
+		Comments:    *input.Comments,
+		Upvotes:     *input.Reactions.PlusOne,
+		Downvotes:   *input.Reactions.MinusOne,
 		Author: Profile{
 			ID:   *input.User.Login,
 			Name: authorName,

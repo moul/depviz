@@ -188,6 +188,7 @@ func (i Issue) ToAirtableRecord() airtableRecord {
 			URL:       i.URL,
 			Created:   i.CreatedAt,
 			Updated:   i.UpdatedAt,
+			Completed: i.CompletedAt,
 			Title:     i.Title,
 			Type:      typ,
 			Labels:    labels,
@@ -211,6 +212,7 @@ type airtableIssue struct {
 	URL       string
 	Created   time.Time
 	Updated   time.Time
+	Completed time.Time
 	Title     string
 	Provider  string
 	State     string
@@ -248,6 +250,7 @@ func (ai airtableIssue) Equals(other airtableIssue) bool {
 	return ai.URL == other.URL &&
 		ai.Created.Truncate(time.Millisecond).UTC() == other.Created.Truncate(time.Millisecond).UTC() &&
 		ai.Updated.Truncate(time.Millisecond).UTC() == other.Updated.Truncate(time.Millisecond).UTC() &&
+		ai.Completed.Truncate(time.Millisecond).UTC() == other.Completed.Truncate(time.Millisecond).UTC() &&
 		ai.Title == other.Title &&
 		ai.Provider == other.Provider &&
 		ai.State == other.State &&
