@@ -198,11 +198,13 @@ func (i Issue) ToAirtableRecord() airtableRecord {
 			Body:      i.Body,
 			State:     i.State,
 			Locked:    i.Locked,
+			IsOrphan:  i.IsOrphan,
 			Author:    i.AuthorID,
 			Comments:  i.Comments,
 			Milestone: i.Milestone,
 			Upvotes:   i.Upvotes,
 			Downvotes: i.Downvotes,
+			Weight:    i.Weight(),
 			Errors:    "",
 		},
 	}
@@ -225,8 +227,10 @@ type airtableIssue struct {
 	Milestone string
 	Upvotes   int
 	Downvotes int
+	IsOrphan  bool
 	Labels    []string
 	Assignees []string
+	Weight    int
 	Errors    string
 }
 
@@ -261,6 +265,8 @@ func (ai airtableIssue) Equals(other airtableIssue) bool {
 		ai.Author == other.Author &&
 		ai.Comments == other.Comments &&
 		ai.Milestone == other.Milestone &&
+		ai.Weight == other.Weight &&
+		ai.IsOrphan == other.IsOrphan &&
 		ai.Upvotes == other.Upvotes &&
 		ai.Downvotes == other.Downvotes &&
 		sameSlice(ai.Labels, other.Labels) &&
