@@ -1,1 +1,15 @@
-<a href="/api/graph/image?targets=berty/berty">berty/berty</a>
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>DepViz</title>
+  </head>
+  <body>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+    <script src="/depviz.js"></script>
+    <input type="text" id="targets" placeholder="user/project" value="moul/depviz" />
+    <input type="button" id="submit" value="generate" />
+    <hr />
+    <a id="image-link">download image</a>
+    <textarea id="result" style="width: 100%; height: 500px;"></textarea>
+  </body>
+</html>

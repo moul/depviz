@@ -71,8 +71,14 @@ func webListIssues(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	targets := strings.Split(r.URL.Query().Get("targets"), ",")
+	issues.filterByTargets(targets)
+
 	list := []render.Renderer{}
 	for _, issue := range issues {
+		if issue.Hidden {
+			continue
+		}
 		list = append(list, issue)
 	}
 
