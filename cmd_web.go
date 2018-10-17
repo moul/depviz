@@ -71,6 +71,8 @@ func webListIssues(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	issues.prepare(true)
+
 	targets := strings.Split(r.URL.Query().Get("targets"), ",")
 	issues.filterByTargets(targets)
 
@@ -79,7 +81,7 @@ func webListIssues(w http.ResponseWriter, r *http.Request) {
 		if issue.Hidden {
 			continue
 		}
-		list = append(list, issue)
+		list = append(list, issue.WithJSONFields())
 	}
 
 	if err := render.RenderList(w, r, list); err != nil {

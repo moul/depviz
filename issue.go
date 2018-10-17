@@ -33,38 +33,43 @@ type Issue struct {
 	GitLab *gitlab.Issue `json:"-" gorm:"-"`
 
 	// internal
-	Provider         Provider
+	Provider         Provider   `json:"provider"`
 	DependsOn        IssueSlice `json:"-" gorm:"-"`
 	Blocks           IssueSlice `json:"-" gorm:"-"`
-	weightMultiplier int        `gorm:"-"`
+	weightMultiplier int        `gorm:"-" json:"-"`
 	BaseWeight       int        `json:"-" gorm:"-"`
-	IsOrphan         bool       `json:"-" gorm:"-"`
-	Hidden           bool       `json:"-" gorm:"-"`
-	Duplicates       []string   `json:"-" gorm:"-"`
-	LinkedWithEpic   bool       `json:"-" gorm:"-"`
-	Errors           []error    `json:"-" gorm:"-"`
+	IsOrphan         bool       `json:"is-orphan" gorm:"-"`
+	Hidden           bool       `json:"is-hidden" gorm:"-"`
+	Duplicates       []string   `json:"duplicates" gorm:"-"`
+	LinkedWithEpic   bool       `json:"is-linked-with-an-epic" gorm:"-"`
+	Errors           []error    `json:"errors" gorm:"-"`
 
 	// mapping
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	CompletedAt time.Time
-	Number      int
-	Title       string
-	State       string
-	Body        string
-	RepoURL     string
-	URL         string        `gorm:"primary_key"`
-	Labels      []*IssueLabel `gorm:"many2many:issue_labels;"`
-	Assignees   []*Profile    `gorm:"many2many:issue_assignees;"`
-	IsPR        bool
+	CreatedAt   time.Time     `json:"created-at"`
+	UpdatedAt   time.Time     `json:"updated-at"`
+	CompletedAt time.Time     `json:"completed-at"`
+	Number      int           `json:"number"`
+	Title       string        `json:"title"`
+	State       string        `json:"state"`
+	Body        string        `json:"body"`
+	RepoURL     string        `json:"repo-url"`
+	URL         string        `gorm:"primary_key" json:"url"`
+	Labels      []*IssueLabel `gorm:"many2many:issue_labels;" json:"labels"`
+	Assignees   []*Profile    `gorm:"many2many:issue_assignees;" json:"assignees"`
+	IsPR        bool          `json:"is-pr"`
 
-	Locked    bool
-	Author    Profile
-	AuthorID  string
-	Comments  int
-	Milestone string
-	Upvotes   int
-	Downvotes int
+	// json export fields
+	JSONChildren []string `gorm:"-" json:"children"`
+	JSONParents  []string `gorm:"-" json:"parents"`
+	JSONWeight   int      `gorm:"-" json:"weight"`
+
+	Locked    bool    `json:"is-locked"`
+	Author    Profile `json:"author"`
+	AuthorID  string  `json:"-"`
+	Comments  int     `json:"comments"`
+	Milestone string  `json:"milestone"`
+	Upvotes   int     `json:"upvotes"`
+	Downvotes int     `json:"downvotes"`
 }
 
 type IssueLabel struct {
@@ -172,6 +177,23 @@ func FromGitLabIssue(input *gitlab.Issue) *Issue {
 		})
 	}
 	return issue
+}
+
+func (i *Issue) WithJSONFields() *Issue {
+	i.JSONWeight = i.Weight()
+	if len(i.Blocks) > 0 {
+		i.JSONParents = []string{}
+		for _, rel := range i.Blocks {
+			i.JSONParents = append(i.JSONParents, rel.URL)
+		}
+	}
+	if len(i.DependsOn) > 0 {
+		i.JSONChildren = []string{}
+		for _, rel := range i.DependsOn {
+			i.JSONChildren = append(i.JSONChildren, rel.URL)
+		}
+	}
+	return i
 }
 
 func (i Issue) Path() string {
