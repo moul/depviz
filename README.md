@@ -34,6 +34,9 @@
 </b></p>
 
 ## Introduction
+
+[![GuardRails badge](https://badges.production.guardrails.io/moul/depviz.svg)](https://www.guardrails.io)
+
 dependency visualizer (auto roadmap)
 
 **work in progress**: I'm already using this tool on a daily basis, but I know it lacks a lot of work to make it cool for other people too
