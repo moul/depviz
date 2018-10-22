@@ -1,326 +1,18 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"html"
 	"log"
-	"net/url"
-	"regexp"
-	"strconv"
 	"strings"
-	"time"
-
-	"github.com/awalterschulze/gographviz"
-	"github.com/google/go-github/github"
-	"github.com/spf13/viper"
-	gitlab "github.com/xanzy/go-gitlab"
 )
 
-var debugFetch = false
-
-type Provider string
-
-const (
-	UnknownProvider Provider = "unknown"
-	GitHubProvider           = "github"
-	GitLabProvider           = "gitlab"
-)
-
-type Issue struct {
-	// proxy
-	GitHub *github.Issue `json:"-" gorm:"-"`
-	GitLab *gitlab.Issue `json:"-" gorm:"-"`
-
-	// internal
-	Provider         Provider   `json:"provider"`
-	DependsOn        IssueSlice `json:"-" gorm:"-"`
-	Blocks           IssueSlice `json:"-" gorm:"-"`
-	weightMultiplier int        `gorm:"-" json:"-"`
-	BaseWeight       int        `json:"-" gorm:"-"`
-	IsOrphan         bool       `json:"is-orphan" gorm:"-"`
-	Hidden           bool       `json:"is-hidden" gorm:"-"`
-	Duplicates       []string   `json:"duplicates" gorm:"-"`
-	LinkedWithEpic   bool       `json:"is-linked-with-an-epic" gorm:"-"`
-	Errors           []error    `json:"errors" gorm:"-"`
-
-	// mapping
-	CreatedAt   time.Time     `json:"created-at"`
-	UpdatedAt   time.Time     `json:"updated-at"`
-	CompletedAt time.Time     `json:"completed-at"`
-	Number      int           `json:"number"`
-	Title       string        `json:"title"`
-	State       string        `json:"state"`
-	Body        string        `json:"body"`
-	RepoURL     string        `json:"repo-url"`
-	URL         string        `gorm:"primary_key" json:"url"`
-	Labels      []*IssueLabel `gorm:"many2many:issue_labels;" json:"labels"`
-	Assignees   []*Profile    `gorm:"many2many:issue_assignees;" json:"assignees"`
-	IsPR        bool          `json:"is-pr"`
-
-	// json export fields
-	JSONChildren []string `gorm:"-" json:"children"`
-	JSONParents  []string `gorm:"-" json:"parents"`
-	JSONWeight   int      `gorm:"-" json:"weight"`
-
-	Locked    bool    `json:"is-locked"`
-	Author    Profile `json:"author"`
-	AuthorID  string  `json:"-"`
-	Comments  int     `json:"comments"`
-	Milestone string  `json:"milestone"`
-	Upvotes   int     `json:"upvotes"`
-	Downvotes int     `json:"downvotes"`
-}
-
-type IssueLabel struct {
-	ID    string `gorm:"primary_key"`
-	Color string
-}
-
-type Profile struct {
-	ID   string `gorm:"primary_key"`
-	Name string
-}
-
-func FromGitHubIssue(input *github.Issue) *Issue {
-	body := ""
-	if input.Body != nil {
-		body = *input.Body
-	}
-	parts := strings.Split(*input.HTMLURL, "/")
-	authorName := *input.User.Login
-	if input.User.Name != nil {
-		authorName = *input.User.Name
-	}
-	issue := &Issue{
-		CreatedAt:   *input.CreatedAt,
-		UpdatedAt:   *input.UpdatedAt,
-		CompletedAt: input.GetClosedAt(),
-		Provider:    GitHubProvider,
-		GitHub:      input,
-		Number:      *input.Number,
-		Title:       *input.Title,
-		State:       *input.State,
-		Body:        body,
-		IsPR:        input.PullRequestLinks != nil,
-		URL:         strings.Replace(*input.HTMLURL, "/pull/", "/issues/", -1),
-		RepoURL:     strings.Join(parts[0:len(parts)-2], "/"),
-		Labels:      make([]*IssueLabel, 0),
-		Assignees:   make([]*Profile, 0),
-		Locked:      *input.Locked,
-		Comments:    *input.Comments,
-		Upvotes:     *input.Reactions.PlusOne,
-		Downvotes:   *input.Reactions.MinusOne,
-		Author: Profile{
-			ID:   *input.User.Login,
-			Name: authorName,
-		},
-	}
-	if input.Milestone != nil {
-		issue.Milestone = *input.Milestone.Title
-	}
-	for _, label := range input.Labels {
-		issue.Labels = append(issue.Labels, &IssueLabel{
-			ID:    *label.Name,
-			Color: *label.Color,
-		})
-	}
-	for _, assignee := range input.Assignees {
-		name := *assignee.Login
-		if assignee.Name != nil {
-			name = *assignee.Name
-		}
-		issue.Assignees = append(issue.Assignees, &Profile{
-			ID:   *assignee.Login,
-			Name: name,
-		})
-	}
-	return issue
-}
-
-func FromGitLabIssue(input *gitlab.Issue) *Issue {
-	if debugFetch {
-		out, _ := json.MarshalIndent(input, "", "  ")
-		log.Println(string(out))
-	}
-	repoURL := input.Links.Project
-	if repoURL == "" {
-		repoURL = strings.Replace(input.WebURL, fmt.Sprintf("/issues/%d", input.IID), "", -1)
-	}
-	issue := &Issue{
-		CreatedAt: *input.CreatedAt,
-		UpdatedAt: *input.UpdatedAt,
-		Provider:  GitLabProvider,
-		GitLab:    input,
-		Number:    input.IID,
-		Title:     input.Title,
-		State:     input.State,
-		URL:       input.WebURL,
-		Body:      input.Description,
-		RepoURL:   repoURL,
-		Labels:    make([]*IssueLabel, 0),
-		Assignees: make([]*Profile, 0),
-	}
-	if issue.State == "opened" {
-		issue.State = "open"
-	}
-	for _, label := range input.Labels {
-		issue.Labels = append(issue.Labels, &IssueLabel{
-			ID:    label,
-			Color: "cccccc",
-		})
-	}
-	for _, assignee := range input.Assignees {
-		issue.Assignees = append(issue.Assignees, &Profile{
-			Name: assignee.Name,
-			ID:   assignee.Username,
-		})
-	}
-	return issue
-}
-
-func (i *Issue) WithJSONFields() *Issue {
-	i.JSONWeight = i.Weight()
-	if len(i.Blocks) > 0 {
-		i.JSONParents = []string{}
-		for _, rel := range i.Blocks {
-			i.JSONParents = append(i.JSONParents, rel.URL)
-		}
-	}
-	if len(i.DependsOn) > 0 {
-		i.JSONChildren = []string{}
-		for _, rel := range i.DependsOn {
-			i.JSONChildren = append(i.JSONChildren, rel.URL)
-		}
-	}
-	return i
-}
-
-func (i Issue) Path() string {
-	u, err := url.Parse(i.URL)
-	if err != nil {
-		return ""
-	}
-	parts := strings.Split(u.Path, "/")
-	return strings.Join(parts[:len(parts)-2], "/")
-}
-
-type IssueSlice []*Issue
-
-func (s IssueSlice) Unique() IssueSlice {
-	return s.ToMap().ToSlice()
-}
-
-type Issues map[string]*Issue
-
-func (m Issues) ToSlice() IssueSlice {
-	slice := IssueSlice{}
-	for _, issue := range m {
-		slice = append(slice, issue)
-	}
-	return slice
-}
-
-func (s IssueSlice) ToMap() Issues {
-	m := Issues{}
-	for _, issue := range s {
-		m[issue.URL] = issue
-	}
-	return m
-}
-
-func (i Issue) ProviderURL() string {
-	u, _ := url.Parse(i.URL)
-	return fmt.Sprintf("%s://%s", u.Scheme, u.Host)
-}
-
-func (i Issue) IsEpic() bool {
-	for _, label := range i.Labels {
-		if label.ID == viper.GetString("epic-label") {
-			return true
-		}
-	}
-	return false
-	//return !i.IsOrphan && len(i.Blocks) == 0
-}
-
-func (i Issue) Repo() string {
-	return strings.Split(i.URL, "/")[5]
-}
-
-func (i Issue) RepoID() string {
-	id := i.Path()[1:]
-	id = strings.Replace(id, "/", "", -1)
-	id = strings.Replace(id, "-", "", -1)
-	return id
-}
-
-func (i Issue) Owner() string {
-	return strings.Split(i.URL, "/")[4]
-}
-
-func (i Issue) IsClosed() bool {
-	return i.State == "closed"
-}
-
-func (i Issue) IsReady() bool {
-	return !i.IsOrphan && len(i.DependsOn) == 0
-}
-
-func (i Issue) NodeName() string {
-	return fmt.Sprintf(`%s#%d`, i.Path()[1:], i.Number)
-}
-
-func (i Issue) NodeTitle() string {
-	title := fmt.Sprintf("%s: %s", i.NodeName(), i.Title)
-	title = strings.Replace(title, "|", "-", -1)
-	title = strings.Replace(html.EscapeString(wrap(title, 20)), "\n", "<br/>", -1)
-	labels := []string{}
-	for _, label := range i.Labels {
-		switch label.ID {
-		case "t/step", "t/epic", "epic":
-			continue
-		}
-		labels = append(labels, fmt.Sprintf(`<td bgcolor="#%s">%s</td>`, label.Color, label.ID))
-	}
-	labelsText := ""
-	if len(labels) > 0 {
-		labelsText = "<tr><td><table><tr>" + strings.Join(labels, "") + "</tr></table></td></tr>"
-	}
-	assigneeText := ""
-	if len(i.Assignees) > 0 {
-		assignees := []string{}
-		for _, assignee := range i.Assignees {
-			assignees = append(assignees, assignee.ID)
-		}
-		assigneeText = fmt.Sprintf(`<tr><td><font color="purple"><i>@%s</i></font></td></tr>`, strings.Join(assignees, ", @"))
-	}
-	errorsText := ""
-	if len(i.Errors) > 0 {
-		errors := []string{}
-		for _, err := range i.Errors {
-			errors = append(errors, err.Error())
-		}
-		errorsText = fmt.Sprintf(`<tr><td bgcolor="red">ERR: %s</td></tr>`, strings.Join(errors, ";<br />ERR: "))
-	}
-	return fmt.Sprintf(`<<table><tr><td>%s</td></tr>%s%s%s</table>>`, title, labelsText, assigneeText, errorsText)
-}
-
-func normalizeURL(input string) string {
-	parts := strings.Split(input, "://")
-	output := fmt.Sprintf("%s://%s", parts[0], strings.Replace(parts[1], "//", "/", -1))
-	output = strings.TrimRight(output, "#")
-	output = strings.TrimRight(output, "/")
-	return output
-}
-
-func (i Issue) GetRelativeIssueURL(target string) string {
+func (i Issue) GetRelativeURL(target string) string {
 	if strings.Contains(target, "://") {
 		return normalizeURL(target)
 	}
 
 	if target[0] == '#' {
-		return fmt.Sprintf("%s/issues/%s", i.RepoURL, target[1:])
+		return fmt.Sprintf("%s/issues/%s", i.Repository.URL, target[1:])
 	}
 
 	target = strings.Replace(target, "#", "/issues/", -1)
@@ -330,293 +22,65 @@ func (i Issue) GetRelativeIssueURL(target string) string {
 		return fmt.Sprintf("https://%s", target)
 	}
 
-	return fmt.Sprintf("%s/%s", strings.TrimRight(i.ProviderURL(), "/"), target)
+	return fmt.Sprintf("%s/%s", strings.TrimRight(i.Repository.Provider.URL, "/"), target)
 }
 
-func (i Issue) BlocksAnEpic() bool {
-	return i.blocksAnEpic(0)
-}
-
-func (i Issue) String() string {
-	out, _ := json.Marshal(i)
-	return string(out)
-}
-
-func (i Issue) blocksAnEpic(depth int) bool {
-	if depth > 100 {
-		log.Printf("very high blocking depth (>100), do not continue. (issue=%s)", i)
-		return false
+func (i *Issue) PostLoad() {
+	i.ParentIDs = []string{}
+	i.ChildIDs = []string{}
+	i.DuplicateIDs = []string{}
+	for _, rel := range i.Parents {
+		i.ParentIDs = append(i.ParentIDs, rel.ID)
 	}
-	for _, dep := range i.Blocks {
-		if dep.IsEpic() || dep.blocksAnEpic(depth+1) {
-			return true
-		}
+	for _, rel := range i.Children {
+		i.ChildIDs = append(i.ChildIDs, rel.ID)
 	}
-	return false
-}
-
-func (i Issue) DependsOnAnEpic() bool {
-	return i.dependsOnAnEpic(0)
-}
-
-func (i Issue) dependsOnAnEpic(depth int) bool {
-	if depth > 100 {
-		log.Printf("very high blocking depth (>100), do not continue. (issue=%s)", i)
-		return false
-	}
-	for _, dep := range i.DependsOn {
-		if dep.IsEpic() || dep.dependsOnAnEpic(depth+1) {
-			return true
-		}
-	}
-	return false
-}
-
-func (i Issue) Weight() int {
-	weight := i.BaseWeight
-	for _, dep := range i.Blocks.Unique() {
-		weight += dep.Weight()
-	}
-	return weight * i.WeightMultiplier()
-}
-
-func (i Issue) WeightMultiplier() int {
-	multiplier := i.weightMultiplier
-	for _, dep := range i.Blocks.Unique() {
-		multiplier *= dep.WeightMultiplier()
-	}
-	return multiplier
-}
-
-func (i Issue) AddEdgesToGraph(g *gographviz.Graph) error {
-	if i.Hidden {
-		return nil
-	}
-	for _, dependency := range i.DependsOn {
-		if dependency.Hidden {
-			continue
-		}
-		attrs := map[string]string{}
-		attrs["color"] = "lightblue"
-		//attrs["label"] = "depends on"
-		//attrs["style"] = "dotted"
-		attrs["dir"] = "none"
-		if i.IsClosed() || dependency.IsClosed() {
-			attrs["color"] = "grey"
-			attrs["style"] = "dotted"
-		}
-		if dependency.IsReady() {
-			attrs["color"] = "pink"
-		}
-		if i.IsEpic() {
-			attrs["color"] = "orange"
-			attrs["style"] = "dashed"
-		}
-		//log.Print("edge", escape(i.URL), "->", escape(dependency.URL))
-		if err := g.AddEdge(
-			escape(i.URL),
-			escape(dependency.URL),
-			true,
-			attrs,
-		); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (i Issue) AddNodeToGraph(g *gographviz.Graph, parent string) error {
-	attrs := map[string]string{}
-	attrs["label"] = i.NodeTitle()
-	//attrs["xlabel"] = ""
-	attrs["shape"] = "record"
-	attrs["style"] = `"rounded,filled"`
-	attrs["color"] = "lightblue"
-	attrs["href"] = escape(i.URL)
-
-	if i.IsEpic() {
-		attrs["shape"] = "oval"
-	}
-
-	switch {
-
-	case i.IsClosed():
-		attrs["color"] = `"#cccccc33"`
-
-	case i.IsReady():
-		attrs["color"] = "pink"
-
-	case i.IsEpic():
-		attrs["color"] = "orange"
-		attrs["style"] = `"rounded,filled,bold"`
-
-	case i.IsOrphan || !i.LinkedWithEpic:
-		attrs["color"] = "gray"
-	}
-
-	return g.AddNode(
-		parent,
-		escape(i.URL),
-		attrs,
-	)
-}
-
-func (issues Issues) prepare(includePRs bool) error {
-	var (
-		dependsOnRegex, _        = regexp.Compile(`(?i)(require|requires|blocked by|block by|depend on|depends on|parent of) ([a-z0-9:/_.-]+issues/[0-9]+|[a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
-		blocksRegex, _           = regexp.Compile(`(?i)(blocks|block|address|addresses|part of|child of|fix|fixes) ([a-z0-9:/_.-]+issues/[0-9]+|[a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
-		isDuplicateRegex, _      = regexp.Compile(`(?i)(duplicates|duplicate|dup of|dup|duplicate of) ([a-z0-9:/_.-]+issues/[0-9]+|[a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
-		weightMultiplierRegex, _ = regexp.Compile(`(?i)(depviz.weight_multiplier[:= ]+)([0-9]+)`)
-		baseWeightRegex, _       = regexp.Compile(`(?i)(depviz.base_weight|depviz.weight)[:= ]+([0-9]+)`)
-		hideFromRoadmapRegex, _  = regexp.Compile(`(?i)(depviz.hide)`) // FIXME: use label
-	)
-
-	for _, issue := range issues {
-		issue.DependsOn = make([]*Issue, 0)
-		issue.Blocks = make([]*Issue, 0)
-		issue.IsOrphan = true
-		issue.weightMultiplier = 1
-		issue.BaseWeight = 1
-	}
-	for _, issue := range issues {
-		if issue.Body == "" {
-			continue
-		}
-
-		if match := isDuplicateRegex.FindStringSubmatch(issue.Body); match != nil {
-			issue.Duplicates = append(issue.Duplicates, issue.GetRelativeIssueURL(match[len(match)-1]))
-		}
-
-		if match := weightMultiplierRegex.FindStringSubmatch(issue.Body); match != nil {
-			issue.weightMultiplier, _ = strconv.Atoi(match[len(match)-1])
-		}
-
-		if match := hideFromRoadmapRegex.FindStringSubmatch(issue.Body); match != nil {
-			delete(issues, issue.URL)
-			continue
-		}
-
-		if match := baseWeightRegex.FindStringSubmatch(issue.Body); match != nil {
-			issue.BaseWeight, _ = strconv.Atoi(match[len(match)-1])
-		}
-
-		for _, match := range dependsOnRegex.FindAllStringSubmatch(issue.Body, -1) {
-			num := issue.GetRelativeIssueURL(match[len(match)-1])
-			dep, found := issues[num]
-			if !found {
-				issue.Errors = append(issue.Errors, fmt.Errorf("parent %q not found", num))
-				continue
-			}
-			issue.DependsOn = append(issue.DependsOn, dep)
-			issues[num].Blocks = append(dep.Blocks, issue)
-			issue.IsOrphan = false
-			issues[num].IsOrphan = false
-		}
-
-		for _, match := range blocksRegex.FindAllStringSubmatch(issue.Body, -1) {
-			num := issue.GetRelativeIssueURL(match[len(match)-1])
-			dep, found := issues[num]
-			if !found {
-				issue.Errors = append(issue.Errors, fmt.Errorf("child %q not found", num))
-				continue
-			}
-			issues[num].DependsOn = append(dep.DependsOn, issue)
-			issue.Blocks = append(issue.Blocks, dep)
-			issue.IsOrphan = false
-			issues[num].IsOrphan = false
-		}
-	}
-	for _, issue := range issues {
-		if len(issue.Duplicates) > 0 {
-			issue.Hidden = true
-		}
-		if !includePRs && issue.IsPR {
-			issue.Hidden = true
-		}
-	}
-	issues.processEpicLinks()
-	return nil
-}
-
-func (issues Issues) processEpicLinks() {
-	for _, issue := range issues {
-		issue.LinkedWithEpic = !issue.Hidden && (issue.IsEpic() || issue.BlocksAnEpic() || issue.DependsOnAnEpic())
-
+	for _, rel := range i.Duplicates {
+		i.DuplicateIDs = append(i.DuplicateIDs, rel.ID)
 	}
 }
 
-func (issues Issues) filterByTargets(targets []string) {
-	for _, issue := range issues {
-		if issue.Hidden {
-			continue
-		}
-		issue.Hidden = !issue.MatchesWithATarget(targets)
-	}
+func (i Issue) IsClosed() bool {
+	return i.State == "closed"
 }
 
-func (i Issue) MatchesWithATarget(targets []string) bool {
+func (i Issue) IsReady() bool {
+	return !i.IsOrphan && len(i.Parents) == 0 // FIXME: switch parents with children?
+}
+
+func (i Issue) MatchesWithATarget(targets Targets) bool {
 	return i.matchesWithATarget(targets, 0)
 }
 
-func (i Issue) matchesWithATarget(targets []string, depth int) bool {
+func (i Issue) matchesWithATarget(targets Targets, depth int) bool {
 	if depth > 100 {
-		log.Printf("very high blocking depth (>100), do not continue. (issue=%s)", i)
+		log.Printf("circular dependency or too deep graph (>100), skipping this node. (issue=%s)", i)
 		return false
 	}
-	issueParts := strings.Split(strings.TrimRight(i.URL, "/"), "/")
+
 	for _, target := range targets {
-		fullTarget := i.GetRelativeIssueURL(target)
-		targetParts := strings.Split(strings.TrimRight(fullTarget, "/"), "/")
-		if len(issueParts) == len(targetParts) {
-			if i.URL == fullTarget {
+		if target.Issue() != "" { // issue-mode
+			if target.Canonical() == i.URL {
 				return true
 			}
-		} else {
-			if len(fullTarget) <= len(i.URL) && i.URL[:len(fullTarget)] == fullTarget {
+		} else { // project-mode
+			if i.RepositoryID == target.ProjectURL() {
 				return true
 			}
 		}
 	}
 
-	for _, parent := range i.Blocks {
+	for _, parent := range i.Parents {
 		if parent.matchesWithATarget(targets, depth+1) {
 			return true
 		}
 	}
 
-	return false
-}
-
-func (issues Issues) HideClosed() {
-	for _, issue := range issues {
-		if issue.IsClosed() {
-			issue.Hidden = true
-		}
-	}
-}
-
-func (issues Issues) HideOrphans() {
-	for _, issue := range issues {
-		if issue.IsOrphan || !issue.LinkedWithEpic {
-			issue.Hidden = true
-		}
-	}
-}
-
-func (issues Issues) HasOrphans() bool {
-	for _, issue := range issues {
-		if !issue.Hidden && issue.IsOrphan {
+	for _, child := range i.Children {
+		if child.matchesWithATarget(targets, depth+1) {
 			return true
 		}
 	}
-	return false
-}
 
-func (issues Issues) HasNonOrphans() bool {
-	for _, issue := range issues {
-		if !issue.Hidden && !issue.IsOrphan && issue.LinkedWithEpic {
-			return true
-		}
-	}
 	return false
 }

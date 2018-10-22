@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"reflect"
 	"regexp"
+	"sort"
 	"strings"
+	"time"
 )
 
 func wrap(text string, lineWidth int) string {
@@ -37,24 +39,6 @@ func panicIfErr(err error) {
 	}
 }
 
-func getReposFromTargets(targets []string) []string {
-	reposMap := map[string]bool{}
-
-	for _, target := range targets {
-		if _, err := os.Stat(target); err == nil {
-			logger().Fatal("filesystem target are not yet supported")
-		}
-		repo := strings.Split(target, "/issues")[0]
-		repo = strings.Split(target, "#")[0]
-		reposMap[repo] = true
-	}
-	repos := []string{}
-	for repo := range reposMap {
-		repos = append(repos, repo)
-	}
-	return uniqueStrings(repos)
-}
-
 func uniqueStrings(input []string) []string {
 	u := make([]string, 0, len(input))
 	m := make(map[string]bool)
@@ -69,8 +53,32 @@ func uniqueStrings(input []string) []string {
 	return u
 }
 
+func normalizeURL(input string) string {
+	parts := strings.Split(input, "://")
+	output := fmt.Sprintf("%s://%s", parts[0], strings.Replace(parts[1], "//", "/", -1))
+	output = strings.TrimRight(output, "#")
+	output = strings.TrimRight(output, "/")
+	return output
+}
+
 var rxDNSName = regexp.MustCompile(`^([a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62}){1}(\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*[\._]?$`)
 
 func isDNSName(input string) bool {
 	return rxDNSName.MatchString(input)
+}
+
+func isSameStringSlice(a, b []string) bool {
+	if a == nil {
+		a = []string{}
+	}
+	if b == nil {
+		b = []string{}
+	}
+	sort.Strings(a)
+	sort.Strings(b)
+	return reflect.DeepEqual(a, b)
+}
+
+func isSameAirtableDate(a, b time.Time) bool {
+	return a.Truncate(time.Millisecond).UTC() == b.Truncate(time.Millisecond).UTC()
 }

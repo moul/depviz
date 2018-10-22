@@ -4,15 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jinzhu/gorm"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
-type dbOptions struct {
-}
+type dbOptions struct{}
+
+var globalDBOptions dbOptions
 
 func (opts dbOptions) String() string {
 	out, _ := json.Marshal(opts)
@@ -32,26 +31,28 @@ func newDBCommand() *cobra.Command {
 }
 
 func newDBDumpCommand() *cobra.Command {
-	opts := &dbOptions{}
 	cmd := &cobra.Command{
 		Use: "dump",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := viper.Unmarshal(opts); err != nil {
-				return err
-			}
-			return dbDump(opts)
+			opts := globalDBOptions
+			return dbDump(&opts)
 		},
 	}
-	dbSetupFlags(cmd.Flags(), opts)
+	dbSetupFlags(cmd.Flags(), &globalDBOptions)
 	return cmd
 }
 
 func dbDump(opts *dbOptions) error {
-	issues, err := loadIssues(db, nil)
-	if err != nil {
-		return errors.Wrap(err, "failed to load issues")
+	issues := []*Issue{}
+	if err := db.Find(&issues).Error; err != nil {
+		return err
 	}
-	out, err := json.MarshalIndent(issues.ToSlice(), "", "  ")
+
+	for _, issue := range issues {
+		issue.PostLoad()
+	}
+
+	out, err := json.MarshalIndent(issues, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -59,25 +60,14 @@ func dbDump(opts *dbOptions) error {
 	return nil
 }
 
-func canonicalTargets(input []string) []string {
-	output := []string{}
-	base := Issue{RepoURL: "https://github.com/moul/depviz", URL: "https://github.com/moul/depviz/issues/1"}
-	for _, target := range input {
-		output = append(output, base.GetRelativeIssueURL(target))
-	}
-	return output
-}
-
-func loadIssues(db *gorm.DB, targets []string) (Issues, error) {
-	query := db.Model(Issue{})
+func loadIssues(targets []string) (Issues, error) {
+	query := db.Model(Issue{}).Order("created_at")
 	if len(targets) > 0 {
-		query = query.Where("repo_url IN (?)", canonicalTargets(targets))
+		return nil, fmt.Errorf("not implemented")
+		// query = query.Where("repo_url IN (?)", canonicalTargets(targets))
+		// OR WHERE parents IN ....
+		// etc
 	}
-
-	/*var count int
-	if err := query.Count(&count).Error; err != nil {
-		return nil, err
-	}*/
 
 	perPage := 100
 	var issues []*Issue
@@ -91,6 +81,12 @@ func loadIssues(db *gorm.DB, targets []string) (Issues, error) {
 			break
 		}
 	}
-	slice := IssueSlice(issues)
-	return slice.ToMap(), nil
+
+	for _, issue := range issues {
+		issue.PostLoad()
+	}
+
+	return Issues(issues), nil
 }
+
+// FIXME: try to use gorm hooks to auto preload/postload items

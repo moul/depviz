@@ -25,10 +25,9 @@ type webOptions struct {
 	// web specific
 	Bind       string
 	ShowRoutes bool
-
-	// db
-	DBOpts dbOptions
 }
+
+var globalWebOptions webOptions
 
 func (opts webOptions) String() string {
 	out, _ := json.Marshal(opts)
@@ -42,21 +41,14 @@ func webSetupFlags(flags *pflag.FlagSet, opts *webOptions) {
 }
 
 func newWebCommand() *cobra.Command {
-	opts := &webOptions{}
 	cmd := &cobra.Command{
 		Use: "web",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := viper.Unmarshal(opts); err != nil {
-				return err
-			}
-			if err := viper.Unmarshal(&opts.DBOpts); err != nil {
-				return err
-			}
-			return web(opts)
+			opts := globalWebOptions
+			return web(&opts)
 		},
 	}
-	webSetupFlags(cmd.Flags(), opts)
-	dbSetupFlags(cmd.Flags(), &opts.DBOpts)
+	webSetupFlags(cmd.Flags(), &globalWebOptions)
 	return cmd
 }
 
@@ -65,23 +57,18 @@ func (i *Issue) Render(w http.ResponseWriter, r *http.Request) error {
 }
 
 func webListIssues(w http.ResponseWriter, r *http.Request) {
-	issues, err := loadIssues(db, nil)
+	issues, err := loadIssues(nil)
 	if err != nil {
 		render.Render(w, r, ErrRender(err))
 		return
 	}
 
-	issues.prepare(true)
-
-	targets := strings.Split(r.URL.Query().Get("targets"), ",")
-	issues.filterByTargets(targets)
-
 	list := []render.Renderer{}
 	for _, issue := range issues {
-		if issue.Hidden {
+		if issue.IsHidden {
 			continue
 		}
-		list = append(list, issue.WithJSONFields())
+		list = append(list, issue)
 	}
 
 	if err := render.RenderList(w, r, list); err != nil {
@@ -91,11 +78,20 @@ func webListIssues(w http.ResponseWriter, r *http.Request) {
 }
 
 func webGraphviz(r *http.Request) (string, error) {
+	targets, err := ParseTargets(strings.Split(r.URL.Query().Get("targets"), ","))
+	if err != nil {
+		return "", err
+	}
 	opts := &graphOptions{
-		Targets:    strings.Split(r.URL.Query().Get("targets"), ","),
+		Targets:    targets,
 		ShowClosed: r.URL.Query().Get("show-closed") == "1",
 	}
-	return graphviz(opts)
+	issues, err := loadIssues(nil)
+	if err != nil {
+		return "", err
+	}
+	filtered := issues.FilterByTargets(targets)
+	return graphviz(filtered, opts)
 }
 
 func webDotIssues(w http.ResponseWriter, r *http.Request) {

@@ -71,6 +71,26 @@ func newRootCommand() *cobra.Command {
 			}
 		}
 
+		// fill global options
+		if err := viper.Unmarshal(&globalGraphOptions); err != nil {
+			return err
+		}
+		if err := viper.Unmarshal(&globalRunOptions); err != nil {
+			return err
+		}
+		if err := viper.Unmarshal(&globalPullOptions); err != nil {
+			return err
+		}
+		if err := viper.Unmarshal(&globalWebOptions); err != nil {
+			return err
+		}
+		if err := viper.Unmarshal(&globalAirtableOptions); err != nil {
+			return err
+		}
+		if err := viper.Unmarshal(&globalDBOptions); err != nil {
+			return err
+		}
+
 		// configure sql
 		dbPath = os.ExpandEnv(dbPath)
 		db, err = gorm.Open("sqlite3", dbPath)
@@ -89,8 +109,11 @@ func newRootCommand() *cobra.Command {
 		db.LogMode(verbose)
 		if err := db.AutoMigrate(
 			Issue{},
-			IssueLabel{},
-			Profile{},
+			Label{},
+			Account{},
+			Milestone{},
+			Repository{},
+			Provider{},
 		).Error; err != nil {
 			return err
 		}
@@ -99,10 +122,11 @@ func newRootCommand() *cobra.Command {
 	}
 	cmd.AddCommand(
 		newPullCommand(),
-		newRunCommand(),
 		newDBCommand(),
-		newWebCommand(),
 		newAirtableCommand(),
+		newGraphCommand(),
+		newRunCommand(),
+		newWebCommand(),
 	)
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
