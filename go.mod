@@ -10,7 +10,7 @@ require (
 	github.com/go-chi/chi v3.3.3+incompatible
 	github.com/go-chi/docgen v1.0.2
 	github.com/go-chi/render v1.0.1
-	github.com/go-sql-driver/mysql v1.4.0 // indirect
+	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/google/go-cmp v0.2.0 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
