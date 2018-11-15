@@ -26,7 +26,7 @@ require (
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.2.1
 	github.com/uber-go/atomic v1.3.2 // indirect
-	github.com/xanzy/go-gitlab v0.11.3
+	github.com/xanzy/go-gitlab v0.11.7
 	go.uber.org/ratelimit v0.0.0-20180316092928-c15da0234277 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e // indirect
