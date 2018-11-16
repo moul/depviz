@@ -1,7 +1,7 @@
 module moul.io/depviz
 
 require (
-	cloud.google.com/go v0.30.0 // indirect
+	cloud.google.com/go v0.33.1 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/awalterschulze/gographviz v0.0.0-20181013152038-b2885df04310
 	github.com/brianloveswords/airtable v0.0.0-20180329193050-a39294038dd9
