@@ -121,17 +121,17 @@ func fromGitlabLabelname(repository *Repository, name string) *Label {
 		Name:  name,
 		Color: "aaaacc",
 		URL:   url,
-		//Description: input.GetDescription(),
+		// Description:
 	}
 }
 
 type gitlabFakeUser struct {
-	ID        int        `json:"id"`
-	Username  string     `json:"username"`
-	Email     string     `json:"email"`
-	Name      string     `json:"name"`
-	State     string     `json:"state"`
-	CreatedAt *time.Time `json:"created_at"`
+	ID        int    `json:"id"`
+	State     string `json:"state"`
+	WebURL    string `json:"web_url"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
+	Username  string `json:"username"`
 }
 
 func fromGitlabFakeUser(provider *Provider, input gitlabFakeUser) *Account {
@@ -139,11 +139,11 @@ func fromGitlabFakeUser(provider *Provider, input gitlabFakeUser) *Account {
 	if name == "" {
 		name = input.Username
 	}
-	url := fmt.Sprintf("%s/%s", provider.URL, input.Username)
 	account := Account{
 		Base: Base{
-			ID: url,
-			//UpdatedAt: input.UpdatedAt.Time,
+			ID: input.WebURL,
+			// UpdatedAt:
+			// CreatedAt:
 		},
 		Provider: &Provider{
 			Base: Base{
@@ -151,19 +151,16 @@ func fromGitlabFakeUser(provider *Provider, input gitlabFakeUser) *Account {
 			},
 			Driver: GitlabDriver,
 		},
-		Email:    input.Email,
+		// Email:
 		FullName: name,
 		Login:    input.Username,
-		URL:      url,
-		// State:     input.State,
+		URL:      input.WebURL,
+		// State: // FIXME: investigate what to do with this
 
-		//Location:  input.GetLocation(),
-		//Company:   input.GetCompany(),
-		//Blog:      input.GetBlog(),
-		//AvatarURL: input.GetAvatarURL(),
-	}
-	if input.CreatedAt != nil {
-		account.CreatedAt = *input.CreatedAt
+		// Location:
+		// Company:
+		// Blog:
+		AvatarURL: input.AvatarURL,
 	}
 
 	return &account
