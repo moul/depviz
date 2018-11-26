@@ -1,6 +1,10 @@
 .PHONY: install
 install:
-	GO111MODULE=auto go install -v
+	GO111MODULE=on go install -v
+
+.PHONY: test
+test:
+	go test -v ./...
 
 .PHONY: update_examples
 update_examples:

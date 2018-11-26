@@ -1,33 +1,27 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
-	"log"
+	"os"
 	"sync"
 
-	"github.com/google/go-github/github"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	gitlab "github.com/xanzy/go-gitlab"
 	"go.uber.org/zap"
-	"golang.org/x/oauth2"
 )
 
 type pullOptions struct {
-	// db
-	DBOpts dbOptions
-
 	// pull
-	Repos       []string
 	GithubToken string `mapstructure:"github-token"`
 	GitlabToken string `mapstructure:"gitlab-token"`
 	// includeExternalDeps bool
 
-	Targets []string
+	Targets Targets `mapstructure:"targets"`
 }
+
+var globalPullOptions pullOptions
 
 func (opts pullOptions) String() string {
 	out, _ := json.Marshal(opts)
@@ -41,23 +35,35 @@ func pullSetupFlags(flags *pflag.FlagSet, opts *pullOptions) {
 }
 
 func newPullCommand() *cobra.Command {
-	opts := &pullOptions{}
 	cmd := &cobra.Command{
 		Use: "pull",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := viper.Unmarshal(opts); err != nil {
-				return err
+			opts := globalPullOptions
+			var err error
+			if opts.Targets, err = ParseTargets(args); err != nil {
+				return errors.Wrap(err, "invalid targets")
 			}
-			opts.Targets = args
-			return pull(opts)
+			return pullAndCompute(&opts)
 		},
 	}
-	pullSetupFlags(cmd.Flags(), opts)
-	dbSetupFlags(cmd.Flags(), &opts.DBOpts)
+	pullSetupFlags(cmd.Flags(), &globalPullOptions)
 	return cmd
 }
 
+func pullAndCompute(opts *pullOptions) error {
+	if os.Getenv("DEPVIZ_NOPULL") != "1" {
+		if err := pull(opts); err != nil {
+			return errors.Wrap(err, "failed to pull")
+		}
+	}
+	if err := compute(opts); err != nil {
+		return errors.Wrap(err, "failed to compute")
+	}
+	return nil
+}
+
 func pull(opts *pullOptions) error {
+	// FIXME: handle the special '@me' target
 	logger().Debug("pull", zap.Stringer("opts", *opts))
 
 	var (
@@ -66,101 +72,16 @@ func pull(opts *pullOptions) error {
 		out       = make(chan []*Issue, 100)
 	)
 
-	repos := getReposFromTargets(opts.Targets)
+	targets := opts.Targets.UniqueProjects()
 
-	wg.Add(len(repos))
-	for _, repoURL := range repos {
-		repo := NewRepo(repoURL)
-		switch repo.Provider() {
-		case GitHubProvider:
-			ctx := context.Background()
-			ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: opts.GithubToken})
-			tc := oauth2.NewClient(ctx, ts)
-			client := github.NewClient(tc)
-
-			go func(repo Repo) {
-
-				total := 0
-				defer wg.Done()
-				opts := &github.IssueListByRepoOptions{State: "all"}
-
-				var lastEntry Issue
-				if err := db.Where("repo_url = ?", repo.Canonical()).Order("updated_at desc").First(&lastEntry).Error; err == nil {
-					opts.Since = lastEntry.UpdatedAt
-				}
-
-				for {
-					issues, resp, err := client.Issues.ListByRepo(ctx, repo.Namespace(), repo.Project(), opts)
-					if err != nil {
-						log.Fatal(err)
-						return
-					}
-					total += len(issues)
-					logger().Debug("paginate",
-						zap.String("provider", "github"),
-						zap.String("repo", repo.Canonical()),
-						zap.Int("new-issues", len(issues)),
-						zap.Int("total-issues", total),
-					)
-					normalizedIssues := []*Issue{}
-					for _, issue := range issues {
-						normalizedIssues = append(normalizedIssues, FromGitHubIssue(issue))
-					}
-					out <- normalizedIssues
-					if resp.NextPage == 0 {
-						break
-					}
-					opts.Page = resp.NextPage
-				}
-				if rateLimits, _, err := client.RateLimits(ctx); err == nil {
-					logger().Debug("github API rate limiting", zap.Stringer("limit", rateLimits.GetCore()))
-				}
-			}(repo)
-		case GitLabProvider:
-			go func(repo Repo) {
-				client := gitlab.NewClient(nil, opts.GitlabToken)
-				client.SetBaseURL(fmt.Sprintf("%s/api/v4", repo.SiteURL()))
-
-				//projectID := url.QueryEscape(repo.RepoPath())
-				projectID := repo.RepoPath()
-				total := 0
-				defer wg.Done()
-				opts := &gitlab.ListProjectIssuesOptions{
-					ListOptions: gitlab.ListOptions{
-						PerPage: 30,
-						Page:    1,
-					},
-				}
-
-				var lastEntry Issue
-				if err := db.Where("repo_url = ?", repo.Canonical()).Order("updated_at desc").First(&lastEntry).Error; err == nil {
-					opts.UpdatedAfter = &lastEntry.UpdatedAt
-				}
-
-				for {
-					issues, resp, err := client.Issues.ListProjectIssues(projectID, opts)
-					if err != nil {
-						logger().Error("failed to pull issues", zap.Error(err))
-						return
-					}
-					total += len(issues)
-					logger().Debug("paginate",
-						zap.String("provider", "gitlab"),
-						zap.String("repo", repo.Canonical()),
-						zap.Int("new-issues", len(issues)),
-						zap.Int("total-issues", total),
-					)
-					normalizedIssues := []*Issue{}
-					for _, issue := range issues {
-						normalizedIssues = append(normalizedIssues, FromGitLabIssue(issue))
-					}
-					out <- normalizedIssues
-					if resp.NextPage == 0 {
-						break
-					}
-					opts.ListOptions.Page = resp.NextPage
-				}
-			}(repo)
+	// parallel fetches
+	wg.Add(len(targets))
+	for _, target := range targets {
+		switch target.Driver() {
+		case GithubDriver:
+			go githubPull(target, &wg, opts, out)
+		case GitlabDriver:
+			go gitlabPull(target, &wg, opts, out)
 		default:
 			panic("should not happen")
 		}
@@ -171,6 +92,7 @@ func pull(opts *pullOptions) error {
 		allIssues = append(allIssues, issues...)
 	}
 
+	// save
 	for _, issue := range allIssues {
 		if err := db.Save(issue).Error; err != nil {
 			return err

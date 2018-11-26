@@ -2,10 +2,15 @@ package main
 
 import "fmt"
 
-func ExampleIssue_GetRelativeIssueURL() {
+func ExampleIssue_GetRelativeURL() {
 	issue := Issue{
-		URL:     "https://github.com/moul/depviz/issues/42",
-		RepoURL: "https://github.com/moul/depviz",
+		URL: "https://github.com/moul/depviz/issues/42",
+		Repository: &Repository{
+			URL: "https://github.com/moul/depviz",
+			Provider: &Provider{
+				URL: "https://github.com/",
+			},
+		},
 	}
 	for _, target := range []string{
 		"#43",
@@ -20,12 +25,17 @@ func ExampleIssue_GetRelativeIssueURL() {
 		"gitlab.com/test2/issues/52",
 		"gitlab.com/test2/test3/test4/issues/53",
 	} {
-		fmt.Printf("%-42s -> %s\n", target, issue.GetRelativeIssueURL(target))
+		fmt.Printf("%-42s -> %s\n", target, issue.GetRelativeURL(target))
 	}
 
 	issue = Issue{
-		URL:     "https://gitlab.com/moul/depviz/issues/42",
-		RepoURL: "https://gitlab.com/moul/depviz",
+		URL: "https://gitlab.com/moul/depviz/issues/42",
+		Repository: &Repository{
+			URL: "https://gitlab.com/moul/depviz",
+			Provider: &Provider{
+				URL: "https://gitlab.com/",
+			},
+		},
 	}
 	for _, target := range []string{
 		"#43",
@@ -40,7 +50,7 @@ func ExampleIssue_GetRelativeIssueURL() {
 		"github.com/test2/issues/52",
 		"github.com/test2/test3/test4/issues/53",
 	} {
-		fmt.Printf("%-42s -> %s\n", target, issue.GetRelativeIssueURL(target))
+		fmt.Printf("%-42s -> %s\n", target, issue.GetRelativeURL(target))
 	}
 
 	// Output:
