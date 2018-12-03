@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"moul.io/depviz/pkg/repo"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -43,7 +44,7 @@ func newDBDumpCommand() *cobra.Command {
 }
 
 func dbDump(opts *dbOptions) error {
-	issues := []*Issue{}
+	issues := []*repo.Issue{}
 	if err := db.Find(&issues).Error; err != nil {
 		return err
 	}
@@ -60,8 +61,8 @@ func dbDump(opts *dbOptions) error {
 	return nil
 }
 
-func loadIssues(targets []string) (Issues, error) {
-	query := db.Model(Issue{}).Order("created_at")
+func loadIssues(targets []string) (repo.Issues, error) {
+	query := db.Model(repo.Issue{}).Order("created_at")
 	if len(targets) > 0 {
 		return nil, fmt.Errorf("not implemented")
 		// query = query.Where("repo_url IN (?)", canonicalTargets(targets))
@@ -70,9 +71,9 @@ func loadIssues(targets []string) (Issues, error) {
 	}
 
 	perPage := 100
-	var issues []*Issue
+	var issues []*repo.Issue
 	for page := 0; ; page++ {
-		var newIssues []*Issue
+		var newIssues []*repo.Issue
 		if err := query.Limit(perPage).Offset(perPage * page).Find(&newIssues).Error; err != nil {
 			return nil, err
 		}
@@ -86,7 +87,7 @@ func loadIssues(targets []string) (Issues, error) {
 		issue.PostLoad()
 	}
 
-	return Issues(issues), nil
+	return repo.Issues(issues), nil
 }
 
 // FIXME: try to use gorm hooks to auto preload/postload items

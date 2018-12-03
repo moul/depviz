@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"moul.io/depviz/pkg/repo"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -37,11 +38,11 @@ func newRunCommand() *cobra.Command {
 			opts.GraphOptions = globalGraphOptions
 			opts.PullOptions = globalPullOptions
 
-			targets, err := ParseTargets(args)
+			targets, err := repo.ParseTargets(args)
 			if err != nil {
 				return errors.Wrap(err, "invalid targets")
 			}
-			additionalPulls, err := ParseTargets(opts.AdditionalPulls)
+			additionalPulls, err := repo.ParseTargets(opts.AdditionalPulls)
 			if err != nil {
 				return errors.Wrap(err, "invalid targets")
 			}

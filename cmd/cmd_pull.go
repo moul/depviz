@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"moul.io/depviz/pkg/repo"
 	"os"
 	"sync"
 
@@ -18,7 +19,7 @@ type pullOptions struct {
 	GitlabToken string `mapstructure:"gitlab-token"`
 	// includeExternalDeps bool
 
-	Targets Targets `mapstructure:"targets"`
+	Targets repo.Targets `mapstructure:"targets"`
 }
 
 var globalPullOptions pullOptions
@@ -40,7 +41,7 @@ func newPullCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := globalPullOptions
 			var err error
-			if opts.Targets, err = ParseTargets(args); err != nil {
+			if opts.Targets, err = repo.ParseTargets(args); err != nil {
 				return errors.Wrap(err, "invalid targets")
 			}
 			return pullAndCompute(&opts)
@@ -64,12 +65,12 @@ func pullAndCompute(opts *pullOptions) error {
 
 func pull(opts *pullOptions) error {
 	// FIXME: handle the special '@me' target
-	logger().Debug("pull", zap.Stringer("opts", *opts))
+	zap.L().Debug("pull", zap.Stringer("opts", *opts))
 
 	var (
 		wg        sync.WaitGroup
-		allIssues []*Issue
-		out       = make(chan []*Issue, 100)
+		allIssues []*repo.Issue
+		out       = make(chan []*repo.Issue, 100)
 	)
 
 	targets := opts.Targets.UniqueProjects()
@@ -78,10 +79,10 @@ func pull(opts *pullOptions) error {
 	wg.Add(len(targets))
 	for _, target := range targets {
 		switch target.Driver() {
-		case GithubDriver:
-			go githubPull(target, &wg, opts, out)
-		case GitlabDriver:
-			go gitlabPull(target, &wg, opts, out)
+		case repo.GithubDriver:
+			go repo.GithubPull(target, &wg, opts.GithubToken, db, out)
+		case repo.GitlabDriver:
+			go repo.GitlabPull(target, &wg, opts.GitlabToken, db, out)
 		default:
 			panic("should not happen")
 		}

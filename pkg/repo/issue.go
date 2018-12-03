@@ -1,10 +1,49 @@
-package main
+package repo
 
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
+	"net/http"
+	"net/url"
 )
+
+func normalizeURL(input string) string {
+	parts := strings.Split(input, "://")
+	output := fmt.Sprintf("%s://%s", parts[0], strings.Replace(parts[1], "//", "/", -1))
+	output = strings.TrimRight(output, "#")
+	output = strings.TrimRight(output, "/")
+	return output
+}
+
+func isDNSName(input string) bool {
+	return rxDNSName.MatchString(input)
+}
+
+var rxDNSName = regexp.MustCompile(`^([a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62}){1}(\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*[\._]?$`)
+
+func (i *Issue) Number() string {
+	u, err := url.Parse(i.URL)
+	if err != nil {
+		return ""
+	}
+	parts := strings.Split(u.Path, "/")
+	return parts[len(parts)-1]
+}
+
+func (i *Issue) Path() string {
+	u, err := url.Parse(i.URL)
+	if err != nil {
+		return ""
+	}
+	parts := strings.Split(u.Path, "/")
+	return strings.Join(parts[:len(parts)-2], "/")
+}
+
+func (i *Issue) Render(w http.ResponseWriter, r *http.Request) error {
+	return nil
+}
 
 func (i Issue) GetRelativeURL(target string) string {
 	if strings.Contains(target, "://") {

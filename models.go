@@ -1,10 +1,12 @@
-package main
+package repo
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
+	"moul.io/depviz/pkg/airtableDB"
 )
 
 //
@@ -40,6 +42,32 @@ type Repository struct {
 	OwnerID    string    `json:"owner-id"`
 }
 
+func (p Repository) ToRecord(cache airtableDB.DB) *airtableDB.RepositoryRecord {
+	record := airtableDB.RepositoryRecord{}
+
+	// base
+	record.Fields.ID = p.ID
+	record.Fields.CreatedAt = p.CreatedAt
+	record.Fields.UpdatedAt = p.UpdatedAt
+	record.Fields.Errors = strings.Join(p.Errors, ", ")
+
+	// specific
+	record.Fields.URL = p.URL
+	record.Fields.Title = p.Title
+	record.Fields.Description = p.Description
+	record.Fields.Homepage = p.Homepage
+	record.Fields.PushedAt = p.PushedAt
+	record.Fields.IsFork = p.IsFork
+
+	// relationships
+	record.Fields.Provider = []string{cache.Providers.ByID(p.Provider.ID)}
+	if p.Owner != nil {
+		record.Fields.Owner = []string{cache.Accounts.ByID(p.Owner.ID)}
+	}
+
+	return &record
+}
+
 //
 // Provider
 //
@@ -58,6 +86,25 @@ type Provider struct {
 	// base fields
 	URL    string `json:"url"`
 	Driver string `json:"driver"` // github, gitlab, unknown
+}
+
+func (p Provider) ToRecord(cache airtableDB.DB) *airtableDB.ProviderRecord {
+	record := airtableDB.ProviderRecord{}
+
+	// base
+	record.Fields.ID = p.ID
+	record.Fields.CreatedAt = p.CreatedAt
+	record.Fields.UpdatedAt = p.UpdatedAt
+	record.Fields.Errors = strings.Join(p.Errors, ", ")
+
+	// specific
+	record.Fields.URL = p.URL
+	record.Fields.Driver = p.Driver
+
+	// relationships
+	// n/a
+
+	return &record
 }
 
 //
@@ -81,6 +128,32 @@ type Milestone struct {
 	CreatorID    string      `json:"creator-id"`
 	Repository   *Repository `json:"repository"`
 	RepositoryID string      `json:"repository-id"`
+}
+
+func (p Milestone) ToRecord(cache airtableDB.DB) *airtableDB.MilestoneRecord {
+	record := airtableDB.MilestoneRecord{}
+	// base
+	record.Fields.ID = p.ID
+	record.Fields.CreatedAt = p.CreatedAt
+	record.Fields.UpdatedAt = p.UpdatedAt
+	record.Fields.Errors = strings.Join(p.Errors, ", ")
+
+	// specific
+	record.Fields.URL = p.URL
+	record.Fields.Title = p.Title
+	record.Fields.Description = p.Description
+	record.Fields.ClosedAt = p.ClosedAt
+	record.Fields.DueOn = p.DueOn
+
+	// relationships
+	if p.Creator != nil {
+		record.Fields.Creator = []string{cache.Accounts.ByID(p.Creator.ID)}
+	}
+	if p.Repository != nil {
+		record.Fields.Repository = []string{cache.Repositories.ByID(p.Repository.ID)}
+	}
+
+	return &record
 }
 
 //
@@ -131,6 +204,49 @@ func (i Issue) String() string {
 	return string(out)
 }
 
+func (p Issue) ToRecord(cache airtableDB.DB) *airtableDB.IssueRecord {
+	record := airtableDB.IssueRecord{}
+	// base
+	record.Fields.ID = p.ID
+	record.Fields.CreatedAt = p.CreatedAt
+	record.Fields.UpdatedAt = p.UpdatedAt
+	record.Fields.Errors = strings.Join(p.Errors, ", ")
+
+	// specific
+	record.Fields.URL = p.URL
+	record.Fields.CompletedAt = p.CompletedAt
+	record.Fields.Title = p.Title
+	record.Fields.State = p.State
+	record.Fields.Body = p.Body
+	record.Fields.IsPR = p.IsPR
+	record.Fields.IsLocked = p.IsLocked
+	record.Fields.Comments = p.Comments
+	record.Fields.Upvotes = p.Upvotes
+	record.Fields.Downvotes = p.Downvotes
+	record.Fields.IsOrphan = p.IsOrphan
+	record.Fields.IsHidden = p.IsHidden
+	record.Fields.Weight = p.Weight
+	record.Fields.IsEpic = p.IsEpic
+	record.Fields.HasEpic = p.HasEpic
+
+	// relationships
+	record.Fields.Repository = []string{cache.Repositories.ByID(p.Repository.ID)}
+	if p.Milestone != nil {
+		record.Fields.Milestone = []string{cache.Milestones.ByID(p.Milestone.ID)}
+	}
+	record.Fields.Author = []string{cache.Accounts.ByID(p.Author.ID)}
+	record.Fields.Labels = []string{}
+	for _, label := range p.Labels {
+		record.Fields.Labels = append(record.Fields.Labels, cache.Labels.ByID(label.ID))
+	}
+	record.Fields.Assignees = []string{}
+	for _, assignee := range p.Assignees {
+		record.Fields.Assignees = append(record.Fields.Assignees, cache.Accounts.ByID(assignee.ID))
+	}
+
+	return &record
+}
+
 //
 // Label
 //
@@ -143,6 +259,27 @@ type Label struct {
 	Name        string `json:"name"`
 	Color       string `json:"color"`
 	Description string `json:"description"`
+}
+
+func (p Label) ToRecord(cache airtableDB.DB) *airtableDB.LabelRecord {
+	record := airtableDB.LabelRecord{}
+
+	// base
+	record.Fields.ID = p.ID
+	record.Fields.CreatedAt = p.CreatedAt
+	record.Fields.UpdatedAt = p.UpdatedAt
+	record.Fields.Errors = strings.Join(p.Errors, ", ")
+
+	// specific
+	record.Fields.URL = p.URL
+	record.Fields.Name = p.Name
+	record.Fields.Color = p.Color
+	record.Fields.Description = p.Description
+
+	// relationships
+	// n/a
+
+	return &record
 }
 
 //
@@ -167,6 +304,32 @@ type Account struct {
 	// relationships
 	Provider   *Provider `json:"provider"`
 	ProviderID string    `json:"provider-id"`
+}
+
+func (p Account) ToRecord(cache airtableDB.DB) *airtableDB.AccountRecord {
+	record := airtableDB.AccountRecord{}
+	// base
+	record.Fields.ID = p.ID
+	record.Fields.CreatedAt = p.CreatedAt
+	record.Fields.UpdatedAt = p.UpdatedAt
+	record.Fields.Errors = strings.Join(p.Errors, ", ")
+
+	// specific
+	record.Fields.URL = p.URL
+	record.Fields.Login = p.Login
+	record.Fields.FullName = p.FullName
+	record.Fields.Type = p.Type
+	record.Fields.Bio = p.Bio
+	record.Fields.Location = p.Location
+	record.Fields.Company = p.Company
+	record.Fields.Blog = p.Blog
+	record.Fields.Email = p.Email
+	record.Fields.AvatarURL = p.AvatarURL
+
+	// relationships
+	record.Fields.Provider = []string{cache.Providers.ByID(p.Provider.ID)}
+
+	return &record
 }
 
 // FIXME: create a User struct to handle multiple accounts and aliases

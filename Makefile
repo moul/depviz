@@ -1,6 +1,6 @@
 .PHONY: install
 install:
-	GO111MODULE=on go install -v
+	GO111MODULE=on go install -v ./cmd
 
 .PHONY: test
 test:

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"moul.io/depviz/pkg/repo"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
@@ -18,7 +19,7 @@ import (
 )
 
 func main() {
-	defer logger().Sync()
+	defer zap.L().Sync()
 	rootCmd := newRootCommand()
 	if err := rootCmd.Execute(); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -108,12 +109,12 @@ func newRootCommand() *cobra.Command {
 		db.SingularTable(true)
 		db.LogMode(verbose)
 		if err := db.AutoMigrate(
-			Issue{},
-			Label{},
-			Account{},
-			Milestone{},
-			Repository{},
-			Provider{},
+			repo.Issue{},
+			repo.Label{},
+			repo.Account{},
+			repo.Milestone{},
+			repo.Repository{},
+			repo.Provider{},
 		).Error; err != nil {
 			return err
 		}

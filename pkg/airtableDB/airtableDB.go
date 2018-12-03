@@ -1,41 +1,51 @@
-package main
+package airtableDB
 
 import (
 	"encoding/json"
-	"strings"
+	"reflect"
+	"sort"
 	"time"
 
 	"github.com/brianloveswords/airtable"
 )
 
-type AirtableBase struct {
+type base struct {
 	ID        string    `json:"id"`
 	CreatedAt time.Time `json:"created-at"`
 	UpdatedAt time.Time `json:"updated-at"`
 	Errors    string    `json:"errors"`
 }
 
-type airtableState int
+type State int
 
-type AirtableRecords []interface{}
+//type AirtableRecords []interface{}
 
-type AirtableEntry interface {
-	ToRecord(cache AirtableDB) interface{}
+//type AirtableEntry interface {
+//	ToRecord(cache DB) interface{}
+//}
+
+type DB struct {
+	Providers    ProviderRecords
+	Labels       LabelRecords
+	Accounts     AccountRecords
+	Repositories RepositoryRecords
+	Milestones   MilestoneRecords
+	Issues       IssueRecords
 }
 
 const (
-	airtableStateUnknown airtableState = iota
-	airtableStateUnchanged
-	airtableStateChanged
-	airtableStateNew
+	StateUnknown State = iota
+	StateUnchanged
+	StateChanged
+	StateNew
 )
 
 var (
-	airtableStateString = map[airtableState]string{
-		airtableStateUnknown:   "unknown",
-		airtableStateUnchanged: "unchanged",
-		airtableStateChanged:   "changed",
-		airtableStateNew:       "new",
+	StateString = map[State]string{
+		StateUnknown:   "unknown",
+		StateUnchanged: "unchanged",
+		StateChanged:   "changed",
+		StateNew:       "new",
 	}
 )
 
@@ -44,12 +54,12 @@ var (
 //
 
 type ProviderRecord struct {
-	State airtableState `json:"-"` // internal
+	State State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		AirtableBase
+		base
 
 		// specific
 		URL    string `json:"url"`
@@ -63,25 +73,6 @@ type ProviderRecord struct {
 func (r ProviderRecord) String() string {
 	out, _ := json.Marshal(r)
 	return string(out)
-}
-
-func (p Provider) ToRecord(cache AirtableDB) *ProviderRecord {
-	record := ProviderRecord{}
-
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.Driver = p.Driver
-
-	// relationships
-	// n/a
-
-	return &record
 }
 
 func (r *ProviderRecord) Equals(n *ProviderRecord) bool {
@@ -118,12 +109,12 @@ func (records ProviderRecords) ByID(id string) string {
 //
 
 type LabelRecord struct {
-	State airtableState `json:"-"` // internal
+	State State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		AirtableBase
+		base
 
 		// specific
 		URL         string `json:"url"`
@@ -139,27 +130,6 @@ type LabelRecord struct {
 func (r LabelRecord) String() string {
 	out, _ := json.Marshal(r)
 	return string(out)
-}
-
-func (p Label) ToRecord(cache AirtableDB) *LabelRecord {
-	record := LabelRecord{}
-
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.Name = p.Name
-	record.Fields.Color = p.Color
-	record.Fields.Description = p.Description
-
-	// relationships
-	// n/a
-
-	return &record
 }
 
 func (r *LabelRecord) Equals(n *LabelRecord) bool {
@@ -198,12 +168,12 @@ func (records LabelRecords) ByID(id string) string {
 //
 
 type AccountRecord struct {
-	State airtableState `json:"-"` // internal
+	State State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		AirtableBase
+		base
 
 		// specific
 		URL       string `json:"url"`
@@ -225,32 +195,6 @@ type AccountRecord struct {
 func (r AccountRecord) String() string {
 	out, _ := json.Marshal(r)
 	return string(out)
-}
-
-func (p Account) ToRecord(cache AirtableDB) *AccountRecord {
-	record := AccountRecord{}
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.Login = p.Login
-	record.Fields.FullName = p.FullName
-	record.Fields.Type = p.Type
-	record.Fields.Bio = p.Bio
-	record.Fields.Location = p.Location
-	record.Fields.Company = p.Company
-	record.Fields.Blog = p.Blog
-	record.Fields.Email = p.Email
-	record.Fields.AvatarURL = p.AvatarURL
-
-	// relationships
-	record.Fields.Provider = []string{cache.Providers.ByID(p.Provider.ID)}
-
-	return &record
 }
 
 func (r *AccountRecord) Equals(n *AccountRecord) bool {
@@ -296,12 +240,12 @@ func (records AccountRecords) ByID(id string) string {
 //
 
 type RepositoryRecord struct {
-	State airtableState `json:"-"` // internal
+	State State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		AirtableBase
+		base
 
 		// specific
 		URL         string    `json:"url"`
@@ -320,32 +264,6 @@ type RepositoryRecord struct {
 func (r RepositoryRecord) String() string {
 	out, _ := json.Marshal(r)
 	return string(out)
-}
-
-func (p Repository) ToRecord(cache AirtableDB) *RepositoryRecord {
-	record := RepositoryRecord{}
-
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.Title = p.Title
-	record.Fields.Description = p.Description
-	record.Fields.Homepage = p.Homepage
-	record.Fields.PushedAt = p.PushedAt
-	record.Fields.IsFork = p.IsFork
-
-	// relationships
-	record.Fields.Provider = []string{cache.Providers.ByID(p.Provider.ID)}
-	if p.Owner != nil {
-		record.Fields.Owner = []string{cache.Accounts.ByID(p.Owner.ID)}
-	}
-
-	return &record
 }
 
 func (r *RepositoryRecord) Equals(n *RepositoryRecord) bool {
@@ -388,12 +306,12 @@ func (records RepositoryRecords) ByID(id string) string {
 //
 
 type MilestoneRecord struct {
-	State airtableState `json:"-"` // internal
+	State State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		AirtableBase
+		base
 
 		// specific
 		URL         string    `json:"url"`
@@ -411,32 +329,6 @@ type MilestoneRecord struct {
 func (r MilestoneRecord) String() string {
 	out, _ := json.Marshal(r)
 	return string(out)
-}
-
-func (p Milestone) ToRecord(cache AirtableDB) *MilestoneRecord {
-	record := MilestoneRecord{}
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.Title = p.Title
-	record.Fields.Description = p.Description
-	record.Fields.ClosedAt = p.ClosedAt
-	record.Fields.DueOn = p.DueOn
-
-	// relationships
-	if p.Creator != nil {
-		record.Fields.Creator = []string{cache.Accounts.ByID(p.Creator.ID)}
-	}
-	if p.Repository != nil {
-		record.Fields.Repository = []string{cache.Repositories.ByID(p.Repository.ID)}
-	}
-
-	return &record
 }
 
 func (r *MilestoneRecord) Equals(n *MilestoneRecord) bool {
@@ -478,12 +370,12 @@ func (records MilestoneRecords) ByID(id string) string {
 //
 
 type IssueRecord struct {
-	State airtableState `json:"-"` // internal
+	State State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		AirtableBase
+		base
 
 		// specific
 		URL         string    `json:"url"`
@@ -517,49 +409,6 @@ type IssueRecord struct {
 func (r IssueRecord) String() string {
 	out, _ := json.Marshal(r)
 	return string(out)
-}
-
-func (p Issue) ToRecord(cache AirtableDB) *IssueRecord {
-	record := IssueRecord{}
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.CompletedAt = p.CompletedAt
-	record.Fields.Title = p.Title
-	record.Fields.State = p.State
-	record.Fields.Body = p.Body
-	record.Fields.IsPR = p.IsPR
-	record.Fields.IsLocked = p.IsLocked
-	record.Fields.Comments = p.Comments
-	record.Fields.Upvotes = p.Upvotes
-	record.Fields.Downvotes = p.Downvotes
-	record.Fields.IsOrphan = p.IsOrphan
-	record.Fields.IsHidden = p.IsHidden
-	record.Fields.Weight = p.Weight
-	record.Fields.IsEpic = p.IsEpic
-	record.Fields.HasEpic = p.HasEpic
-
-	// relationships
-	record.Fields.Repository = []string{cache.Repositories.ByID(p.Repository.ID)}
-	if p.Milestone != nil {
-		record.Fields.Milestone = []string{cache.Milestones.ByID(p.Milestone.ID)}
-	}
-	record.Fields.Author = []string{cache.Accounts.ByID(p.Author.ID)}
-	record.Fields.Labels = []string{}
-	for _, label := range p.Labels {
-		record.Fields.Labels = append(record.Fields.Labels, cache.Labels.ByID(label.ID))
-	}
-	record.Fields.Assignees = []string{}
-	for _, assignee := range p.Assignees {
-		record.Fields.Assignees = append(record.Fields.Assignees, cache.Accounts.ByID(assignee.ID))
-	}
-
-	return &record
 }
 
 func (r *IssueRecord) Equals(n *IssueRecord) bool {
@@ -607,4 +456,20 @@ func (records IssueRecords) ByID(id string) string {
 		}
 	}
 	return ""
+}
+
+func isSameAirtableDate(a, b time.Time) bool {
+	return a.Truncate(time.Millisecond).UTC() == b.Truncate(time.Millisecond).UTC()
+}
+
+func isSameStringSlice(a, b []string) bool {
+	if a == nil {
+		a = []string{}
+	}
+	if b == nil {
+		b = []string{}
+	}
+	sort.Strings(a)
+	sort.Strings(b)
+	return reflect.DeepEqual(a, b)
 }

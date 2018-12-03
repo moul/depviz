@@ -1,4 +1,4 @@
-package main
+package repo
 
 import (
 	"context"
@@ -7,25 +7,26 @@ import (
 	"sync"
 
 	"github.com/google/go-github/github"
+	"github.com/jinzhu/gorm"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
-func githubPull(target Target, wg *sync.WaitGroup, opts *pullOptions, out chan []*Issue) {
+func GithubPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, out chan<- []*Issue) {
 	defer wg.Done()
 	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: opts.GithubToken})
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	total := 0
+	totalIssues := 0
 	callOpts := &github.IssueListByRepoOptions{State: "all"}
 
 	var lastEntry Issue
 	if err := db.Where("repository_id = ?", target.ProjectURL()).Order("updated_at desc").First(&lastEntry).Error; err == nil {
 		callOpts.Since = lastEntry.UpdatedAt
 	} else {
-		logger().Warn("failed to get last entry", zap.Error(err))
+		zap.L().Warn("failed to get last entry", zap.Error(err))
 	}
 
 	for {
@@ -34,12 +35,12 @@ func githubPull(target Target, wg *sync.WaitGroup, opts *pullOptions, out chan [
 			log.Fatal(err)
 			return
 		}
-		total += len(issues)
-		logger().Debug("paginate",
+		totalIssues += len(issues)
+		zap.L().Debug("paginate",
 			zap.String("provider", "github"),
 			zap.String("repo", target.ProjectURL()),
 			zap.Int("new-issues", len(issues)),
-			zap.Int("total-issues", total),
+			zap.Int("total-issues", totalIssues),
 		)
 		normalizedIssues := []*Issue{}
 		for _, issue := range issues {
@@ -52,7 +53,7 @@ func githubPull(target Target, wg *sync.WaitGroup, opts *pullOptions, out chan [
 		callOpts.Page = resp.NextPage
 	}
 	if rateLimits, _, err := client.RateLimits(ctx); err == nil {
-		logger().Debug("github API rate limiting", zap.Stringer("limit", rateLimits.GetCore()))
+		zap.L().Debug("github API rate limiting", zap.Stringer("limit", rateLimits.GetCore()))
 	}
 }
 

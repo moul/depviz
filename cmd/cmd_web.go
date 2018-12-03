@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"moul.io/depviz/pkg/repo"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -52,10 +53,6 @@ func newWebCommand() *cobra.Command {
 	return cmd
 }
 
-func (i *Issue) Render(w http.ResponseWriter, r *http.Request) error {
-	return nil
-}
-
 func webListIssues(w http.ResponseWriter, r *http.Request) {
 	issues, err := loadIssues(nil)
 	if err != nil {
@@ -78,7 +75,7 @@ func webListIssues(w http.ResponseWriter, r *http.Request) {
 }
 
 func webGraphviz(r *http.Request) (string, error) {
-	targets, err := ParseTargets(strings.Split(r.URL.Query().Get("targets"), ","))
+	targets, err := repo.ParseTargets(strings.Split(r.URL.Query().Get("targets"), ","))
 	if err != nil {
 		return "", err
 	}

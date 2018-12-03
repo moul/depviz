@@ -5,9 +5,12 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"moul.io/depviz/pkg/repo"
 
 	"go.uber.org/zap"
 )
+
+// @TODO: Move all of this into repo?
 
 var (
 	childrenRegex, _    = regexp.Compile(`(?i)(require|requires|blocked by|block by|depend on|depends on|parent of) ([a-z0-9:/_.-]+issues/[0-9]+|[a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
@@ -19,7 +22,7 @@ var (
 )
 
 func compute(opts *pullOptions) error {
-	logger().Debug("compute", zap.Stringer("opts", *opts))
+	zap.L().Debug("compute", zap.Stringer("opts", *opts))
 	issues, err := loadIssues(nil)
 	if err != nil {
 		return err
@@ -28,9 +31,9 @@ func compute(opts *pullOptions) error {
 	for _, issue := range issues {
 		// reset default values
 		issue.Errors = []string{}
-		issue.Parents = []*Issue{}
-		issue.Children = []*Issue{}
-		issue.Duplicates = []*Issue{}
+		issue.Parents = []*repo.Issue{}
+		issue.Children = []*repo.Issue{}
+		issue.Duplicates = []*repo.Issue{}
 		issue.Weight = 0
 		issue.IsHidden = false
 		issue.IsEpic = false
@@ -110,7 +113,7 @@ func compute(opts *pullOptions) error {
 			continue
 		}
 		// has epic
-		issue.HasEpic, err = issue.computeHasEpic(0)
+		issue.HasEpic, err = computeHasEpic(issue, 0)
 		if err != nil {
 			issue.Errors = append(issue.Errors, err.Error())
 		}
@@ -137,7 +140,7 @@ func compute(opts *pullOptions) error {
 	return nil
 }
 
-func (i Issue) computeHasEpic(depth int) (bool, error) {
+func computeHasEpic(i *repo.Issue, depth int) (bool, error) {
 	if depth > 100 {
 		return false, fmt.Errorf("very high blocking depth (>100), do not continue. (issue=%s)", i.URL)
 	}
@@ -148,7 +151,7 @@ func (i Issue) computeHasEpic(depth int) (bool, error) {
 		if parent.IsEpic {
 			return true, nil
 		}
-		parentHasEpic, err := parent.computeHasEpic(depth + 1)
+		parentHasEpic, err := computeHasEpic(parent, depth + 1)
 		if err != nil {
 			return false, nil
 		}
@@ -157,4 +160,18 @@ func (i Issue) computeHasEpic(depth int) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func uniqueStrings(input []string) []string {
+	u := make([]string, 0, len(input))
+	m := make(map[string]bool)
+
+	for _, val := range input {
+		if _, ok := m[val]; !ok {
+			m[val] = true
+			u = append(u, val)
+		}
+	}
+
+	return u
 }
