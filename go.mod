@@ -29,7 +29,7 @@ require (
 	github.com/xanzy/go-gitlab v0.11.7
 	go.uber.org/ratelimit v0.0.0-20180316092928-c15da0234277 // indirect
 	go.uber.org/zap v1.9.1
-	golang.org/x/crypto v0.0.0-20181126163421-e657309f52e7 // indirect
+	golang.org/x/crypto v0.0.0-20181203042731-505ab145d0a9 // indirect
 	golang.org/x/net v0.0.0-20181114220301-adae6a3d119a // indirect
 	golang.org/x/oauth2 v0.0.0-20181120190819-8f65e3013eba
 	golang.org/x/sys v0.0.0-20181122145206-62eef0e2fa9b // indirect
