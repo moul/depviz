@@ -1,4 +1,4 @@
-package main // import "moul.io/depviz"
+package main
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"moul.io/depviz/pkg/repo"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
@@ -15,6 +14,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"moul.io/depviz/pkg/repo"
 	"moul.io/zapgorm"
 )
 
