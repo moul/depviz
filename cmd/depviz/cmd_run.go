@@ -17,26 +17,35 @@ type runOptions struct {
 	NoPull          bool         `mapstructure:"no-pull"`
 }
 
-var globalRunOptions runOptions
-
 func (opts runOptions) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
 }
 
-func runSetupFlags(flags *pflag.FlagSet, opts *runOptions) {
-	flags.BoolVarP(&opts.NoPull, "no-pull", "", false, "do not pull new issues before running")
-	flags.StringSliceVarP(&opts.AdditionalPulls, "additional-pulls", "", []string{}, "additional pull that won't necessarily be displayed on the graph")
+type runCommand struct {
+	opts runOptions
+}
+
+func (cmd *runCommand) LoadDefaultOptions() error {
+	if err := viper.Unmarshal(&cmd.opts); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cmd *runCommand) ParseFlags(flags *pflag.FlagSet) {
+	flags.BoolVarP(&cmd.opts.NoPull, "no-pull", "", false, "do not pull new issues before running")
+	flags.StringSliceVarP(&cmd.opts.AdditionalPulls, "additional-pulls", "", []string{}, "additional pull that won't necessarily be displayed on the graph")
 	viper.BindPFlags(flags)
 }
 
-func newRunCommand() *cobra.Command {
-	cmd := &cobra.Command{
+func (cmd *runCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
+	cc := &cobra.Command{
 		Use: "run",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts := globalRunOptions
-			opts.GraphOptions = globalGraphOptions
-			opts.PullOptions = globalPullOptions
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts := cmd.opts
+			opts.GraphOptions = dc["graph"].(*graphCommand).opts
+			opts.PullOptions = dc["pull"].(*pullCommand).opts
 
 			targets, err := repo.ParseTargets(args)
 			if err != nil {
@@ -51,10 +60,10 @@ func newRunCommand() *cobra.Command {
 			return run(&opts)
 		},
 	}
-	runSetupFlags(cmd.Flags(), &globalRunOptions)
-	graphSetupFlags(cmd.Flags(), &globalGraphOptions)
-	pullSetupFlags(cmd.Flags(), &globalPullOptions)
-	return cmd
+	cmd.ParseFlags(cc.Flags())
+	dc["graph"].ParseFlags(cc.Flags())
+	dc["pull"].ParseFlags(cc.Flags())
+	return cc
 }
 
 func run(opts *runOptions) error {

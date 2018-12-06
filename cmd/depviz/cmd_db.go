@@ -12,35 +12,44 @@ import (
 
 type dbOptions struct{}
 
-var globalDBOptions dbOptions
-
 func (opts dbOptions) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
 }
 
-func dbSetupFlags(flags *pflag.FlagSet, opts *dbOptions) {
+type dbCommand struct {
+	opts dbOptions
+}
+
+func (cmd *dbCommand) LoadDefaultOptions() error {
+	if err := viper.Unmarshal(&cmd.opts); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cmd *dbCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
+	cc := &cobra.Command{
+		Use: "db",
+	}
+	cc.AddCommand(cmd.dbDumpCommand())
+	return cc
+}
+
+func (cmd *dbCommand) ParseFlags(flags *pflag.FlagSet) {
 	viper.BindPFlags(flags)
 }
 
-func newDBCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use: "db",
-	}
-	cmd.AddCommand(newDBDumpCommand())
-	return cmd
-}
-
-func newDBDumpCommand() *cobra.Command {
-	cmd := &cobra.Command{
+func (cmd *dbCommand) dbDumpCommand() *cobra.Command {
+	cc := &cobra.Command{
 		Use: "dump",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts := globalDBOptions
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts := cmd.opts
 			return dbDump(&opts)
 		},
 	}
-	dbSetupFlags(cmd.Flags(), &globalDBOptions)
-	return cmd
+	cmd.ParseFlags(cc.Flags())
+	return cc
 }
 
 func dbDump(opts *dbOptions) error {

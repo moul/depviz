@@ -28,29 +28,38 @@ type webOptions struct {
 	ShowRoutes bool
 }
 
-var globalWebOptions webOptions
-
 func (opts webOptions) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
 }
 
-func webSetupFlags(flags *pflag.FlagSet, opts *webOptions) {
-	flags.StringVarP(&opts.Bind, "bind", "b", ":2020", "web server bind address")
-	flags.BoolVarP(&opts.ShowRoutes, "show-routes", "", false, "display available routes and quit")
+type webCommand struct {
+	opts webOptions
+}
+
+func (cmd *webCommand) LoadDefaultOptions() error {
+	if err := viper.Unmarshal(&cmd.opts); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cmd *webCommand) ParseFlags(flags *pflag.FlagSet) {
+	flags.StringVarP(&cmd.opts.Bind, "bind", "b", ":2020", "web server bind address")
+	flags.BoolVarP(&cmd.opts.ShowRoutes, "show-routes", "", false, "display available routes and quit")
 	viper.BindPFlags(flags)
 }
 
-func newWebCommand() *cobra.Command {
-	cmd := &cobra.Command{
+func (cmd *webCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
+	cc := &cobra.Command{
 		Use: "web",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts := globalWebOptions
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts := cmd.opts
 			return web(&opts)
 		},
 	}
-	webSetupFlags(cmd.Flags(), &globalWebOptions)
-	return cmd
+	cmd.ParseFlags(cc.Flags())
+	return cc
 }
 
 func webListIssues(w http.ResponseWriter, r *http.Request) {

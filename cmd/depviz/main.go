@@ -11,6 +11,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -34,16 +35,32 @@ var (
 	db      *gorm.DB
 )
 
+type DepvizCommand interface {
+	NewCobraCommand(map[string]DepvizCommand) *cobra.Command
+	LoadDefaultOptions() error
+	ParseFlags(*pflag.FlagSet)
+}
+
 func newRootCommand() *cobra.Command {
-	cmd := &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use: "depviz",
 	}
-	cmd.PersistentFlags().BoolP("help", "h", false, "print usage")
-	cmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose mode")
-	cmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./.depviz.yml)")
-	cmd.PersistentFlags().StringVarP(&dbPath, "db-path", "", "$HOME/.depviz.db", "database path")
+	rootCmd.PersistentFlags().BoolP("help", "h", false, "print usage")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose mode")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./.depviz.yml)")
+	rootCmd.PersistentFlags().StringVarP(&dbPath, "db-path", "", "$HOME/.depviz.db", "database path")
 
-	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+	// Add commands here.
+	cmds := map[string]DepvizCommand {
+		"pull": &pullCommand{},
+		"db": &dbCommand{},
+		"airtable": &airtableCommand{},
+		"graph": &graphCommand{},
+		"run": &runCommand{},
+		"web": &webCommand{},
+	}
+
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// configure zap
 		config := zap.NewDevelopmentConfig()
 		if verbose {
@@ -72,24 +89,10 @@ func newRootCommand() *cobra.Command {
 			}
 		}
 
-		// fill global options
-		if err := viper.Unmarshal(&globalGraphOptions); err != nil {
-			return err
-		}
-		if err := viper.Unmarshal(&globalRunOptions); err != nil {
-			return err
-		}
-		if err := viper.Unmarshal(&globalPullOptions); err != nil {
-			return err
-		}
-		if err := viper.Unmarshal(&globalWebOptions); err != nil {
-			return err
-		}
-		if err := viper.Unmarshal(&globalAirtableOptions); err != nil {
-			return err
-		}
-		if err := viper.Unmarshal(&globalDBOptions); err != nil {
-			return err
+		for _, cmd := range cmds {
+			if err := cmd.LoadDefaultOptions(); err != nil {
+				return err
+			}
 		}
 
 		// configure sql
@@ -121,15 +124,10 @@ func newRootCommand() *cobra.Command {
 
 		return nil
 	}
-	cmd.AddCommand(
-		newPullCommand(),
-		newDBCommand(),
-		newAirtableCommand(),
-		newGraphCommand(),
-		newRunCommand(),
-		newWebCommand(),
-	)
+	for _, cmd := range cmds {
+		rootCmd.AddCommand(cmd.NewCobraCommand(cmds))
+	}
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-	return cmd
+	return rootCmd
 }

@@ -28,39 +28,48 @@ type airtableOptions struct {
 	Targets []repo.Target `mapstructure:"targets"`
 }
 
-var globalAirtableOptions airtableOptions
-
 func (opts airtableOptions) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
 }
 
-func airtableSetupFlags(flags *pflag.FlagSet, opts *airtableOptions) {
-	flags.StringVarP(&opts.IssuesTableName, "airtable-issues-table-name", "", "Issues and PRs", "Airtable issues table name")
-	flags.StringVarP(&opts.RepositoriesTableName, "airtable-repositories-table-name", "", "Repositories", "Airtable repositories table name")
-	flags.StringVarP(&opts.AccountsTableName, "airtable-accounts-table-name", "", "Accounts", "Airtable accounts table name")
-	flags.StringVarP(&opts.LabelsTableName, "airtable-labels-table-name", "", "Labels", "Airtable labels table name")
-	flags.StringVarP(&opts.MilestonesTableName, "airtable-milestones-table-name", "", "Milestones", "Airtable milestones table nfame")
-	flags.StringVarP(&opts.ProvidersTableName, "airtable-providers-table-name", "", "Providers", "Airtable providers table name")
-	flags.StringVarP(&opts.BaseID, "airtable-base-id", "", "", "Airtable base ID")
-	flags.StringVarP(&opts.Token, "airtable-token", "", "", "Airtable token")
-	flags.BoolVarP(&opts.DestroyInvalidRecords, "airtable-destroy-invalid-records", "", false, "Destroy invalid records")
+type airtableCommand struct {
+	opts airtableOptions
+}
+
+func (cmd *airtableCommand) LoadDefaultOptions() error {
+	if err := viper.Unmarshal(&cmd.opts); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cmd *airtableCommand) ParseFlags(flags *pflag.FlagSet) {
+	flags.StringVarP(&cmd.opts.IssuesTableName, "airtable-issues-table-name", "", "Issues and PRs", "Airtable issues table name")
+	flags.StringVarP(&cmd.opts.RepositoriesTableName, "airtable-repositories-table-name", "", "Repositories", "Airtable repositories table name")
+	flags.StringVarP(&cmd.opts.AccountsTableName, "airtable-accounts-table-name", "", "Accounts", "Airtable accounts table name")
+	flags.StringVarP(&cmd.opts.LabelsTableName, "airtable-labels-table-name", "", "Labels", "Airtable labels table name")
+	flags.StringVarP(&cmd.opts.MilestonesTableName, "airtable-milestones-table-name", "", "Milestones", "Airtable milestones table nfame")
+	flags.StringVarP(&cmd.opts.ProvidersTableName, "airtable-providers-table-name", "", "Providers", "Airtable providers table name")
+	flags.StringVarP(&cmd.opts.BaseID, "airtable-base-id", "", "", "Airtable base ID")
+	flags.StringVarP(&cmd.opts.Token, "airtable-token", "", "", "Airtable token")
+	flags.BoolVarP(&cmd.opts.DestroyInvalidRecords, "airtable-destroy-invalid-records", "", false, "Destroy invalid records")
 	viper.BindPFlags(flags)
 }
 
-func newAirtableCommand() *cobra.Command {
-	cmd := &cobra.Command{
+func (cmd *airtableCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
+	cc := &cobra.Command{
 		Use: "airtable",
 	}
-	cmd.AddCommand(newAirtableSyncCommand())
-	return cmd
+	cc.AddCommand(cmd.airtableSyncCommand())
+	return cc
 }
 
-func newAirtableSyncCommand() *cobra.Command {
-	cmd := &cobra.Command{
+func (cmd *airtableCommand) airtableSyncCommand() *cobra.Command {
+	cc := &cobra.Command{
 		Use: "sync",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts := globalAirtableOptions
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts := cmd.opts
 			var err error
 			if opts.Targets, err = repo.ParseTargets(args); err != nil {
 				return errors.Wrap(err, "invalid targets")
@@ -68,8 +77,8 @@ func newAirtableSyncCommand() *cobra.Command {
 			return airtableSync(&opts)
 		},
 	}
-	airtableSetupFlags(cmd.Flags(), &globalAirtableOptions)
-	return cmd
+	cmd.ParseFlags(cc.Flags())
+	return cc
 }
 
 // TODO: Make this function a lot shorter by pulling out some of the boilerplate?

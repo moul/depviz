@@ -34,31 +34,40 @@ type graphOptions struct {
 	// NoExternal
 }
 
-var globalGraphOptions graphOptions
-
 func (opts graphOptions) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
 }
 
-func graphSetupFlags(flags *pflag.FlagSet, opts *graphOptions) {
-	flags.BoolVarP(&opts.ShowClosed, "show-closed", "", false, "show closed issues")
-	flags.BoolVarP(&opts.DebugGraph, "debug-graph", "", false, "debug graph")
-	flags.BoolVarP(&opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
-	flags.BoolVarP(&opts.NoCompress, "no-compress", "", false, "do not compress graph (no overlap)")
-	flags.BoolVarP(&opts.DarkTheme, "dark-theme", "", false, "dark theme")
-	flags.BoolVarP(&opts.ShowPRs, "show-prs", "", false, "show PRs")
-	flags.StringVarP(&opts.Output, "output", "o", "-", "output file ('-' for stdout, dot)")
-	flags.StringVarP(&opts.Format, "format", "f", "", "output file format (if empty, will determine thanks to output extension)")
+type graphCommand struct {
+	opts graphOptions
+}
+
+func (cmd *graphCommand) LoadDefaultOptions() error {
+	if err := viper.Unmarshal(&cmd.opts); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cmd *graphCommand) ParseFlags(flags *pflag.FlagSet) {
+	flags.BoolVarP(&cmd.opts.ShowClosed, "show-closed", "", false, "show closed issues")
+	flags.BoolVarP(&cmd.opts.DebugGraph, "debug-graph", "", false, "debug graph")
+	flags.BoolVarP(&cmd.opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
+	flags.BoolVarP(&cmd.opts.NoCompress, "no-compress", "", false, "do not compress graph (no overlap)")
+	flags.BoolVarP(&cmd.opts.DarkTheme, "dark-theme", "", false, "dark theme")
+	flags.BoolVarP(&cmd.opts.ShowPRs, "show-prs", "", false, "show PRs")
+	flags.StringVarP(&cmd.opts.Output, "output", "o", "-", "output file ('-' for stdout, dot)")
+	flags.StringVarP(&cmd.opts.Format, "format", "f", "", "output file format (if empty, will determine thanks to output extension)")
 	//flags.BoolVarP(&opts.Preview, "preview", "p", false, "preview result")
 	viper.BindPFlags(flags)
 }
 
-func newGraphCommand() *cobra.Command {
-	cmd := &cobra.Command{
+func (cmd *graphCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
+	cc := &cobra.Command{
 		Use: "graph",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts := globalGraphOptions
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts := cmd.opts
 			var err error
 			if opts.Targets, err = repo.ParseTargets(args); err != nil {
 				return errors.Wrap(err, "invalid targets")
@@ -66,8 +75,8 @@ func newGraphCommand() *cobra.Command {
 			return graph(&opts)
 		},
 	}
-	graphSetupFlags(cmd.Flags(), &globalGraphOptions)
-	return cmd
+	cmd.ParseFlags(cc.Flags())
+	return cc
 }
 
 func graph(opts *graphOptions) error {

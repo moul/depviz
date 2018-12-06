@@ -22,24 +22,33 @@ type pullOptions struct {
 	Targets repo.Targets `mapstructure:"targets"`
 }
 
-var globalPullOptions pullOptions
-
 func (opts pullOptions) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
 }
 
-func pullSetupFlags(flags *pflag.FlagSet, opts *pullOptions) {
-	flags.StringVarP(&opts.GithubToken, "github-token", "", "", "GitHub Token with 'issues' access")
-	flags.StringVarP(&opts.GitlabToken, "gitlab-token", "", "", "GitLab Token with 'issues' access")
+type pullCommand struct {
+	opts pullOptions
+}
+
+func (cmd *pullCommand) LoadDefaultOptions() error {
+	if err := viper.Unmarshal(&cmd.opts); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cmd *pullCommand) ParseFlags(flags *pflag.FlagSet) {
+	flags.StringVarP(&cmd.opts.GithubToken, "github-token", "", "", "GitHub Token with 'issues' access")
+	flags.StringVarP(&cmd.opts.GitlabToken, "gitlab-token", "", "", "GitLab Token with 'issues' access")
 	viper.BindPFlags(flags)
 }
 
-func newPullCommand() *cobra.Command {
-	cmd := &cobra.Command{
+func (cmd *pullCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
+	cc := &cobra.Command{
 		Use: "pull",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts := globalPullOptions
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts := cmd.opts
 			var err error
 			if opts.Targets, err = repo.ParseTargets(args); err != nil {
 				return errors.Wrap(err, "invalid targets")
@@ -47,8 +56,8 @@ func newPullCommand() *cobra.Command {
 			return pullAndCompute(&opts)
 		},
 	}
-	pullSetupFlags(cmd.Flags(), &globalPullOptions)
-	return cmd
+	cmd.ParseFlags(cc.Flags())
+	return cc
 }
 
 func pullAndCompute(opts *pullOptions) error {
