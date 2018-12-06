@@ -32,7 +32,7 @@ require (
 	golang.org/x/crypto v0.0.0-20181126163421-e657309f52e7 // indirect
 	golang.org/x/net v0.0.0-20181114220301-adae6a3d119a // indirect
 	golang.org/x/oauth2 v0.0.0-20181120190819-8f65e3013eba
-	golang.org/x/sys v0.0.0-20181122145206-62eef0e2fa9b // indirect
+	golang.org/x/sys v0.0.0-20181206082908-70b957f3b65e // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	moul.io/zapgorm v0.0.0-20181003053625-c808c1c4adc6
 )
