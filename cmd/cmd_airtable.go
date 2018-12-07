@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"moul.io/depviz/pkg/airtableDB"
+	"moul.io/depviz/pkg/airtabledb"
 	"moul.io/depviz/pkg/repo"
 )
 
@@ -151,7 +151,7 @@ func airtableSync(opts *airtableOptions) error {
 	}
 
 	// fetch remote data
-	cache := airtableDB.DB{}
+	cache := airtabledb.DB{}
 	table := at.Table(opts.ProvidersTableName)
 	if err := table.List(&cache.Providers, &airtable.Options{}); err != nil {
 		return err
@@ -177,13 +177,13 @@ func airtableSync(opts *airtableOptions) error {
 		return err
 	}
 
-	unmatched := airtableDB.DB{
-		Providers:    airtableDB.ProviderRecords{},
-		Labels:       airtableDB.LabelRecords{},
-		Accounts:     airtableDB.AccountRecords{},
-		Repositories: airtableDB.RepositoryRecords{},
-		Milestones:   airtableDB.MilestoneRecords{},
-		Issues:       airtableDB.IssueRecords{},
+	unmatched := airtabledb.DB{
+		Providers:    airtabledb.ProviderRecords{},
+		Labels:       airtabledb.LabelRecords{},
+		Accounts:     airtabledb.AccountRecords{},
+		Repositories: airtabledb.RepositoryRecords{},
+		Milestones:   airtabledb.MilestoneRecords{},
+		Issues:       airtabledb.IssueRecords{},
 	}
 
 	//
@@ -197,10 +197,10 @@ func airtableSync(opts *airtableOptions) error {
 		for idx, atEntry := range cache.Providers {
 			if atEntry.Fields.ID == dbEntry.ID {
 				if atEntry.Equals(dbRecord) {
-					cache.Providers[idx].State = airtableDB.StateUnchanged
+					cache.Providers[idx].State = airtabledb.StateUnchanged
 				} else {
 					cache.Providers[idx].Fields = dbRecord.Fields
-					cache.Providers[idx].State = airtableDB.StateChanged
+					cache.Providers[idx].State = airtabledb.StateChanged
 				}
 				matched = true
 				break
@@ -218,10 +218,10 @@ func airtableSync(opts *airtableOptions) error {
 		for idx, atEntry := range cache.Labels {
 			if atEntry.Fields.ID == dbEntry.ID {
 				if atEntry.Equals(dbRecord) {
-					cache.Labels[idx].State = airtableDB.StateUnchanged
+					cache.Labels[idx].State = airtabledb.StateUnchanged
 				} else {
 					cache.Labels[idx].Fields = dbRecord.Fields
-					cache.Labels[idx].State = airtableDB.StateChanged
+					cache.Labels[idx].State = airtabledb.StateChanged
 				}
 				matched = true
 				break
@@ -239,10 +239,10 @@ func airtableSync(opts *airtableOptions) error {
 		for idx, atEntry := range cache.Accounts {
 			if atEntry.Fields.ID == dbEntry.ID {
 				if atEntry.Equals(dbRecord) {
-					cache.Accounts[idx].State = airtableDB.StateUnchanged
+					cache.Accounts[idx].State = airtabledb.StateUnchanged
 				} else {
 					cache.Accounts[idx].Fields = dbRecord.Fields
-					cache.Accounts[idx].State = airtableDB.StateChanged
+					cache.Accounts[idx].State = airtabledb.StateChanged
 				}
 				matched = true
 				break
@@ -260,10 +260,10 @@ func airtableSync(opts *airtableOptions) error {
 		for idx, atEntry := range cache.Repositories {
 			if atEntry.Fields.ID == dbEntry.ID {
 				if atEntry.Equals(dbRecord) {
-					cache.Repositories[idx].State = airtableDB.StateUnchanged
+					cache.Repositories[idx].State = airtabledb.StateUnchanged
 				} else {
 					cache.Repositories[idx].Fields = dbRecord.Fields
-					cache.Repositories[idx].State = airtableDB.StateChanged
+					cache.Repositories[idx].State = airtabledb.StateChanged
 				}
 				matched = true
 				break
@@ -281,10 +281,10 @@ func airtableSync(opts *airtableOptions) error {
 		for idx, atEntry := range cache.Milestones {
 			if atEntry.Fields.ID == dbEntry.ID {
 				if atEntry.Equals(dbRecord) {
-					cache.Milestones[idx].State = airtableDB.StateUnchanged
+					cache.Milestones[idx].State = airtabledb.StateUnchanged
 				} else {
 					cache.Milestones[idx].Fields = dbRecord.Fields
-					cache.Milestones[idx].State = airtableDB.StateChanged
+					cache.Milestones[idx].State = airtabledb.StateChanged
 				}
 				matched = true
 				break
@@ -302,10 +302,10 @@ func airtableSync(opts *airtableOptions) error {
 		for idx, atEntry := range cache.Issues {
 			if atEntry.Fields.ID == dbEntry.ID {
 				if atEntry.Equals(dbRecord) {
-					cache.Issues[idx].State = airtableDB.StateUnchanged
+					cache.Issues[idx].State = airtabledb.StateUnchanged
 				} else {
 					cache.Issues[idx].Fields = dbRecord.Fields
-					cache.Issues[idx].State = airtableDB.StateChanged
+					cache.Issues[idx].State = airtabledb.StateChanged
 				}
 				matched = true
 				break
@@ -327,22 +327,22 @@ func airtableSync(opts *airtableOptions) error {
 		if err := table.Create(&entry); err != nil {
 			return err
 		}
-		entry.State = airtableDB.StateNew
+		entry.State = airtabledb.StateNew
 		cache.Providers = append(cache.Providers, entry)
 	}
 	for _, entry := range cache.Providers {
 		var err error
 		switch entry.State {
-		case airtableDB.StateUnknown:
+		case airtabledb.StateUnknown:
 			err = table.Delete(&entry)
 			zap.L().Debug("delete airtable entry", zap.String("type", "provider"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateChanged:
+		case airtabledb.StateChanged:
 			err = table.Update(&entry)
 			zap.L().Debug("update airtable entry", zap.String("type", "provider"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateUnchanged:
+		case airtabledb.StateUnchanged:
 			zap.L().Debug("unchanged airtable entry", zap.String("type", "provider"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
-		case airtableDB.StateNew:
+		case airtabledb.StateNew:
 			zap.L().Debug("new airtable entry", zap.String("type", "provider"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
 		}
@@ -355,22 +355,22 @@ func airtableSync(opts *airtableOptions) error {
 		if err := table.Create(&entry); err != nil {
 			return err
 		}
-		entry.State = airtableDB.StateNew
+		entry.State = airtabledb.StateNew
 		cache.Labels = append(cache.Labels, entry)
 	}
 	for _, entry := range cache.Labels {
 		var err error
 		switch entry.State {
-		case airtableDB.StateUnknown:
+		case airtabledb.StateUnknown:
 			err = table.Delete(&entry)
 			zap.L().Debug("delete airtable entry", zap.String("type", "label"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateChanged:
+		case airtabledb.StateChanged:
 			err = table.Update(&entry)
 			zap.L().Debug("update airtable entry", zap.String("type", "label"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateUnchanged:
+		case airtabledb.StateUnchanged:
 			zap.L().Debug("unchanged airtable entry", zap.String("type", "label"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
-		case airtableDB.StateNew:
+		case airtabledb.StateNew:
 			zap.L().Debug("new airtable entry", zap.String("type", "label"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
 		}
@@ -383,22 +383,22 @@ func airtableSync(opts *airtableOptions) error {
 		if err := table.Create(&entry); err != nil {
 			return err
 		}
-		entry.State = airtableDB.StateNew
+		entry.State = airtabledb.StateNew
 		cache.Accounts = append(cache.Accounts, entry)
 	}
 	for _, entry := range cache.Accounts {
 		var err error
 		switch entry.State {
-		case airtableDB.StateUnknown:
+		case airtabledb.StateUnknown:
 			err = table.Delete(&entry)
 			zap.L().Debug("delete airtable entry", zap.String("type", "account"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateChanged:
+		case airtabledb.StateChanged:
 			err = table.Update(&entry)
 			zap.L().Debug("update airtable entry", zap.String("type", "account"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateUnchanged:
+		case airtabledb.StateUnchanged:
 			zap.L().Debug("unchanged airtable entry", zap.String("type", "account"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
-		case airtableDB.StateNew:
+		case airtabledb.StateNew:
 			zap.L().Debug("new airtable entry", zap.String("type", "account"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
 		}
@@ -411,22 +411,22 @@ func airtableSync(opts *airtableOptions) error {
 		if err := table.Create(&entry); err != nil {
 			return err
 		}
-		entry.State = airtableDB.StateNew
+		entry.State = airtabledb.StateNew
 		cache.Repositories = append(cache.Repositories, entry)
 	}
 	for _, entry := range cache.Repositories {
 		var err error
 		switch entry.State {
-		case airtableDB.StateUnknown:
+		case airtabledb.StateUnknown:
 			err = table.Delete(&entry)
 			zap.L().Debug("delete airtable entry", zap.String("type", "repository"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateChanged:
+		case airtabledb.StateChanged:
 			err = table.Update(&entry)
 			zap.L().Debug("update airtable entry", zap.String("type", "repository"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateUnchanged:
+		case airtabledb.StateUnchanged:
 			zap.L().Debug("unchanged airtable entry", zap.String("type", "repository"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
-		case airtableDB.StateNew:
+		case airtabledb.StateNew:
 			zap.L().Debug("new airtable entry", zap.String("type", "repository"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
 		}
@@ -439,22 +439,22 @@ func airtableSync(opts *airtableOptions) error {
 		if err := table.Create(&entry); err != nil {
 			return err
 		}
-		entry.State = airtableDB.StateNew
+		entry.State = airtabledb.StateNew
 		cache.Milestones = append(cache.Milestones, entry)
 	}
 	for _, entry := range cache.Milestones {
 		var err error
 		switch entry.State {
-		case airtableDB.StateUnknown:
+		case airtabledb.StateUnknown:
 			err = table.Delete(&entry)
 			zap.L().Debug("delete airtable entry", zap.String("type", "milestone"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateChanged:
+		case airtabledb.StateChanged:
 			err = table.Update(&entry)
 			zap.L().Debug("update airtable entry", zap.String("type", "milestone"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateUnchanged:
+		case airtabledb.StateUnchanged:
 			zap.L().Debug("unchanged airtable entry", zap.String("type", "milestone"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
-		case airtableDB.StateNew:
+		case airtabledb.StateNew:
 			zap.L().Debug("new airtable entry", zap.String("type", "milestone"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
 		}
@@ -467,22 +467,22 @@ func airtableSync(opts *airtableOptions) error {
 		if err := table.Create(&entry); err != nil {
 			return err
 		}
-		entry.State = airtableDB.StateNew
+		entry.State = airtabledb.StateNew
 		cache.Issues = append(cache.Issues, entry)
 	}
 	for _, entry := range cache.Issues {
 		var err error
 		switch entry.State {
-		case airtableDB.StateUnknown:
+		case airtabledb.StateUnknown:
 			err = table.Delete(&entry)
 			zap.L().Debug("delete airtable entry", zap.String("type", "issue"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateChanged:
+		case airtabledb.StateChanged:
 			err = table.Update(&entry)
 			zap.L().Debug("update airtable entry", zap.String("type", "issue"), zap.Stringer("entry", entry), zap.Error(err))
-		case airtableDB.StateUnchanged:
+		case airtabledb.StateUnchanged:
 			zap.L().Debug("unchanged airtable entry", zap.String("type", "issue"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
-		case airtableDB.StateNew:
+		case airtabledb.StateNew:
 			zap.L().Debug("new airtable entry", zap.String("type", "issue"), zap.Stringer("entry", entry), zap.Error(err))
 			// do nothing
 		}
@@ -493,27 +493,27 @@ func airtableSync(opts *airtableOptions) error {
 	//
 	fmt.Println("------- providers")
 	for _, entry := range cache.Providers {
-		fmt.Println(entry.ID, airtableDB.StateString[entry.State], entry.Fields.ID)
+		fmt.Println(entry.ID, airtabledb.StateString[entry.State], entry.Fields.ID)
 	}
 	fmt.Println("------- labels")
 	for _, entry := range cache.Labels {
-		fmt.Println(entry.ID, airtableDB.StateString[entry.State], entry.Fields.ID)
+		fmt.Println(entry.ID, airtabledb.StateString[entry.State], entry.Fields.ID)
 	}
 	fmt.Println("------- accounts")
 	for _, entry := range cache.Accounts {
-		fmt.Println(entry.ID, airtableDB.StateString[entry.State], entry.Fields.ID)
+		fmt.Println(entry.ID, airtabledb.StateString[entry.State], entry.Fields.ID)
 	}
 	fmt.Println("------- repositories")
 	for _, entry := range cache.Repositories {
-		fmt.Println(entry.ID, airtableDB.StateString[entry.State], entry.Fields.ID)
+		fmt.Println(entry.ID, airtabledb.StateString[entry.State], entry.Fields.ID)
 	}
 	fmt.Println("------- milestones")
 	for _, entry := range cache.Milestones {
-		fmt.Println(entry.ID, airtableDB.StateString[entry.State], entry.Fields.ID)
+		fmt.Println(entry.ID, airtabledb.StateString[entry.State], entry.Fields.ID)
 	}
 	fmt.Println("------- issues")
 	for _, entry := range cache.Issues {
-		fmt.Println(entry.ID, airtableDB.StateString[entry.State], entry.Fields.ID)
+		fmt.Println(entry.ID, airtabledb.StateString[entry.State], entry.Fields.ID)
 	}
 	fmt.Println("-------")
 

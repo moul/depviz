@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	"moul.io/depviz/pkg/airtableDB"
+	"moul.io/depviz/pkg/airtabledb"
 )
 
 //
@@ -42,8 +42,8 @@ type Repository struct {
 	OwnerID    string    `json:"owner-id"`
 }
 
-func (p Repository) ToRecord(cache airtableDB.DB) *airtableDB.RepositoryRecord {
-	record := airtableDB.RepositoryRecord{}
+func (p Repository) ToRecord(cache airtabledb.DB) *airtabledb.RepositoryRecord {
+	record := airtabledb.RepositoryRecord{}
 
 	// base
 	record.Fields.ID = p.ID
@@ -88,8 +88,8 @@ type Provider struct {
 	Driver string `json:"driver"` // github, gitlab, unknown
 }
 
-func (p Provider) ToRecord(cache airtableDB.DB) *airtableDB.ProviderRecord {
-	record := airtableDB.ProviderRecord{}
+func (p Provider) ToRecord(cache airtabledb.DB) *airtabledb.ProviderRecord {
+	record := airtabledb.ProviderRecord{}
 
 	// base
 	record.Fields.ID = p.ID
@@ -130,8 +130,8 @@ type Milestone struct {
 	RepositoryID string      `json:"repository-id"`
 }
 
-func (p Milestone) ToRecord(cache airtableDB.DB) *airtableDB.MilestoneRecord {
-	record := airtableDB.MilestoneRecord{}
+func (p Milestone) ToRecord(cache airtabledb.DB) *airtabledb.MilestoneRecord {
+	record := airtabledb.MilestoneRecord{}
 	// base
 	record.Fields.ID = p.ID
 	record.Fields.CreatedAt = p.CreatedAt
@@ -204,8 +204,8 @@ func (i Issue) String() string {
 	return string(out)
 }
 
-func (p Issue) ToRecord(cache airtableDB.DB) *airtableDB.IssueRecord {
-	record := airtableDB.IssueRecord{}
+func (p Issue) ToRecord(cache airtabledb.DB) *airtabledb.IssueRecord {
+	record := airtabledb.IssueRecord{}
 	// base
 	record.Fields.ID = p.ID
 	record.Fields.CreatedAt = p.CreatedAt
@@ -261,8 +261,8 @@ type Label struct {
 	Description string `json:"description"`
 }
 
-func (p Label) ToRecord(cache airtableDB.DB) *airtableDB.LabelRecord {
-	record := airtableDB.LabelRecord{}
+func (p Label) ToRecord(cache airtabledb.DB) *airtabledb.LabelRecord {
+	record := airtabledb.LabelRecord{}
 
 	// base
 	record.Fields.ID = p.ID
@@ -306,8 +306,8 @@ type Account struct {
 	ProviderID string    `json:"provider-id"`
 }
 
-func (p Account) ToRecord(cache airtableDB.DB) *airtableDB.AccountRecord {
-	record := airtableDB.AccountRecord{}
+func (p Account) ToRecord(cache airtabledb.DB) *airtabledb.AccountRecord {
+	record := airtabledb.AccountRecord{}
 	// base
 	record.Fields.ID = p.ID
 	record.Fields.CreatedAt = p.CreatedAt

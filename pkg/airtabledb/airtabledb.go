@@ -1,4 +1,4 @@
-package airtableDB
+package airtabledb
 
 import (
 	"encoding/json"
