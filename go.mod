@@ -24,7 +24,7 @@ require (
 	github.com/spf13/cast v1.3.0 // indirect
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3
-	github.com/spf13/viper v1.2.1
+	github.com/spf13/viper v1.3.1
 	github.com/uber-go/atomic v1.3.2 // indirect
 	github.com/xanzy/go-gitlab v0.11.7
 	go.uber.org/ratelimit v0.0.0-20180316092928-c15da0234277 // indirect
