@@ -9,95 +9,142 @@ import (
 	"github.com/brianloveswords/airtable"
 )
 
-type FeatureFields interface {
+type Record interface {
 	String() string
 }
 
-type Record struct {
-	State State `json:"-"` // internal
+func (t Table) RecordsEqual(idx int, b Record) bool {
+	sf, ok := reflect.TypeOf(t.Get(idx)).FieldByName("Fields")
+	if !ok {
+		panic("No struct field Fields in Record")
+	}
+	aTF := sf.Type
+	aVF := reflect.ValueOf(t.Get(idx)).FieldByName("Fields")
+	bVF := reflect.ValueOf(b).FieldByName("Fields")
 
-	airtable.Record // provides ID, CreatedTime
-
-	Fields struct {
-		ID        string    `json:"id"`
-		CreatedAt time.Time `json:"created-at"`
-		UpdatedAt time.Time `json:"updated-at"`
-		Errors    string    `json:"errors"`
-
-		Feature FeatureFields
-	} `json:"fields,omitempty"`
-}
-
-func (r Record) Equals(other Record) bool {
-	if r.Fields.ID != other.Fields.ID {
+	if aVF.NumField() != bVF.NumField() {
 		return false
 	}
-	if !isSameAirtableDate(r.Fields.CreatedAt, other.Fields.CreatedAt) {
-		return false
-	}
-	if !isSameAirtableDate(r.Fields.UpdatedAt, other.Fields.UpdatedAt) {
-		return false
-	}
-	if r.Fields.Errors != other.Fields.Errors {
-		return false
-	}
-	rV := reflect.ValueOf(r.Fields.Feature)
-	oV := reflect.ValueOf(other.Fields.Feature)
-	if rV.Type() != oV.Type() {
-		return false
-	}
-	if rV.NumField() != oV.NumField() {
-		return false
-	}
-	for i := 0; i < rV.NumField(); i++ {
-		rF := rV.Field(i)
-		oF := oV.Field(i)
-		if rF.Type() != oF.Type() {
+	for i := 0; i < aVF.NumField(); i++ {
+		aiSF := aTF.Field(i)
+		aiF := aVF.Field(i)
+		biF := bVF.FieldByName(aiSF.Name)
+		if aiF.Type() != biF.Type() {
 			return false
 		}
-		if rF.Type().String() == "time.Time" {
-			if !isSameAirtableDate(rF.Interface().(time.Time), oF.Interface().(time.Time)) {
+		if aiF.Type().String() == "time.Time" {
+			if !isSameAirtableDate(aiF.Interface().(time.Time), biF.Interface().(time.Time)) {
 				return false
 			}
-		}
-		if rF.Type().String() == "[]string" {
-			a, b := rF.Interface().([]string), oF.Interface().([]string)
-			if a == nil {
-				a = []string{}
+		} else if aiF.Type().String() == "[]string" {
+			aS, bS := aiF.Interface().([]string), biF.Interface().([]string)
+			if aS == nil {
+				aS = []string{}
 			}
-			if b == nil {
-				b = []string{}
+			if bS == nil {
+				bS = []string{}
 			}
-			sort.Strings(a)
-			sort.Strings(b)
-			if !reflect.DeepEqual(a, b) {
+			sort.Strings(aS)
+			sort.Strings(bS)
+			if !reflect.DeepEqual(aS, bS) {
 				return false
 			}
-		}
-		if !reflect.DeepEqual(rF.Interface(), oF.Interface()) {
-			return false
+			continue
+		} else {
+			if !reflect.DeepEqual(aiF.Interface(), biF.Interface()) {
+				return false
+			}
 		}
 	}
 	return true
 }
 
-func (r Record) String() string {
-	out, _ := json.Marshal(r)
-	return string(out)
+type Table struct {
+	elems interface{}
 }
 
-type Records []Record
+func (t Table) SetState(idx int, state State) {
+	s := reflect.ValueOf(t.elems).Elem().Index(idx).FieldByName("State")
+	s.SetInt(int64(state))
+}
 
-func (r Records) FindByID(id string) string {
-	for _, record := range r {
-		if record.Fields.ID == id {
-			return record.ID
+func (t Table) GetState(idx int) State {
+	return State(reflect.ValueOf(t.elems).Elem().Index(idx).FieldByName("State").Int())
+}
+
+func (t Table) CopyFields(idx int, src interface{}) {
+	dstF := reflect.ValueOf(t.elems).Elem().Index(idx).FieldByName("Fields")
+	srcF := reflect.ValueOf(src).FieldByName("Fields")
+	dstF.Set(srcF)
+}
+
+func (t Table) GetFieldID(idx int) string {
+	return reflect.ValueOf(t.elems).Elem().Index(idx).FieldByName("Fields").FieldByName("ID").String()
+}
+
+func (t Table) GetID(idx int) string {
+	return reflect.ValueOf(t.elems).Elem().Index(idx).FieldByName("ID").String()
+}
+
+func (t Table) Len() int {
+	return reflect.ValueOf(t.elems).Elem().Len()
+}
+
+func (t Table) Append(r interface{}) {
+	a := reflect.Append(reflect.ValueOf(t.elems).Elem(), reflect.ValueOf(r))
+	reflect.ValueOf(t.elems).Elem().Set(a)
+}
+
+func (t Table) Fetch(at airtable.Table) error {
+	return at.List(t.elems, &airtable.Options{})
+}
+
+func (t Table) FindByID(id string) string {
+	slice := reflect.ValueOf(t.elems).Elem()
+	for i := 0; i < slice.Len(); i++ {
+		record := slice.Index(i)
+		fieldID := record.FieldByName("Fields").FieldByName("ID").String()
+		if fieldID == id {
+			return record.FieldByName("ID").String()
 		}
 	}
 	return ""
 }
 
-type base struct {
+func (t Table) GetPtr(idx int) interface{} {
+	return reflect.ValueOf(t.elems).Elem().Index(idx).Addr().Interface()
+}
+
+func (t Table) Get(idx int) interface{} {
+	return reflect.ValueOf(t.elems).Elem().Index(idx).Interface()
+}
+
+func (t Table) StringAt(idx int) string {
+	out := reflect.ValueOf(t.elems).Elem().Index(idx).MethodByName("String").Call(nil)
+	return out[0].String()
+}
+
+type DB struct {
+	Tables []Table
+}
+
+func NewDB() DB {
+	db := DB{
+		Tables: make([]Table, NumTables),
+	}
+	db.Tables[IssueIndex].elems = &[]IssueRecord{}
+	db.Tables[RepositoryIndex].elems = &[]RepositoryRecord{}
+	db.Tables[AccountIndex].elems = &[]AccountRecord{}
+	db.Tables[LabelIndex].elems = &[]LabelRecord{}
+	db.Tables[MilestoneIndex].elems = &[]MilestoneRecord{}
+	db.Tables[ProviderIndex].elems = &[]ProviderRecord{}
+	if len(db.Tables) != NumTables {
+		panic("missing an airtabledb Table")
+	}
+	return db
+}
+
+type Base struct {
 	ID        string    `json:"id"`
 	CreatedAt time.Time `json:"created-at"`
 	UpdatedAt time.Time `json:"updated-at"`
@@ -106,23 +153,15 @@ type base struct {
 
 type State int
 
-type DB struct {
-	Tables []Records
-}
-
-func NewDB() DB {
-	return DB{
-		Tables: make([]Records, NumTables),
-	}
-}
-
+// Unfortunately, the order matters here.
+// We must first compute Records which are referenced by other Records...
 const (
-	IssueIndex = iota
-	RepositoryIndex
-	AccountIndex
+	ProviderIndex = iota
 	LabelIndex
+	AccountIndex
+	RepositoryIndex
 	MilestoneIndex
-	ProviderIndex
+	IssueIndex
 	NumTables
 )
 
@@ -147,9 +186,20 @@ var (
 //
 
 type ProviderRecord struct {
-	// specific
-	URL    string `json:"url"`
-	Driver string `json:"driver"`
+	State State `json:"-"` // internal
+
+	airtable.Record // provides ID, CreatedTime
+	Fields          struct {
+		// base
+		Base
+
+		// specific
+		URL    string `json:"url"`
+		Driver string `json:"driver"`
+
+		// relationship
+		// n/a
+	} `json:"fields,omitempty"`
 }
 
 func (r ProviderRecord) String() string {
@@ -160,15 +210,24 @@ func (r ProviderRecord) String() string {
 //
 // label
 //
-type LabelRecord struct {
-	// specific
-	URL         string `json:"url"`
-	Name        string `json:"name"`
-	Color       string `json:"color"`
-	Description string `json:"description"`
 
-	// relationship
-	// n/a
+type LabelRecord struct {
+	State State `json:"-"` // internal
+
+	airtable.Record // provides ID, CreatedTime
+	Fields          struct {
+		// base
+		Base
+
+		// specific
+		URL         string `json:"url"`
+		Name        string `json:"name"`
+		Color       string `json:"color"`
+		Description string `json:"description"`
+
+		// relationship
+		// n/a
+	} `json:"fields,omitempty"`
 }
 
 func (r LabelRecord) String() string {
@@ -181,20 +240,28 @@ func (r LabelRecord) String() string {
 //
 
 type AccountRecord struct {
-	// specific
-	URL       string `json:"url"`
-	Login     string `json:"login"`
-	FullName  string `json:"fullname"`
-	Type      string `json:"type"`
-	Bio       string `json:"bio"`
-	Location  string `json:"location"`
-	Company   string `json:"company"`
-	Blog      string `json:"blog"`
-	Email     string `json:"email"`
-	AvatarURL string `json:"avatar-url"`
+	State State `json:"-"` // internal
 
-	// relationships
-	Provider []string `json:"provider"`
+	airtable.Record // provides ID, CreatedTime
+	Fields          struct {
+		// base
+		Base
+
+		// specific
+		URL       string `json:"url"`
+		Login     string `json:"login"`
+		FullName  string `json:"fullname"`
+		Type      string `json:"type"`
+		Bio       string `json:"bio"`
+		Location  string `json:"location"`
+		Company   string `json:"company"`
+		Blog      string `json:"blog"`
+		Email     string `json:"email"`
+		AvatarURL string `json:"avatar-url"`
+
+		// relationships
+		Provider []string `json:"provider"`
+	} `json:"fields,omitempty"`
 }
 
 func (r AccountRecord) String() string {
@@ -207,17 +274,25 @@ func (r AccountRecord) String() string {
 //
 
 type RepositoryRecord struct {
-	// specific
-	URL         string    `json:"url"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Homepage    string    `json:"homepage"`
-	PushedAt    time.Time `json:"pushed-at"`
-	IsFork      bool      `json:"is-fork"`
+	State State `json:"-"` // internal
 
-	// relationships
-	Provider []string `json:"provider"`
-	Owner    []string `json:"owner"`
+	airtable.Record // provides ID, CreatedTime
+	Fields          struct {
+		// base
+		Base
+
+		// specific
+		URL         string    `json:"url"`
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		Homepage    string    `json:"homepage"`
+		PushedAt    time.Time `json:"pushed-at"`
+		IsFork      bool      `json:"is-fork"`
+
+		// relationships
+		Provider []string `json:"provider"`
+		Owner    []string `json:"owner"`
+	} `json:"fields,omitempty"`
 }
 
 func (r RepositoryRecord) String() string {
@@ -230,15 +305,24 @@ func (r RepositoryRecord) String() string {
 //
 
 type MilestoneRecord struct {
-	URL         string    `json:"url"`
-	Title       string    `json:"title"`	
-	Description string    `json:"description"`
-	ClosedAt    time.Time `json:"closed-at"`
-	DueOn       time.Time `json:"due-on"`
+	State State `json:"-"` // internal
 
-	// relationships
-	Creator    []string `json:"creator"`
-	Repository []string `json:"repository"`
+	airtable.Record // provides ID, CreatedTime
+	Fields          struct {
+		// base
+		Base
+
+		// specific
+		URL         string    `json:"url"`
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		ClosedAt    time.Time `json:"closed-at"`
+		DueOn       time.Time `json:"due-on"`
+
+		// relationships
+		Creator    []string `json:"creator"`
+		Repository []string `json:"repository"`
+	} `json:"fields,omitempty"`
 }
 
 func (r MilestoneRecord) String() string {
@@ -251,33 +335,41 @@ func (r MilestoneRecord) String() string {
 //
 
 type IssueRecord struct {
-	URL         string    `json:"url"`
-	CompletedAt time.Time `json:"completed-at"`
-	Title       string    `json:"title"`
-	State       string    `json:"state"`
-	Body        string    `json:"body"`
-	IsPR        bool      `json:"is-pr"`
-	IsLocked    bool      `json:"is-locked"`
-	Comments    int       `json:"comments"`
-	Upvotes     int       `json:"upvotes"`
-	Downvotes   int       `json:"downvotes"`
-	IsOrphan    bool      `json:"is-orphan"`
-	IsHidden    bool      `json:"is-hidden"`
-	Weight      int       `json:"weight"`
-	IsEpic      bool      `json:"is-epic"`
-	HasEpic     bool      `json:"has-epic"`
+	State State `json:"-"` // internal
 
-	// relationships
-	Repository []string `json:"repository"`
-	Milestone  []string `json:"milestone"`
-	Author     []string `json:"author"`
-	Labels     []string `json:"labels"`
-	Assignees  []string `json:"assignees"`
-	//Parents      []string    `json:"-"`
-	//Children     []string    `json:"-"`
-	//Duplicates   []string    `json:"-"`
+	airtable.Record // provides ID, CreatedTime
+	Fields          struct {
+		// base
+		Base
+
+		// specific
+		URL         string    `json:"url"`
+		CompletedAt time.Time `json:"completed-at"`
+		Title       string    `json:"title"`
+		State       string    `json:"state"`
+		Body        string    `json:"body"`
+		IsPR        bool      `json:"is-pr"`
+		IsLocked    bool      `json:"is-locked"`
+		Comments    int       `json:"comments"`
+		Upvotes     int       `json:"upvotes"`
+		Downvotes   int       `json:"downvotes"`
+		IsOrphan    bool      `json:"is-orphan"`
+		IsHidden    bool      `json:"is-hidden"`
+		Weight      int       `json:"weight"`
+		IsEpic      bool      `json:"is-epic"`
+		HasEpic     bool      `json:"has-epic"`
+
+		// relationships
+		Repository []string `json:"repository"`
+		Milestone  []string `json:"milestone"`
+		Author     []string `json:"author"`
+		Labels     []string `json:"labels"`
+		Assignees  []string `json:"assignees"`
+		//Parents      []string    `json:"-"`
+		//Children     []string    `json:"-"`
+		//Duplicates   []string    `json:"-"`
+	} `json:"fields,omitempty"`
 }
-
 func (r IssueRecord) String() string {
 	out, _ := json.Marshal(r)
 	return string(out)

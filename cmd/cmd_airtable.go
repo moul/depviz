@@ -109,47 +109,42 @@ func airtableSync(opts *airtableOptions) error {
 
 	// unique entries
 	features := make([]map[string]repo.Feature, airtabledb.NumTables)
+	for i, _ := range features {
+		features[i] = make(map[string]repo.Feature)
+	}
 
 	for _, issue := range filtered {
 		// providers
-		//providerMap[issue.Repository.Provider.ID] = issue.Repository.Provider
 		features[airtabledb.ProviderIndex][issue.Repository.Provider.ID] = issue.Repository.Provider
 
 		// labels
 		for _, label := range issue.Labels {
-			//labelMap[label.ID] = label
 			features[airtabledb.LabelIndex][label.ID] = label
 		}
 
 		// accounts
 		if issue.Repository.Owner != nil {
-			//accountMap[issue.Repository.Owner.ID] = issue.Repository.Owner
 			features[airtabledb.AccountIndex][issue.Repository.Owner.ID] = issue.Repository.Owner
 		}
-		//accountMap[issue.Author.ID] = issue.Author
+
 		features[airtabledb.AccountIndex][issue.Author.ID] = issue.Author
 		for _, assignee := range issue.Assignees {
-			//accountMap[assignee.ID] = assignee
 			features[airtabledb.AccountIndex][assignee.ID] = assignee
 		}
 		if issue.Milestone != nil && issue.Milestone.Creator != nil {
-			//accountMap[issue.Milestone.Creator.ID] = issue.Milestone.Creator
 			features[airtabledb.AccountIndex][issue.Milestone.Creator.ID] = issue.Milestone.Creator
 		}
 
 		// repositories
-		//repositoryMap[issue.Repository.ID] = issue.Repository
 		features[airtabledb.RepositoryIndex][issue.Repository.ID] = issue.Repository
 		// FIXME: find external repositories based on depends-on links
 
 		// milestones
 		if issue.Milestone != nil {
-			//milestoneMap[issue.Milestone.ID] = issue.Milestone
 			features[airtabledb.MilestoneIndex][issue.Milestone.ID] = issue.Milestone
 		}
 
 		// issue
-		//issueMap[issue.ID] = issue
 		features[airtabledb.IssueIndex][issue.ID] = issue
 		// FIXME: find external issues based on depends-on links
 	}
@@ -165,8 +160,7 @@ func airtableSync(opts *airtableOptions) error {
 	cache := airtabledb.NewDB()
 	for tableKind, tableName := range opts.TableNames {
 		table := at.Table(tableName)
-		records := cache.Tables[tableKind]
-		if err := table.List(&records, &airtable.Options{}); err != nil {
+		if err := cache.Tables[tableKind].Fetch(table); err != nil {
 			return err
 		}
 	}
@@ -181,20 +175,21 @@ func airtableSync(opts *airtableOptions) error {
 		for _, dbEntry := range featureMap {
 			matched := false
 			dbRecord := dbEntry.ToRecord(cache)
-			for idx, atEntry := range cache.Tables[tableKind] {
-				if atEntry.Fields.ID == dbEntry.GetID() {
-					if atEntry.Equals(dbRecord) {
-						cache.Tables[tableKind][idx].State = airtabledb.StateUnchanged
+			for idx := 0; idx < cache.Tables[tableKind].Len(); idx ++ {
+				t := cache.Tables[tableKind]
+				if t.GetFieldID(idx) == dbEntry.GetID() {
+					if t.RecordsEqual(idx, dbRecord) {
+						t.SetState(idx, airtabledb.StateUnchanged)
 					} else {
-						cache.Tables[tableKind][idx].Fields = dbRecord.Fields
-						cache.Tables[tableKind][idx].State = airtabledb.StateChanged
+						t.CopyFields(idx, dbRecord)
+						t.SetState(idx, airtabledb.StateChanged)
 					}
 					matched = true
 					break
 				}
 			}
 			if !matched {
-				unmatched.Tables[tableKind] = append(unmatched.Tables[tableKind], dbRecord)
+				unmatched.Tables[tableKind].Append(dbRecord)
 			}
 		}
 	}
@@ -204,28 +199,30 @@ func airtableSync(opts *airtableOptions) error {
 	//
 	for tableKind, tableName := range opts.TableNames {
 		table := at.Table(tableName)
-		for _, entry := range unmatched.Tables[tableKind] {
-			zap.L().Debug("create airtable entry", zap.String("type", tableName), zap.Stringer("entry", entry))
-			if err := table.Create(&entry); err != nil {
+		ut := unmatched.Tables[tableKind]
+		ct := cache.Tables[tableKind]
+		for i := 0; i < ut.Len(); i++ {
+			zap.L().Debug("create airtable entry", zap.String("type", tableName), zap.String("entry", ut.StringAt(i)))
+			if err := table.Create(ut.GetPtr(i)); err != nil {
 				return err
 			}
-			entry.State = airtabledb.StateNew
-			cache.Tables[tableKind] = append(cache.Tables[tableKind], entry)
+			ut.SetState(i, airtabledb.StateNew)
+			ct.Append(ut.Get(i))
 		}
-		for _, entry := range cache.Tables[tableKind] {
+		for i := 0; i < ct.Len(); i++ {
 			var err error
-			switch entry.State {
+			switch ct.GetState(i) {
 			case airtabledb.StateUnknown:
-				err = table.Delete(&entry)
-				zap.L().Debug("delete airtable entry", zap.String("type", tableName), zap.Stringer("entry", entry), zap.Error(err))
+				err = table.Delete(ct.GetPtr(i))
+				zap.L().Debug("delete airtable entry", zap.String("type", tableName), zap.String("entry", ct.StringAt(i)), zap.Error(err))
 			case airtabledb.StateChanged:
-				err = table.Update(&entry)
-				zap.L().Debug("update airtable entry", zap.String("type", tableName), zap.Stringer("entry", entry), zap.Error(err))
+				err = table.Update(ct.GetPtr(i))
+				zap.L().Debug("update airtable entry", zap.String("type", tableName), zap.String("entry", ct.StringAt(i)), zap.Error(err))
 			case airtabledb.StateUnchanged:
-				zap.L().Debug("unchanged airtable entry", zap.String("type", tableName), zap.Stringer("entry", entry), zap.Error(err))
+				zap.L().Debug("unchanged airtable entry", zap.String("type", tableName), zap.String("entry", ct.StringAt(i)), zap.Error(err))
 				// do nothing
 			case airtabledb.StateNew:
-				zap.L().Debug("new airtable entry", zap.String("type", tableName), zap.Stringer("entry", entry), zap.Error(err))
+				zap.L().Debug("new airtable entry", zap.String("type", tableName), zap.String("entry", ct.StringAt(i)), zap.Error(err))
 				// do nothing
 			}
 		}
@@ -236,8 +233,9 @@ func airtableSync(opts *airtableOptions) error {
 	//
 	for tableKind, tableName := range opts.TableNames {
 		fmt.Println("-------", tableName)
-		for _, entry := range cache.Tables[tableKind] {
-			fmt.Println(entry.ID, airtabledb.StateString[entry.State], entry.Fields.ID)
+		ct := cache.Tables[tableKind]
+		for i := 0; i < ct.Len(); i++ {
+			fmt.Println(ct.GetID(i), airtabledb.StateString[ct.GetState(i)], ct.GetFieldID(i))
 		}
 	}
 	fmt.Println("-------")

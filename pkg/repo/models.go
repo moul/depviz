@@ -53,8 +53,7 @@ type Repository struct {
 }
 
 func (p Repository) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.Record{}
-	features := airtabledb.RepositoryRecord{}
+	record := airtabledb.RepositoryRecord{}
 
 	// base
 	record.Fields.ID = p.ID
@@ -63,20 +62,19 @@ func (p Repository) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record.Fields.Errors = strings.Join(p.Errors, ", ")
 
 	// specific
-	features.URL = p.URL
-	features.Title = p.Title
-	features.Description = p.Description
-	features.Homepage = p.Homepage
-	features.PushedAt = p.PushedAt
-	features.IsFork = p.IsFork
+	record.Fields.URL = p.URL
+	record.Fields.Title = p.Title
+	record.Fields.Description = p.Description
+	record.Fields.Homepage = p.Homepage
+	record.Fields.PushedAt = p.PushedAt
+	record.Fields.IsFork = p.IsFork
 
 	// relationships
-	features.Provider = []string{cache.Tables[airtabledb.ProviderIndex].FindByID(p.Provider.ID)}
+	record.Fields.Provider = []string{cache.Tables[airtabledb.ProviderIndex].FindByID(p.Provider.ID)}
 	if p.Owner != nil {
-		features.Owner = []string{cache.Tables[airtabledb.AccountIndex].FindByID(p.Owner.ID)}
+		record.Fields.Owner = []string{cache.Tables[airtabledb.AccountIndex].FindByID(p.Owner.ID)}
 	}
 
-	record.Fields.Feature = features
 	return record
 }
 
@@ -106,8 +104,7 @@ type Provider struct {
 }
 
 func (p Provider) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.Record{}
-	features := airtabledb.ProviderRecord{}
+	record := airtabledb.ProviderRecord{}
 
 	// base
 	record.Fields.ID = p.ID
@@ -116,13 +113,12 @@ func (p Provider) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record.Fields.Errors = strings.Join(p.Errors, ", ")
 
 	// specific
-	features.URL = p.URL
-	features.Driver = p.Driver
+	record.Fields.URL = p.URL
+	record.Fields.Driver = p.Driver
 
 	// relationships
 	// n/a
 
-	record.Fields.Feature = features
 	return record
 }
 
@@ -155,9 +151,7 @@ type Milestone struct {
 }
 
 func (p Milestone) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.Record{}
-	features := airtabledb.MilestoneRecord{}
-
+	record := airtabledb.MilestoneRecord{}
 	// base
 	record.Fields.ID = p.ID
 	record.Fields.CreatedAt = p.CreatedAt
@@ -165,21 +159,19 @@ func (p Milestone) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record.Fields.Errors = strings.Join(p.Errors, ", ")
 
 	// specific
-	features.URL = p.URL
-	features.Title = p.Title
-	features.Description = p.Description
-	features.ClosedAt = p.ClosedAt
-	features.DueOn = p.DueOn
+	record.Fields.URL = p.URL
+	record.Fields.Title = p.Title
+	record.Fields.Description = p.Description
+	record.Fields.ClosedAt = p.ClosedAt
+	record.Fields.DueOn = p.DueOn
 
 	// relationships
 	if p.Creator != nil {
-		features.Creator = []string{cache.Tables[airtabledb.AccountIndex].FindByID(p.Creator.ID)}
+		record.Fields.Creator = []string{cache.Tables[airtabledb.AccountIndex].FindByID(p.Creator.ID)}
 	}
 	if p.Repository != nil {
-		features.Repository = []string{cache.Tables[airtabledb.RepositoryIndex].FindByID(p.Repository.ID)}
+		record.Fields.Repository = []string{cache.Tables[airtabledb.RepositoryIndex].FindByID(p.Repository.ID)}
 	}
-
-	record.Fields.Feature = features
 
 	return record
 }
@@ -238,9 +230,7 @@ func (i Issue) String() string {
 }
 
 func (p Issue) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.Record{}
-	features := airtabledb.IssueRecord{}
-
+	record := airtabledb.IssueRecord{}
 	// base
 	record.Fields.ID = p.ID
 	record.Fields.CreatedAt = p.CreatedAt
@@ -248,38 +238,37 @@ func (p Issue) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record.Fields.Errors = strings.Join(p.Errors, ", ")
 
 	// specific
-	features.URL = p.URL
-	features.CompletedAt = p.CompletedAt
-	features.Title = p.Title
-	features.State = p.State
-	features.Body = p.Body
-	features.IsPR = p.IsPR
-	features.IsLocked = p.IsLocked
-	features.Comments = p.Comments
-	features.Upvotes = p.Upvotes
-	features.Downvotes = p.Downvotes
-	features.IsOrphan = p.IsOrphan
-	features.IsHidden = p.IsHidden
-	features.Weight = p.Weight
-	features.IsEpic = p.IsEpic
-	features.HasEpic = p.HasEpic
+	record.Fields.URL = p.URL
+	record.Fields.CompletedAt = p.CompletedAt
+	record.Fields.Title = p.Title
+	record.Fields.State = p.State
+	record.Fields.Body = p.Body
+	record.Fields.IsPR = p.IsPR
+	record.Fields.IsLocked = p.IsLocked
+	record.Fields.Comments = p.Comments
+	record.Fields.Upvotes = p.Upvotes
+	record.Fields.Downvotes = p.Downvotes
+	record.Fields.IsOrphan = p.IsOrphan
+	record.Fields.IsHidden = p.IsHidden
+	record.Fields.Weight = p.Weight
+	record.Fields.IsEpic = p.IsEpic
+	record.Fields.HasEpic = p.HasEpic
 
 	// relationships
-	features.Repository = []string{cache.Tables[airtabledb.RepositoryIndex].FindByID(p.Repository.ID)}
+	record.Fields.Repository = []string{cache.Tables[airtabledb.RepositoryIndex].FindByID(p.Repository.ID)}
 	if p.Milestone != nil {
-		features.Milestone = []string{cache.Tables[airtabledb.MilestoneIndex].FindByID(p.Milestone.ID)}
+		record.Fields.Milestone = []string{cache.Tables[airtabledb.MilestoneIndex].FindByID(p.Milestone.ID)}
 	}
-	features.Author = []string{cache.Tables[airtabledb.AccountIndex].FindByID(p.Author.ID)}
-	features.Labels = []string{}
+	record.Fields.Author = []string{cache.Tables[airtabledb.AccountIndex].FindByID(p.Author.ID)}
+	record.Fields.Labels = []string{}
 	for _, label := range p.Labels {
-		features.Labels = append(features.Labels, cache.Tables[airtabledb.LabelIndex].FindByID(label.ID))
+		record.Fields.Labels = append(record.Fields.Labels, cache.Tables[airtabledb.LabelIndex].FindByID(label.ID))
 	}
-	features.Assignees = []string{}
+	record.Fields.Assignees = []string{}
 	for _, assignee := range p.Assignees {
-		features.Assignees = append(features.Assignees, cache.Tables[airtabledb.AccountIndex].FindByID(assignee.ID))
+		record.Fields.Assignees = append(record.Fields.Assignees, cache.Tables[airtabledb.AccountIndex].FindByID(assignee.ID))
 	}
 
-	record.Fields.Feature = features
 	return record
 }
 
@@ -298,8 +287,7 @@ type Label struct {
 }
 
 func (p Label) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.Record{}
-	features := airtabledb.LabelRecord{}
+	record := airtabledb.LabelRecord{}
 
 	// base
 	record.Fields.ID = p.ID
@@ -308,15 +296,13 @@ func (p Label) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record.Fields.Errors = strings.Join(p.Errors, ", ")
 
 	// specific
-	features.URL = p.URL
-	features.Name = p.Name
-	features.Color = p.Color
-	features.Description = p.Description
+	record.Fields.URL = p.URL
+	record.Fields.Name = p.Name
+	record.Fields.Color = p.Color
+	record.Fields.Description = p.Description
 
 	// relationships
 	// n/a
-
-	record.Fields.Feature = features
 
 	return record
 }
@@ -351,9 +337,7 @@ type Account struct {
 }
 
 func (p Account) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.Record{}
-	features := airtabledb.AccountRecord{}
-
+	record := airtabledb.AccountRecord{}
 	// base
 	record.Fields.ID = p.ID
 	record.Fields.CreatedAt = p.CreatedAt
@@ -361,21 +345,19 @@ func (p Account) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record.Fields.Errors = strings.Join(p.Errors, ", ")
 
 	// specific
-	features.URL = p.URL
-	features.Login = p.Login
-	features.FullName = p.FullName
-	features.Type = p.Type
-	features.Bio = p.Bio
-	features.Location = p.Location
-	features.Company = p.Company
-	features.Blog = p.Blog
-	features.Email = p.Email
-	features.AvatarURL = p.AvatarURL
+	record.Fields.URL = p.URL
+	record.Fields.Login = p.Login
+	record.Fields.FullName = p.FullName
+	record.Fields.Type = p.Type
+	record.Fields.Bio = p.Bio
+	record.Fields.Location = p.Location
+	record.Fields.Company = p.Company
+	record.Fields.Blog = p.Blog
+	record.Fields.Email = p.Email
+	record.Fields.AvatarURL = p.AvatarURL
 
 	// relationships
-	features.Provider = []string{cache.Tables[airtabledb.ProviderIndex].FindByID(p.Provider.ID)}
-
-	record.Fields.Feature = features
+	record.Fields.Provider = []string{cache.Tables[airtabledb.ProviderIndex].FindByID(p.Provider.ID)}
 
 	return record
 }
