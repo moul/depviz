@@ -63,7 +63,7 @@ func (cmd *webCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comma
 }
 
 func webListIssues(w http.ResponseWriter, r *http.Request) {
-	issues, err := loadIssues(nil)
+	issues, err := repo.LoadIssues(db, nil)
 	if err != nil {
 		render.Render(w, r, ErrRender(err))
 		return
@@ -92,7 +92,7 @@ func webGraphviz(r *http.Request) (string, error) {
 		Targets:    targets,
 		ShowClosed: r.URL.Query().Get("show-closed") == "1",
 	}
-	issues, err := loadIssues(nil)
+	issues, err := repo.LoadIssues(db, nil)
 	if err != nil {
 		return "", err
 	}

@@ -9,7 +9,7 @@ import (
 	"moul.io/depviz/pkg/airtabledb"
 )
 
-type Feature interface {
+type IssueFeature interface {
 	String() string
 	GetID() string
 	ToRecord(airtabledb.DB) airtabledb.Record

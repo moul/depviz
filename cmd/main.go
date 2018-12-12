@@ -35,9 +35,15 @@ var (
 	db      *gorm.DB
 )
 
+// DepvizCommand represents a subcommand which can be selected when running depviz.
 type DepvizCommand interface {
+	// NewCobraCommand translates the DepvizCommand to a *cobra.Command.
 	NewCobraCommand(map[string]DepvizCommand) *cobra.Command
+
+	// Load default run options from config file.
 	LoadDefaultOptions() error
+
+	// Parse the flags given on the command line, overwriting any default options.
 	ParseFlags(*pflag.FlagSet)
 }
 

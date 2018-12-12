@@ -12,7 +12,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func GithubPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, out chan<- []*Issue) {
+func githubPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, out chan<- []*Issue) {
 	defer wg.Done()
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})

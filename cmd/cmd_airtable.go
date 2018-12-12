@@ -50,19 +50,26 @@ func (cmd *airtableCommand) ParseFlags(flags *pflag.FlagSet) {
 
 	flags.StringVarP(&cmd.opts.IssuesTableName, "airtable-issues-table-name", "", "Issues and PRs", "Airtable issues table name")
 	cmd.opts.TableNames[airtabledb.IssueIndex] = cmd.opts.IssuesTableName
+
 	flags.StringVarP(&cmd.opts.RepositoriesTableName, "airtable-repositories-table-name", "", "Repositories", "Airtable repositories table name")
 	cmd.opts.TableNames[airtabledb.RepositoryIndex] = cmd.opts.RepositoriesTableName
+
 	flags.StringVarP(&cmd.opts.AccountsTableName, "airtable-accounts-table-name", "", "Accounts", "Airtable accounts table name")
 	cmd.opts.TableNames[airtabledb.AccountIndex] = cmd.opts.AccountsTableName
+
 	flags.StringVarP(&cmd.opts.LabelsTableName, "airtable-labels-table-name", "", "Labels", "Airtable labels table name")
 	cmd.opts.TableNames[airtabledb.LabelIndex] = cmd.opts.LabelsTableName
+
 	flags.StringVarP(&cmd.opts.MilestonesTableName, "airtable-milestones-table-name", "", "Milestones", "Airtable milestones table nfame")
 	cmd.opts.TableNames[airtabledb.MilestoneIndex] = cmd.opts.MilestonesTableName
+
 	flags.StringVarP(&cmd.opts.ProvidersTableName, "airtable-providers-table-name", "", "Providers", "Airtable providers table name")
 	cmd.opts.TableNames[airtabledb.ProviderIndex] = cmd.opts.ProvidersTableName
+
 	flags.StringVarP(&cmd.opts.BaseID, "airtable-base-id", "", "", "Airtable base ID")
 	flags.StringVarP(&cmd.opts.Token, "airtable-token", "", "", "Airtable token")
 	flags.BoolVarP(&cmd.opts.DestroyInvalidRecords, "airtable-destroy-invalid-records", "", false, "Destroy invalid records")
+
 	viper.BindPFlags(flags)
 }
 
@@ -90,6 +97,8 @@ func (cmd *airtableCommand) airtableSyncCommand() *cobra.Command {
 	return cc
 }
 
+// airtableSync pushes issue info to the airtable base specified in opts.
+// Repository info is loaded from the targets specified in opts.
 func airtableSync(opts *airtableOptions) error {
 	if opts.BaseID == "" || opts.Token == "" {
 		return fmt.Errorf("missing token or baseid, check '-h'")
@@ -99,79 +108,77 @@ func airtableSync(opts *airtableOptions) error {
 	// prepare
 	//
 
-	// load issues
-	issues, err := loadIssues(nil)
+	issues, err := repo.LoadIssues(db, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
-	filtered := issues.FilterByTargets(opts.Targets)
-	zap.L().Debug("fetch db entries", zap.Int("count", len(filtered)))
+	issues = issues.FilterByTargets(opts.Targets)
+	zap.L().Debug("fetch db entries", zap.Int("count", len(issues)))
 
-	// unique entries
-	features := make([]map[string]repo.Feature, airtabledb.NumTables)
-	for i, _ := range features {
-		features[i] = make(map[string]repo.Feature)
+	issueFeatures := make([]map[string]repo.IssueFeature, airtabledb.NumTables)
+	for i, _ := range issueFeatures {
+		issueFeatures[i] = make(map[string]repo.IssueFeature)
 	}
 
-	for _, issue := range filtered {
+	// Parse the loaded issues into the issueFeature map.
+	for _, issue := range issues {
 		// providers
-		features[airtabledb.ProviderIndex][issue.Repository.Provider.ID] = issue.Repository.Provider
+		issueFeatures[airtabledb.ProviderIndex][issue.Repository.Provider.ID] = issue.Repository.Provider
 
 		// labels
 		for _, label := range issue.Labels {
-			features[airtabledb.LabelIndex][label.ID] = label
+			issueFeatures[airtabledb.LabelIndex][label.ID] = label
 		}
 
 		// accounts
 		if issue.Repository.Owner != nil {
-			features[airtabledb.AccountIndex][issue.Repository.Owner.ID] = issue.Repository.Owner
+			issueFeatures[airtabledb.AccountIndex][issue.Repository.Owner.ID] = issue.Repository.Owner
 		}
 
-		features[airtabledb.AccountIndex][issue.Author.ID] = issue.Author
+		issueFeatures[airtabledb.AccountIndex][issue.Author.ID] = issue.Author
 		for _, assignee := range issue.Assignees {
-			features[airtabledb.AccountIndex][assignee.ID] = assignee
+			issueFeatures[airtabledb.AccountIndex][assignee.ID] = assignee
 		}
 		if issue.Milestone != nil && issue.Milestone.Creator != nil {
-			features[airtabledb.AccountIndex][issue.Milestone.Creator.ID] = issue.Milestone.Creator
+			issueFeatures[airtabledb.AccountIndex][issue.Milestone.Creator.ID] = issue.Milestone.Creator
 		}
 
 		// repositories
-		features[airtabledb.RepositoryIndex][issue.Repository.ID] = issue.Repository
+		issueFeatures[airtabledb.RepositoryIndex][issue.Repository.ID] = issue.Repository
 		// FIXME: find external repositories based on depends-on links
 
 		// milestones
 		if issue.Milestone != nil {
-			features[airtabledb.MilestoneIndex][issue.Milestone.ID] = issue.Milestone
+			issueFeatures[airtabledb.MilestoneIndex][issue.Milestone.ID] = issue.Milestone
 		}
 
 		// issue
-		features[airtabledb.IssueIndex][issue.ID] = issue
+		issueFeatures[airtabledb.IssueIndex][issue.ID] = issue
 		// FIXME: find external issues based on depends-on links
 	}
 
-	// init client
-	at := airtable.Client{
+	client := airtable.Client{
 		APIKey:  opts.Token,
 		BaseID:  opts.BaseID,
 		Limiter: airtable.RateLimiter(5),
 	}
 
-	// fetch remote data
+	// cache stores issueFeatures inserted into the airtable base.
 	cache := airtabledb.NewDB()
+
+	// Store already existing issueFeatures into the cache.
 	for tableKind, tableName := range opts.TableNames {
-		table := at.Table(tableName)
+		table := client.Table(tableName)
 		if err := cache.Tables[tableKind].Fetch(table); err != nil {
 			return err
 		}
 	}
 
+	// unmatched stores new issueFeatures (exist in the loaded issues but not the airtable base).
 	unmatched := airtabledb.NewDB()
 
-	//
-	// compute fields
-	//
-
-	for tableKind, featureMap := range features {
+	// Insert new issueFeatures into unmatched and mark altered cache issueFeatures with airtabledb.StateChanged.
+	for tableKind, featureMap := range issueFeatures {
 		for _, dbEntry := range featureMap {
 			matched := false
 			dbRecord := dbEntry.ToRecord(cache)
@@ -194,11 +201,10 @@ func airtableSync(opts *airtableOptions) error {
 		}
 	}
 
-	//
-	// update airtable
-	//
+	// Add new issueFeatures from unmatched to cache.
+	// Then, push new and altered issueFeatures from cache to airtable base.
 	for tableKind, tableName := range opts.TableNames {
-		table := at.Table(tableName)
+		table := client.Table(tableName)
 		ut := unmatched.Tables[tableKind]
 		ct := cache.Tables[tableKind]
 		for i := 0; i < ut.Len(); i++ {
@@ -228,9 +234,6 @@ func airtableSync(opts *airtableOptions) error {
 		}
 	}
 
-	//
-	// debug
-	//
 	for tableKind, tableName := range opts.TableNames {
 		fmt.Println("-------", tableName)
 		ct := cache.Tables[tableKind]

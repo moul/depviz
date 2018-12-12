@@ -81,7 +81,7 @@ func (cmd *graphCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Com
 
 func graph(opts *graphOptions) error {
 	zap.L().Debug("graph", zap.Stringer("opts", *opts))
-	issues, err := loadIssues(nil)
+	issues, err := repo.LoadIssues(db, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}

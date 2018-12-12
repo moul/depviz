@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func GitlabPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, out chan []*Issue) {
+func gitlabPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, out chan []*Issue) {
 	defer wg.Done()
 	client := gitlab.NewClient(nil, token)
 	client.SetBaseURL(fmt.Sprintf("%s/api/v4", target.ProviderURL()))
