@@ -2,6 +2,7 @@ package issues
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"time"
 
@@ -9,10 +10,60 @@ import (
 	"moul.io/depviz/pkg/airtabledb"
 )
 
-type IssueFeature interface {
+type Feature interface {
 	String() string
 	GetID() string
 	ToRecord(airtabledb.DB) airtabledb.Record
+}
+
+// toRecord attempts to automatically convert between an issues.Feature and an airtable Record.
+// It's not particularly robust, but it works for structs following the format of Features and Records.
+func toRecord(cache airtabledb.DB, src Feature, dst interface{}) {
+	dV := reflect.ValueOf(dst).Elem().FieldByName("Fields")
+	sV := reflect.ValueOf(src)
+	copyFields(cache, sV, dV)
+}
+
+func copyFields(cache airtabledb.DB, src reflect.Value, dst reflect.Value) {
+	dT := dst.Type()
+	for i := 0; i < dst.NumField(); i++ {
+		dFV := dst.Field(i)
+		dSF := dT.Field(i)
+		fieldName := dSF.Name
+		// Recursively copy the embeded struct Base.
+		if fieldName == "Base" {
+			copyFields(cache, src, dFV)
+			continue
+		}
+		sFV := src.FieldByName(fieldName)
+		if fieldName == "Errors" {
+			dFV.Set(reflect.ValueOf(strings.Join(sFV.Interface().(pq.StringArray), ", ")))
+			continue
+		}
+		if dFV.Type().String() == "[]string" {
+			if sFV.Pointer() != 0 {
+				tableIndex := 0
+				srcFieldTypeName := strings.Split(strings.Trim(sFV.Type().String(), "*[]"), ".")[1]
+				tableIndex, ok := airtabledb.TableNameToIndex[strings.ToLower(srcFieldTypeName)]
+				if !ok {
+					panic("toRecord: could not find index for table name " + strings.ToLower(srcFieldTypeName))
+				}
+				if sFV.Kind() == reflect.Slice {
+					for i := 0; i < sFV.Len(); i++ {
+						idV := sFV.Index(i).Elem().FieldByName("ID")
+						id := idV.String()
+						dFV.Set(reflect.Append(dFV, reflect.ValueOf(cache.Tables[tableIndex].FindByID(id))))
+					}
+				} else {
+					idV := sFV.Elem().FieldByName("ID")
+					id := idV.String()
+					dFV.Set(reflect.ValueOf([]string{cache.Tables[tableIndex].FindByID(id)}))
+				}
+			}
+		} else {
+			dFV.Set(sFV)
+		}
+	}
 }
 
 //
@@ -54,27 +105,7 @@ type Repository struct {
 
 func (p Repository) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.RepositoryRecord{}
-
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.Title = p.Title
-	record.Fields.Description = p.Description
-	record.Fields.Homepage = p.Homepage
-	record.Fields.PushedAt = p.PushedAt
-	record.Fields.IsFork = p.IsFork
-
-	// relationships
-	record.Fields.Provider = []string{cache.Tables[airtabledb.ProviderIndex].FindByID(p.Provider.ID)}
-	if p.Owner != nil {
-		record.Fields.Owner = []string{cache.Tables[airtabledb.AccountIndex].FindByID(p.Owner.ID)}
-	}
-
+	toRecord(cache, p, &record)
 	return record
 }
 
@@ -105,20 +136,7 @@ type Provider struct {
 
 func (p Provider) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.ProviderRecord{}
-
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.Driver = p.Driver
-
-	// relationships
-	// n/a
-
+	toRecord(cache, p, &record)
 	return record
 }
 
@@ -152,27 +170,7 @@ type Milestone struct {
 
 func (p Milestone) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.MilestoneRecord{}
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.Title = p.Title
-	record.Fields.Description = p.Description
-	record.Fields.ClosedAt = p.ClosedAt
-	record.Fields.DueOn = p.DueOn
-
-	// relationships
-	if p.Creator != nil {
-		record.Fields.Creator = []string{cache.Tables[airtabledb.AccountIndex].FindByID(p.Creator.ID)}
-	}
-	if p.Repository != nil {
-		record.Fields.Repository = []string{cache.Tables[airtabledb.RepositoryIndex].FindByID(p.Repository.ID)}
-	}
-
+	toRecord(cache, p, &record)
 	return record
 }
 
@@ -231,44 +229,7 @@ func (i Issue) String() string {
 
 func (p Issue) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.IssueRecord{}
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.CompletedAt = p.CompletedAt
-	record.Fields.Title = p.Title
-	record.Fields.State = p.State
-	record.Fields.Body = p.Body
-	record.Fields.IsPR = p.IsPR
-	record.Fields.IsLocked = p.IsLocked
-	record.Fields.Comments = p.Comments
-	record.Fields.Upvotes = p.Upvotes
-	record.Fields.Downvotes = p.Downvotes
-	record.Fields.IsOrphan = p.IsOrphan
-	record.Fields.IsHidden = p.IsHidden
-	record.Fields.Weight = p.Weight
-	record.Fields.IsEpic = p.IsEpic
-	record.Fields.HasEpic = p.HasEpic
-
-	// relationships
-	record.Fields.Repository = []string{cache.Tables[airtabledb.RepositoryIndex].FindByID(p.Repository.ID)}
-	if p.Milestone != nil {
-		record.Fields.Milestone = []string{cache.Tables[airtabledb.MilestoneIndex].FindByID(p.Milestone.ID)}
-	}
-	record.Fields.Author = []string{cache.Tables[airtabledb.AccountIndex].FindByID(p.Author.ID)}
-	record.Fields.Labels = []string{}
-	for _, label := range p.Labels {
-		record.Fields.Labels = append(record.Fields.Labels, cache.Tables[airtabledb.LabelIndex].FindByID(label.ID))
-	}
-	record.Fields.Assignees = []string{}
-	for _, assignee := range p.Assignees {
-		record.Fields.Assignees = append(record.Fields.Assignees, cache.Tables[airtabledb.AccountIndex].FindByID(assignee.ID))
-	}
-
+	toRecord(cache, p, &record)
 	return record
 }
 
@@ -288,22 +249,7 @@ type Label struct {
 
 func (p Label) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.LabelRecord{}
-
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.Name = p.Name
-	record.Fields.Color = p.Color
-	record.Fields.Description = p.Description
-
-	// relationships
-	// n/a
-
+	toRecord(cache, p, &record)
 	return record
 }
 
@@ -338,27 +284,7 @@ type Account struct {
 
 func (p Account) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.AccountRecord{}
-	// base
-	record.Fields.ID = p.ID
-	record.Fields.CreatedAt = p.CreatedAt
-	record.Fields.UpdatedAt = p.UpdatedAt
-	record.Fields.Errors = strings.Join(p.Errors, ", ")
-
-	// specific
-	record.Fields.URL = p.URL
-	record.Fields.Login = p.Login
-	record.Fields.FullName = p.FullName
-	record.Fields.Type = p.Type
-	record.Fields.Bio = p.Bio
-	record.Fields.Location = p.Location
-	record.Fields.Company = p.Company
-	record.Fields.Blog = p.Blog
-	record.Fields.Email = p.Email
-	record.Fields.AvatarURL = p.AvatarURL
-
-	// relationships
-	record.Fields.Provider = []string{cache.Tables[airtabledb.ProviderIndex].FindByID(p.Provider.ID)}
-
+	toRecord(cache, p, &record)
 	return record
 }
 

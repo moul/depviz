@@ -62,6 +62,7 @@ func (cmd *webCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comma
 	return cc
 }
 
+// webListIssues loads the issues stored in the database and writes them to the http response.
 func webListIssues(w http.ResponseWriter, r *http.Request) {
 	issues, err := issues.Load(db, nil)
 	if err != nil {

@@ -115,9 +115,9 @@ func airtableSync(opts *airtableOptions) error {
 	loadedIssues = loadedIssues.FilterByTargets(opts.Targets)
 	zap.L().Debug("fetch db entries", zap.Int("count", len(loadedIssues)))
 
-	issueFeatures := make([]map[string]issues.IssueFeature, airtabledb.NumTables)
+	issueFeatures := make([]map[string]issues.Feature, airtabledb.NumTables)
 	for i, _ := range issueFeatures {
-		issueFeatures[i] = make(map[string]issues.IssueFeature)
+		issueFeatures[i] = make(map[string]issues.Feature)
 	}
 
 	// Parse the loaded issues into the issueFeature map.
@@ -182,7 +182,7 @@ func airtableSync(opts *airtableOptions) error {
 		for _, dbEntry := range featureMap {
 			matched := false
 			dbRecord := dbEntry.ToRecord(cache)
-			for idx := 0; idx < cache.Tables[tableKind].Len(); idx ++ {
+			for idx := 0; idx < cache.Tables[tableKind].Len(); idx++ {
 				t := cache.Tables[tableKind]
 				if t.GetFieldID(idx) == dbEntry.GetID() {
 					if t.RecordsEqual(idx, dbRecord) {
