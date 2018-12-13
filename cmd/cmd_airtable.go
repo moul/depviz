@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"moul.io/depviz/pkg/airtabledb"
-	"moul.io/depviz/pkg/repo"
+	"moul.io/depviz/pkg/issues"
 )
 
 type airtableOptions struct {
@@ -26,7 +26,7 @@ type airtableOptions struct {
 	DestroyInvalidRecords bool   `mapstructure:"airtable-destroy-invalid-records"`
 	TableNames            []string
 
-	Targets []repo.Target `mapstructure:"targets"`
+	Targets []issues.Target `mapstructure:"targets"`
 }
 
 func (opts airtableOptions) String() string {
@@ -87,7 +87,7 @@ func (cmd *airtableCommand) airtableSyncCommand() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			var err error
-			if opts.Targets, err = repo.ParseTargets(args); err != nil {
+			if opts.Targets, err = issues.ParseTargets(args); err != nil {
 				return errors.Wrap(err, "invalid targets")
 			}
 			return airtableSync(&opts)
@@ -108,20 +108,20 @@ func airtableSync(opts *airtableOptions) error {
 	// prepare
 	//
 
-	issues, err := repo.LoadIssues(db, nil)
+	loadedIssues, err := issues.Load(db, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
-	issues = issues.FilterByTargets(opts.Targets)
-	zap.L().Debug("fetch db entries", zap.Int("count", len(issues)))
+	loadedIssues = loadedIssues.FilterByTargets(opts.Targets)
+	zap.L().Debug("fetch db entries", zap.Int("count", len(loadedIssues)))
 
-	issueFeatures := make([]map[string]repo.IssueFeature, airtabledb.NumTables)
+	issueFeatures := make([]map[string]issues.IssueFeature, airtabledb.NumTables)
 	for i, _ := range issueFeatures {
-		issueFeatures[i] = make(map[string]repo.IssueFeature)
+		issueFeatures[i] = make(map[string]issues.IssueFeature)
 	}
 
 	// Parse the loaded issues into the issueFeature map.
-	for _, issue := range issues {
+	for _, issue := range loadedIssues {
 		// providers
 		issueFeatures[airtabledb.ProviderIndex][issue.Repository.Provider.ID] = issue.Repository.Provider
 

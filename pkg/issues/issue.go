@@ -1,4 +1,4 @@
-package repo
+package issues
 
 import (
 	"fmt"
@@ -66,7 +66,7 @@ func PullAndCompute(githubToken, gitlabToken string, db *gorm.DB, t Targets) err
 
 // Compute loads issues from the given database, computes their fields, and stores the issues back into the database.
 func Compute(db *gorm.DB) error {
-	issues, err := LoadIssues(db, nil)
+	issues, err := Load(db, nil)
 	if err != nil {
 		return err
 	}
@@ -183,8 +183,8 @@ func Compute(db *gorm.DB) error {
 	return nil
 }
 
-// LoadIssues returns the issues stored in the database.
-func LoadIssues(db *gorm.DB, targets []Target) (Issues, error) {
+// Load returns the issues stored in the database.
+func Load(db *gorm.DB, targets []Target) (Issues, error) {
 	query := db.Model(Issue{}).Order("created_at")
 	if len(targets) > 0 {
 		return nil, fmt.Errorf("not implemented")

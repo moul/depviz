@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"moul.io/depviz/pkg/repo"
+	"moul.io/depviz/pkg/issues"
 	"moul.io/zapgorm"
 )
 
@@ -57,13 +57,13 @@ func newRootCommand() *cobra.Command {
 	rootCmd.PersistentFlags().StringVarP(&dbPath, "db-path", "", "$HOME/.depviz.db", "database path")
 
 	// Add commands here.
-	cmds := map[string]DepvizCommand {
-		"pull": &pullCommand{},
-		"db": &dbCommand{},
+	cmds := map[string]DepvizCommand{
+		"pull":     &pullCommand{},
+		"db":       &dbCommand{},
 		"airtable": &airtableCommand{},
-		"graph": &graphCommand{},
-		"run": &runCommand{},
-		"web": &webCommand{},
+		"graph":    &graphCommand{},
+		"run":      &runCommand{},
+		"web":      &webCommand{},
 	}
 
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
@@ -118,12 +118,12 @@ func newRootCommand() *cobra.Command {
 		db.SingularTable(true)
 		db.LogMode(verbose)
 		if err := db.AutoMigrate(
-			repo.Issue{},
-			repo.Label{},
-			repo.Account{},
-			repo.Milestone{},
-			repo.Repository{},
-			repo.Provider{},
+			issues.Issue{},
+			issues.Label{},
+			issues.Account{},
+			issues.Milestone{},
+			issues.Repository{},
+			issues.Provider{},
 		).Error; err != nil {
 			return err
 		}

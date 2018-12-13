@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"moul.io/depviz/pkg/repo"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -20,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"moul.io/depviz/pkg/issues"
 )
 
 type webOptions struct {
@@ -63,7 +63,7 @@ func (cmd *webCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comma
 }
 
 func webListIssues(w http.ResponseWriter, r *http.Request) {
-	issues, err := repo.LoadIssues(db, nil)
+	issues, err := issues.Load(db, nil)
 	if err != nil {
 		render.Render(w, r, ErrRender(err))
 		return
@@ -84,7 +84,7 @@ func webListIssues(w http.ResponseWriter, r *http.Request) {
 }
 
 func webGraphviz(r *http.Request) (string, error) {
-	targets, err := repo.ParseTargets(strings.Split(r.URL.Query().Get("targets"), ","))
+	targets, err := issues.ParseTargets(strings.Split(r.URL.Query().Get("targets"), ","))
 	if err != nil {
 		return "", err
 	}
@@ -92,7 +92,7 @@ func webGraphviz(r *http.Request) (string, error) {
 		Targets:    targets,
 		ShowClosed: r.URL.Query().Get("show-closed") == "1",
 	}
-	issues, err := repo.LoadIssues(db, nil)
+	issues, err := issues.Load(db, nil)
 	if err != nil {
 		return "", err
 	}

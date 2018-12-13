@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"moul.io/depviz/pkg/repo"
+	"moul.io/depviz/pkg/issues"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -53,7 +53,7 @@ func (cmd *dbCommand) dbDumpCommand() *cobra.Command {
 }
 
 func dbDump(opts *dbOptions) error {
-	issues := []*repo.Issue{}
+	issues := []*issues.Issue{}
 	if err := db.Find(&issues).Error; err != nil {
 		return err
 	}
