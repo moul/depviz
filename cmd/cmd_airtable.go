@@ -75,7 +75,8 @@ func (cmd *airtableCommand) ParseFlags(flags *pflag.FlagSet) {
 
 func (cmd *airtableCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
 	cc := &cobra.Command{
-		Use: "airtable",
+		Use:   "airtable",
+		Short: "Upload issue info stored in database to airtable spreadsheets",
 	}
 	cc.AddCommand(cmd.airtableSyncCommand())
 	return cc
@@ -83,7 +84,8 @@ func (cmd *airtableCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.
 
 func (cmd *airtableCommand) airtableSyncCommand() *cobra.Command {
 	cc := &cobra.Command{
-		Use: "sync",
+		Use:   "sync",
+		Short: "Upload issue info stored in database to airtable spreadsheets",
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			var err error

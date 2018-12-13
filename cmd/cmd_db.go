@@ -3,11 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"moul.io/depviz/pkg/issues"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"moul.io/depviz/pkg/issues"
 )
 
 type dbOptions struct{}
@@ -42,7 +42,8 @@ func (cmd *dbCommand) ParseFlags(flags *pflag.FlagSet) {
 
 func (cmd *dbCommand) dbDumpCommand() *cobra.Command {
 	cc := &cobra.Command{
-		Use: "dump",
+		Use:   "dump",
+		Short: "Print all issues stored in the database, formatted as JSON",
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			return dbDump(&opts)

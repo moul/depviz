@@ -45,7 +45,8 @@ func (cmd *pullCommand) ParseFlags(flags *pflag.FlagSet) {
 
 func (cmd *pullCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
 	cc := &cobra.Command{
-		Use: "pull",
+		Use:   "pull",
+		Short: "Pull issues and update database without outputting graph",
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			var err error

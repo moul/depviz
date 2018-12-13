@@ -41,7 +41,8 @@ func (cmd *runCommand) ParseFlags(flags *pflag.FlagSet) {
 
 func (cmd *runCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
 	cc := &cobra.Command{
-		Use: "run",
+		Use:   "run",
+		Short: "Pull issues, update database, and output a graph of relationships between issues",
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			opts.GraphOptions = dc["graph"].(*graphCommand).opts

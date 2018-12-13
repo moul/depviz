@@ -52,7 +52,8 @@ func (cmd *webCommand) ParseFlags(flags *pflag.FlagSet) {
 
 func (cmd *webCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
 	cc := &cobra.Command{
-		Use: "web",
+		Use:   "web",
+		Short: "Run depviz as a web server",
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			return web(&opts)
