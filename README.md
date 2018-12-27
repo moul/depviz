@@ -50,8 +50,7 @@ _inspired by this discussion: [jbenet/random-ideas#37](https://github.com/jbenet
 
 ```
 go get moul.io/depviz
-make
-````
+```
 
 ## Usage
 

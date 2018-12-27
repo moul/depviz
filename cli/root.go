@@ -1,14 +1,12 @@
-package main
+package cli // import "moul.io/depviz/cli"
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
 	"github.com/jinzhu/gorm"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -18,15 +16,6 @@ import (
 	"moul.io/depviz/pkg/issues"
 	"moul.io/zapgorm"
 )
-
-func main() {
-	defer zap.L().Sync()
-	rootCmd := newRootCommand()
-	if err := rootCmd.Execute(); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-}
 
 var (
 	verbose bool
@@ -47,7 +36,7 @@ type DepvizCommand interface {
 	ParseFlags(*pflag.FlagSet)
 }
 
-func newRootCommand() *cobra.Command {
+func NewRootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "depviz",
 	}

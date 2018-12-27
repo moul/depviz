@@ -1,6 +1,6 @@
 .PHONY: install
 install:
-	GO111MODULE=on go build -v -o $(GOPATH)/bin/depviz ./cmd/...
+	GO111MODULE=on go install -v
 
 .PHONY: test
 test:
