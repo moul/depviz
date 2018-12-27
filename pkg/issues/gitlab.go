@@ -87,7 +87,7 @@ func fromGitlabIssue(input *gitlab.Issue) *Issue {
 		Downvotes:  input.Downvotes,
 		Labels:     make([]*Label, 0),
 		Assignees:  make([]*Account, 0),
-		Author:     fromGitlabFakeUser(repo.Provider, input.Author),
+		Author:     fromGitlabIssueAuthor(repo.Provider, input.Author),
 		Milestone:  fromGitlabMilestone(repo, input.Milestone),
 		/*
 			IsOrphan    bool      `json:"is-orphan"`
@@ -109,9 +109,9 @@ func fromGitlabIssue(input *gitlab.Issue) *Issue {
 	for _, label := range input.Labels {
 		issue.Labels = append(issue.Labels, fromGitlabLabelname(repo, label))
 	}
-	//issue.Assignees = append(issue.Assignees, fromGitlabFakeUser(input.Assignee))
+	//issue.Assignees = append(issue.Assignees, fromGitlabIssueAssignee(input.Assignee))
 	for _, assignee := range input.Assignees {
-		issue.Assignees = append(issue.Assignees, fromGitlabFakeUser(repo.Provider, assignee))
+		issue.Assignees = append(issue.Assignees, fromGitlabIssueAssignee(repo.Provider, assignee))
 	}
 	return issue
 }
@@ -129,16 +129,12 @@ func fromGitlabLabelname(repository *Repository, name string) *Label {
 	}
 }
 
-type gitlabFakeUser struct {
-	ID        int    `json:"id"`
-	State     string `json:"state"`
-	WebURL    string `json:"web_url"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatar_url"`
-	Username  string `json:"username"`
+func fromGitlabIssueAssignee(provider *Provider, input *gitlab.IssueAssignee) *Account {
+	author := gitlab.IssueAuthor(*input)
+	return fromGitlabIssueAuthor(provider, &author)
 }
 
-func fromGitlabFakeUser(provider *Provider, input gitlabFakeUser) *Account {
+func fromGitlabIssueAuthor(provider *Provider, input *gitlab.IssueAuthor) *Account {
 	name := input.Name
 	if name == "" {
 		name = input.Username
