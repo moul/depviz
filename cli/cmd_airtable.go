@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+
 	"moul.io/depviz/pkg/airtabledb"
 	"moul.io/depviz/pkg/issues"
 )
@@ -70,7 +71,9 @@ func (cmd *airtableCommand) ParseFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&cmd.opts.Token, "airtable-token", "", "", "Airtable token")
 	flags.BoolVarP(&cmd.opts.DestroyInvalidRecords, "airtable-destroy-invalid-records", "", false, "Destroy invalid records")
 
-	viper.BindPFlags(flags)
+	if err := viper.BindPFlags(flags); err != nil {
+		zap.L().Warn("find to bind flags using Viper", zap.Error(err))
+	}
 }
 
 func (cmd *airtableCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
@@ -118,7 +121,7 @@ func airtableSync(opts *airtableOptions) error {
 	zap.L().Debug("fetch db entries", zap.Int("count", len(loadedIssues)))
 
 	issueFeatures := make([]map[string]issues.Feature, airtabledb.NumTables)
-	for i, _ := range issueFeatures {
+	for i := range issueFeatures {
 		issueFeatures[i] = make(map[string]issues.Feature)
 	}
 

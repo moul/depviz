@@ -30,7 +30,7 @@ func copyFields(cache airtabledb.DB, src reflect.Value, dst reflect.Value) {
 		dFV := dst.Field(i)
 		dSF := dT.Field(i)
 		fieldName := dSF.Name
-		// Recursively copy the embeded struct Base.
+		// Recursively copy the embedded struct Base.
 		if fieldName == "Base" {
 			copyFields(cache, src, dFV)
 			continue
@@ -103,9 +103,9 @@ type Repository struct {
 	OwnerID    string    `json:"owner-id"`
 }
 
-func (p Repository) ToRecord(cache airtabledb.DB) airtabledb.Record {
+func (r Repository) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.RepositoryRecord{}
-	toRecord(cache, p, &record)
+	toRecord(cache, r, &record)
 	return record
 }
 
@@ -122,8 +122,8 @@ type ProviderDriver string
 
 const (
 	UnknownProviderDriver ProviderDriver = "unknown"
-	GithubDriver                         = "github"
-	GitlabDriver                         = "gitlab"
+	GithubDriver          ProviderDriver = "github"
+	GitlabDriver          ProviderDriver = "gitlab"
 )
 
 type Provider struct {
@@ -168,9 +168,9 @@ type Milestone struct {
 	RepositoryID string      `json:"repository-id"`
 }
 
-func (p Milestone) ToRecord(cache airtabledb.DB) airtabledb.Record {
+func (m Milestone) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.MilestoneRecord{}
-	toRecord(cache, p, &record)
+	toRecord(cache, m, &record)
 	return record
 }
 
@@ -227,9 +227,9 @@ func (i Issue) String() string {
 	return string(out)
 }
 
-func (p Issue) ToRecord(cache airtabledb.DB) airtabledb.Record {
+func (i Issue) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.IssueRecord{}
-	toRecord(cache, p, &record)
+	toRecord(cache, i, &record)
 	return record
 }
 
@@ -247,9 +247,9 @@ type Label struct {
 	Description string `json:"description"`
 }
 
-func (p Label) ToRecord(cache airtabledb.DB) airtabledb.Record {
+func (l Label) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.LabelRecord{}
-	toRecord(cache, p, &record)
+	toRecord(cache, l, &record)
 	return record
 }
 
@@ -282,9 +282,9 @@ type Account struct {
 	ProviderID string    `json:"provider-id"`
 }
 
-func (p Account) ToRecord(cache airtabledb.DB) airtabledb.Record {
+func (a Account) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtabledb.AccountRecord{}
-	toRecord(cache, p, &record)
+	toRecord(cache, a, &record)
 	return record
 }
 

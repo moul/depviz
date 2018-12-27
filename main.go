@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
+
 	"moul.io/depviz/cli"
 )
 
 func main() {
-	defer zap.L().Sync()
+	defer func() {
+		if err := zap.L().Sync(); err != nil {
+			panic(err)
+		}
+	}()
 	rootCmd := cli.NewRootCommand()
 	if err := rootCmd.Execute(); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)

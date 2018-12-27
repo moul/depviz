@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+
 	"moul.io/depviz/pkg/issues"
 )
 
@@ -36,7 +38,9 @@ func (cmd *runCommand) LoadDefaultOptions() error {
 func (cmd *runCommand) ParseFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&cmd.opts.NoPull, "no-pull", "", false, "do not pull new issues before running")
 	flags.StringSliceVarP(&cmd.opts.AdditionalPulls, "additional-pulls", "", []string{}, "additional pull that won't necessarily be displayed on the graph")
-	viper.BindPFlags(flags)
+	if err := viper.BindPFlags(flags); err != nil {
+		zap.L().Warn("find to bind flags using Viper", zap.Error(err))
+	}
 }
 
 func (cmd *runCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
