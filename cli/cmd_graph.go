@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"encoding/json"
@@ -6,7 +6,6 @@ import (
 	"html"
 	"io"
 	"math"
-	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -17,62 +16,73 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+	"moul.io/depviz/pkg/issues"
 )
 
 type graphOptions struct {
-	Output      string  `mapstructure:"output"`
-	DebugGraph  bool    `mapstructure:"debug-graph"`
-	NoCompress  bool    `mapstructure:"no-compress"`
-	DarkTheme   bool    `mapstructure:"dark-theme"`
-	ShowClosed  bool    `mapstructure:"show-closed"`
-	ShowOrphans bool    `mapstructure:"show-orphans"`
-	ShowPRs     bool    `mapstructure:"show-prs"`
-	Preview     bool    `mapstructure:"preview"`
-	Format      string  `mapstructure:"format"`
-	Targets     Targets `mapstructure:"targets"`
+	Output      string         `mapstructure:"output"`
+	DebugGraph  bool           `mapstructure:"debug-graph"`
+	NoCompress  bool           `mapstructure:"no-compress"`
+	DarkTheme   bool           `mapstructure:"dark-theme"`
+	ShowClosed  bool           `mapstructure:"show-closed"`
+	ShowOrphans bool           `mapstructure:"show-orphans"`
+	ShowPRs     bool           `mapstructure:"show-prs"`
+	Preview     bool           `mapstructure:"preview"`
+	Format      string         `mapstructure:"format"`
+	Targets     issues.Targets `mapstructure:"targets"`
 	// FocusMode
 	// NoExternal
 }
-
-var globalGraphOptions graphOptions
 
 func (opts graphOptions) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
 }
 
-func graphSetupFlags(flags *pflag.FlagSet, opts *graphOptions) {
-	flags.BoolVarP(&opts.ShowClosed, "show-closed", "", false, "show closed issues")
-	flags.BoolVarP(&opts.DebugGraph, "debug-graph", "", false, "debug graph")
-	flags.BoolVarP(&opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
-	flags.BoolVarP(&opts.NoCompress, "no-compress", "", false, "do not compress graph (no overlap)")
-	flags.BoolVarP(&opts.DarkTheme, "dark-theme", "", false, "dark theme")
-	flags.BoolVarP(&opts.ShowPRs, "show-prs", "", false, "show PRs")
-	flags.StringVarP(&opts.Output, "output", "o", "-", "output file ('-' for stdout, dot)")
-	flags.StringVarP(&opts.Format, "format", "f", "", "output file format (if empty, will determine thanks to output extension)")
+type graphCommand struct {
+	opts graphOptions
+}
+
+func (cmd *graphCommand) LoadDefaultOptions() error {
+	if err := viper.Unmarshal(&cmd.opts); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cmd *graphCommand) ParseFlags(flags *pflag.FlagSet) {
+	flags.BoolVarP(&cmd.opts.ShowClosed, "show-closed", "", false, "show closed issues")
+	flags.BoolVarP(&cmd.opts.DebugGraph, "debug-graph", "", false, "debug graph")
+	flags.BoolVarP(&cmd.opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
+	flags.BoolVarP(&cmd.opts.NoCompress, "no-compress", "", false, "do not compress graph (no overlap)")
+	flags.BoolVarP(&cmd.opts.DarkTheme, "dark-theme", "", false, "dark theme")
+	flags.BoolVarP(&cmd.opts.ShowPRs, "show-prs", "", false, "show PRs")
+	flags.StringVarP(&cmd.opts.Output, "output", "o", "-", "output file ('-' for stdout, dot)")
+	flags.StringVarP(&cmd.opts.Format, "format", "f", "", "output file format (if empty, will determine thanks to output extension)")
 	//flags.BoolVarP(&opts.Preview, "preview", "p", false, "preview result")
 	viper.BindPFlags(flags)
 }
 
-func newGraphCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use: "graph",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts := globalGraphOptions
+func (cmd *graphCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
+	cc := &cobra.Command{
+		Use:   "graph",
+		Short: "Output graph of relationships between all issues stored in database",
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts := cmd.opts
 			var err error
-			if opts.Targets, err = ParseTargets(args); err != nil {
+			if opts.Targets, err = issues.ParseTargets(args); err != nil {
 				return errors.Wrap(err, "invalid targets")
 			}
 			return graph(&opts)
 		},
 	}
-	graphSetupFlags(cmd.Flags(), &globalGraphOptions)
-	return cmd
+	cmd.ParseFlags(cc.Flags())
+	return cc
 }
 
 func graph(opts *graphOptions) error {
-	logger().Debug("graph", zap.Stringer("opts", *opts))
-	issues, err := loadIssues(nil)
+	zap.L().Debug("graph", zap.Stringer("opts", *opts))
+	issues, err := issues.Load(db, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
@@ -107,7 +117,7 @@ func graph(opts *graphOptions) error {
 	return nil
 }
 
-func isIssueHidden(issue *Issue, opts *graphOptions) bool {
+func isIssueHidden(issue *issues.Issue, opts *graphOptions) bool {
 	if issue.IsHidden {
 		return true
 	}
@@ -123,7 +133,7 @@ func isIssueHidden(issue *Issue, opts *graphOptions) bool {
 	return false
 }
 
-func graphviz(issues Issues, opts *graphOptions) (string, error) {
+func graphviz(issues issues.Issues, opts *graphOptions) (string, error) {
 	for _, issue := range issues {
 		if isIssueHidden(issue, opts) {
 			continue
@@ -221,13 +231,13 @@ func graphviz(issues Issues, opts *graphOptions) (string, error) {
 		}
 
 		existingNodes[issue.URL] = true
-		panicIfErr(issue.AddNodeToGraph(g, parent))
+		panicIfErr(AddNodeToGraph(g, issue, parent))
 		stats["nodes"]++
 	}
 
 	// issue relationships
 	for _, issue := range issues {
-		panicIfErr(issue.AddEdgesToGraph(g, opts, existingNodes))
+		panicIfErr(AddEdgesToGraph(g, issue, opts, existingNodes))
 		stats["edges"]++
 	}
 
@@ -326,13 +336,13 @@ func graphviz(issues Issues, opts *graphOptions) (string, error) {
 		stats["edges"]++
 	}
 
-	logger().Debug("graph stats", zap.Any("stats", stats))
+	zap.L().Debug("graph stats", zap.Any("stats", stats))
 	return g.String(), nil
 }
 
-func (i Issue) AddNodeToGraph(g *gographviz.Graph, parent string) error {
+func AddNodeToGraph(g *gographviz.Graph, i *issues.Issue, parent string) error {
 	attrs := map[string]string{}
-	attrs["label"] = i.GraphNodeTitle()
+	attrs["label"] = GraphNodeTitle(i)
 	//attrs["xlabel"] = ""
 	attrs["shape"] = "record"
 	attrs["style"] = `"rounded,filled"`
@@ -367,8 +377,8 @@ func (i Issue) AddNodeToGraph(g *gographviz.Graph, parent string) error {
 	)
 }
 
-func (i Issue) AddEdgesToGraph(g *gographviz.Graph, opts *graphOptions, existingNodes map[string]bool) error {
-	if isIssueHidden(&i, opts) {
+func AddEdgesToGraph(g *gographviz.Graph, i *issues.Issue, opts *graphOptions, existingNodes map[string]bool) error {
+	if isIssueHidden(i, opts) {
 		return nil
 	}
 	for _, dependency := range i.Parents {
@@ -407,30 +417,12 @@ func (i Issue) AddEdgesToGraph(g *gographviz.Graph, opts *graphOptions, existing
 	return nil
 }
 
-func (i Issue) GraphNodeName() string {
+func GraphNodeName(i *issues.Issue) string {
 	return fmt.Sprintf(`%s#%s`, i.Path()[1:], i.Number())
 }
 
-func (i Issue) Number() string {
-	u, err := url.Parse(i.URL)
-	if err != nil {
-		return ""
-	}
-	parts := strings.Split(u.Path, "/")
-	return parts[len(parts)-1]
-}
-
-func (i Issue) Path() string {
-	u, err := url.Parse(i.URL)
-	if err != nil {
-		return ""
-	}
-	parts := strings.Split(u.Path, "/")
-	return strings.Join(parts[:len(parts)-2], "/")
-}
-
-func (i Issue) GraphNodeTitle() string {
-	title := fmt.Sprintf("%s: %s", i.GraphNodeName(), i.Title)
+func GraphNodeTitle(i *issues.Issue) string {
+	title := fmt.Sprintf("%s: %s", GraphNodeName(i), i.Title)
 	title = strings.Replace(title, "|", "-", -1)
 	title = strings.Replace(html.EscapeString(wrap(title, 20)), "\n", "<br/>", -1)
 	labels := []string{}
@@ -458,4 +450,34 @@ func (i Issue) GraphNodeTitle() string {
 		errorsText = fmt.Sprintf(`<tr><td bgcolor="red">ERR: %s</td></tr>`, strings.Join(i.Errors, ";<br />ERR: "))
 	}
 	return fmt.Sprintf(`<<table><tr><td>%s</td></tr>%s%s%s</table>>`, title, labelsText, assigneeText, errorsText)
+}
+
+func panicIfErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func escape(input string) string {
+	return fmt.Sprintf("%q", input)
+}
+
+func wrap(text string, lineWidth int) string {
+	words := strings.Fields(strings.TrimSpace(text))
+	if len(words) == 0 {
+		return text
+	}
+	wrapped := words[0]
+	spaceLeft := lineWidth - len(wrapped)
+	for _, word := range words[1:] {
+		if len(word)+1 > spaceLeft {
+			wrapped += "\n" + word
+			spaceLeft = lineWidth - len(word)
+		} else {
+			wrapped += " " + word
+			spaceLeft -= 1 + len(word)
+		}
+	}
+
+	return wrapped
 }

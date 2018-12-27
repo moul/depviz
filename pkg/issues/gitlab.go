@@ -1,4 +1,4 @@
-package main
+package issues
 
 import (
 	"fmt"
@@ -7,13 +7,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	gitlab "github.com/xanzy/go-gitlab"
 	"go.uber.org/zap"
 )
 
-func gitlabPull(target Target, wg *sync.WaitGroup, opts *pullOptions, out chan []*Issue) {
+func gitlabPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, out chan []*Issue) {
 	defer wg.Done()
-	client := gitlab.NewClient(nil, opts.GitlabToken)
+	client := gitlab.NewClient(nil, token)
 	client.SetBaseURL(fmt.Sprintf("%s/api/v4", target.ProviderURL()))
 	total := 0
 	gitlabOpts := &gitlab.ListProjectIssuesOptions{
@@ -33,11 +34,11 @@ func gitlabPull(target Target, wg *sync.WaitGroup, opts *pullOptions, out chan [
 	for {
 		issues, resp, err := client.Issues.ListProjectIssues(target.Path(), gitlabOpts)
 		if err != nil {
-			logger().Error("failed to pull issues", zap.Error(err))
+			zap.L().Error("failed to pull issues", zap.Error(err))
 			return
 		}
 		total += len(issues)
-		logger().Debug("paginate",
+		zap.L().Debug("paginate",
 			zap.String("provider", "gitlab"),
 			zap.String("repo", target.ProjectURL()),
 			zap.Int("new-issues", len(issues)),
@@ -169,7 +170,7 @@ func fromGitlabFakeUser(provider *Provider, input gitlabFakeUser) *Account {
 func fromGitlabRepositoryURL(input string) *Repository {
 	u, err := url.Parse(input)
 	if err != nil {
-		logger().Warn("invalid repository URL", zap.String("URL", input))
+		zap.L().Warn("invalid repository URL", zap.String("URL", input))
 		return nil
 	}
 	providerURL := fmt.Sprintf("%s://%s", u.Scheme, u.Host)

@@ -48,7 +48,9 @@ _inspired by this discussion: [jbenet/random-ideas#37](https://github.com/jbenet
 
 ## Install (with Golang)
 
-`go get moul.io/depviz`
+```
+go get moul.io/depviz
+```
 
 ## Usage
 
