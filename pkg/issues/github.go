@@ -72,7 +72,7 @@ func fromGithubUser(input *github.User) *Account {
 			Base: Base{
 				ID: "github", // FIXME: support multiple github instances
 			},
-			Driver: GithubDriver,
+			Driver: string(GithubDriver),
 		},
 		URL:       input.GetURL(),
 		Location:  input.GetLocation(),
@@ -85,10 +85,6 @@ func fromGithubUser(input *github.User) *Account {
 	}
 }
 
-func fromGithubRepository(input *github.Repository) *Repository {
-	panic("not implemented")
-}
-
 func fromGithubRepositoryURL(input string) *Repository {
 	return &Repository{
 		Base: Base{
@@ -99,7 +95,7 @@ func fromGithubRepositoryURL(input string) *Repository {
 			Base: Base{
 				ID: "github", // FIXME: support multiple github instances
 			},
-			Driver: GithubDriver,
+			Driver: string(GithubDriver),
 		},
 	}
 }

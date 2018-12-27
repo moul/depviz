@@ -6,6 +6,10 @@ install:
 test:
 	go test -v ./...
 
+.PHONY: lint
+lint:
+	golangci-lint run --verbose ./...
+
 .PHONY: update_examples
 update_examples:
 	for dir in $(sort $(dir $(wildcard examples/*/*))); do (cd $$dir && make); done

@@ -1,4 +1,4 @@
-package airtabledb
+package airtabledb // import "moul.io/depviz/pkg/airtabledb"
 
 import (
 	"encoding/json"

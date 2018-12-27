@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+
 	"moul.io/depviz/pkg/issues"
 )
 
@@ -37,7 +39,9 @@ func (cmd *dbCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comman
 }
 
 func (cmd *dbCommand) ParseFlags(flags *pflag.FlagSet) {
-	viper.BindPFlags(flags)
+	if err := viper.BindPFlags(flags); err != nil {
+		zap.L().Warn("find to bind flags using Viper", zap.Error(err))
+	}
 }
 
 func (cmd *dbCommand) dbDumpCommand() *cobra.Command {

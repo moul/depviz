@@ -60,8 +60,7 @@ func ParseTargets(inputs []string) (Targets, error) {
 			str = str + "/issues/" + issue
 		}
 
-		target := string(str)
-		targetMap[target] = target
+		targetMap[str] = str
 	}
 	targets := []string{}
 	for _, target := range targetMap {

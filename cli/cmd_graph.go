@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+
 	"moul.io/depviz/pkg/issues"
 )
 
@@ -60,7 +61,9 @@ func (cmd *graphCommand) ParseFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&cmd.opts.Output, "output", "o", "-", "output file ('-' for stdout, dot)")
 	flags.StringVarP(&cmd.opts.Format, "format", "f", "", "output file format (if empty, will determine thanks to output extension)")
 	//flags.BoolVarP(&opts.Preview, "preview", "p", false, "preview result")
-	viper.BindPFlags(flags)
+	if err := viper.BindPFlags(flags); err != nil {
+		zap.L().Warn("find to bind flags using Viper", zap.Error(err))
+	}
 }
 
 func (cmd *graphCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {

@@ -19,6 +19,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+
 	"moul.io/depviz/pkg/issues"
 )
 
@@ -47,7 +49,9 @@ func (cmd *webCommand) LoadDefaultOptions() error {
 func (cmd *webCommand) ParseFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&cmd.opts.Bind, "bind", "b", ":2020", "web server bind address")
 	flags.BoolVarP(&cmd.opts.ShowRoutes, "show-routes", "", false, "display available routes and quit")
-	viper.BindPFlags(flags)
+	if err := viper.BindPFlags(flags); err != nil {
+		zap.L().Warn("find to bind flags using Viper", zap.Error(err))
+	}
 }
 
 func (cmd *webCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
@@ -67,7 +71,7 @@ func (cmd *webCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comma
 func webListIssues(w http.ResponseWriter, r *http.Request) {
 	issues, err := issues.Load(db, nil)
 	if err != nil {
-		render.Render(w, r, ErrRender(err))
+		_ = render.Render(w, r, ErrRender(err))
 		return
 	}
 
@@ -80,7 +84,7 @@ func webListIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := render.RenderList(w, r, list); err != nil {
-		render.Render(w, r, ErrRender(err))
+		_ = render.Render(w, r, ErrRender(err))
 		return
 	}
 }
@@ -105,26 +109,32 @@ func webGraphviz(r *http.Request) (string, error) {
 func webDotIssues(w http.ResponseWriter, r *http.Request) {
 	out, err := webGraphviz(r)
 	if err != nil {
-		render.Render(w, r, ErrRender(err))
+		_ = render.Render(w, r, ErrRender(err))
 		return
 	}
 
-	w.Write([]byte(out))
+	_, _ = w.Write([]byte(out))
 }
 
 func webImageIssues(w http.ResponseWriter, r *http.Request) {
 	out, err := webGraphviz(r)
 	if err != nil {
-		render.Render(w, r, ErrRender(err))
+		_ = render.Render(w, r, ErrRender(err))
 		return
 	}
 
-	cmd := exec.Command("dot", "-Tsvg")
+	binary, err := exec.LookPath("dot")
+	if err != nil {
+		_ = render.Render(w, r, ErrRender(err))
+		return
+	}
+
+	cmd := exec.Command(binary, "-Tsvg") // guardrails-disable-line
 	cmd.Stdin = bytes.NewBuffer([]byte(out))
 	cmd.Stdout = w
 
 	if err := cmd.Run(); err != nil {
-		render.Render(w, r, ErrRender(err))
+		_ = render.Render(w, r, ErrRender(err))
 		return
 	}
 }

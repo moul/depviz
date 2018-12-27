@@ -15,7 +15,10 @@ import (
 func gitlabPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, out chan []*Issue) {
 	defer wg.Done()
 	client := gitlab.NewClient(nil, token)
-	client.SetBaseURL(fmt.Sprintf("%s/api/v4", target.ProviderURL()))
+	if err := client.SetBaseURL(fmt.Sprintf("%s/api/v4", target.ProviderURL())); err != nil {
+		zap.L().Error("failed to configure GitLab client", zap.Error(err))
+		return
+	}
 	total := 0
 	gitlabOpts := &gitlab.ListProjectIssuesOptions{
 		ListOptions: gitlab.ListOptions{
@@ -150,7 +153,7 @@ func fromGitlabFakeUser(provider *Provider, input gitlabFakeUser) *Account {
 			Base: Base{
 				ID: "gitlab", // FIXME: support multiple gitlab instances
 			},
-			Driver: GitlabDriver,
+			Driver: string(GitlabDriver),
 		},
 		// Email:
 		FullName: name,
@@ -184,7 +187,7 @@ func fromGitlabRepositoryURL(input string) *Repository {
 				ID: "gitlab", // FIXME: support multiple gitlab instances
 			},
 			URL:    providerURL,
-			Driver: GitlabDriver,
+			Driver: string(GitlabDriver),
 		},
 	}
 }

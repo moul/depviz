@@ -7,12 +7,14 @@ import (
 	"strings"
 
 	"github.com/jinzhu/gorm"
+	_ "github.com/mattn/go-sqlite3" // required by gorm
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
 	"moul.io/depviz/pkg/issues"
 	"moul.io/zapgorm"
 )
