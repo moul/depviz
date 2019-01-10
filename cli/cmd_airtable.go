@@ -72,7 +72,7 @@ func (cmd *airtableCommand) ParseFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&cmd.opts.DestroyInvalidRecords, "airtable-destroy-invalid-records", "", false, "Destroy invalid records")
 
 	if err := viper.BindPFlags(flags); err != nil {
-		zap.L().Warn("find to bind flags using Viper", zap.Error(err))
+		zap.L().Warn("failed to bind flags using Viper", zap.Error(err))
 	}
 }
 

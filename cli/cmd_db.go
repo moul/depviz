@@ -40,7 +40,7 @@ func (cmd *dbCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comman
 
 func (cmd *dbCommand) ParseFlags(flags *pflag.FlagSet) {
 	if err := viper.BindPFlags(flags); err != nil {
-		zap.L().Warn("find to bind flags using Viper", zap.Error(err))
+		zap.L().Warn("failed to bind flags using Viper", zap.Error(err))
 	}
 }
 

@@ -62,7 +62,7 @@ func (cmd *graphCommand) ParseFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&cmd.opts.Format, "format", "f", "", "output file format (if empty, will determine thanks to output extension)")
 	//flags.BoolVarP(&opts.Preview, "preview", "p", false, "preview result")
 	if err := viper.BindPFlags(flags); err != nil {
-		zap.L().Warn("find to bind flags using Viper", zap.Error(err))
+		zap.L().Warn("failed to bind flags using Viper", zap.Error(err))
 	}
 }
 

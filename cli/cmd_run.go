@@ -39,7 +39,7 @@ func (cmd *runCommand) ParseFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&cmd.opts.NoPull, "no-pull", "", false, "do not pull new issues before running")
 	flags.StringSliceVarP(&cmd.opts.AdditionalPulls, "additional-pulls", "", []string{}, "additional pull that won't necessarily be displayed on the graph")
 	if err := viper.BindPFlags(flags); err != nil {
-		zap.L().Warn("find to bind flags using Viper", zap.Error(err))
+		zap.L().Warn("failed to bind flags using Viper", zap.Error(err))
 	}
 }
 
