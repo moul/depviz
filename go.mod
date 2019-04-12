@@ -1,11 +1,11 @@
 module moul.io/depviz
 
 require (
-	cloud.google.com/go v0.37.2 // indirect
+	cloud.google.com/go v0.37.4 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/awalterschulze/gographviz v0.0.0-20190329052859-1e9ccb565bca
 	github.com/brianloveswords/airtable v0.0.0-20180329193050-a39294038dd9
-	github.com/denisenkom/go-mssqldb v0.0.0-20190405164817-ce35bd87d4b3 // indirect
+	github.com/denisenkom/go-mssqldb v0.0.0-20190412132816-3b1d194e553a // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/go-chi/chi v3.3.4+incompatible
 	github.com/go-chi/docgen v1.0.5
@@ -35,7 +35,7 @@ require (
 	golang.org/x/net v0.0.0-20190405164817-eb5bcb51f2a3 // indirect
 	golang.org/x/oauth2 v0.0.0-20190405164817-9f3314589c9a
 	golang.org/x/sync v0.0.0-20190329052859-e225da77a7e6 // indirect
-	golang.org/x/sys v0.0.0-20190405164817-4b34438f7a67 // indirect
+	golang.org/x/sys v0.0.0-20190412132816-b44545bcd369 // indirect
 	google.golang.org/appengine v1.5.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	moul.io/zapgorm v0.0.0-20181220094309-2149c5ded6fc
