@@ -25,10 +25,10 @@ require (
 	go.uber.org/ratelimit v0.0.0-20180316092928-c15da0234277 // indirect
 	go.uber.org/zap v1.10.0
 	golang.org/x/arch v0.0.0-20190329052859-788fe5ffcd8c // indirect
-	golang.org/x/net v0.0.0-20190509083800-f4e77d36d62c // indirect
+	golang.org/x/net v0.0.0-20190509232157-a4d6f7feada5 // indirect
 	golang.org/x/oauth2 v0.0.0-20190405164817-9f3314589c9a
 	golang.org/x/sync v0.0.0-20190427212804-112230192c58 // indirect
-	golang.org/x/sys v0.0.0-20190509083800-2d0786266e9c // indirect
+	golang.org/x/sys v0.0.0-20190509232157-a5b02f93d862 // indirect
 	google.golang.org/appengine v1.5.0 // indirect
 	moul.io/zapgorm v0.0.0-20181220094309-2149c5ded6fc
 )
