@@ -3,7 +3,7 @@ module moul.io/depviz
 require (
 	github.com/awalterschulze/gographviz v0.0.0-20190329052859-1e9ccb565bca
 	github.com/brianloveswords/airtable v0.0.0-20180329193050-a39294038dd9
-	github.com/denisenkom/go-mssqldb v0.0.0-20190427212804-731ef375ac02 // indirect
+	github.com/denisenkom/go-mssqldb v0.0.0-20190515122656-23b29e59681b // indirect
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-chi/docgen v1.0.5
 	github.com/go-chi/render v1.0.1
@@ -25,10 +25,10 @@ require (
 	go.uber.org/ratelimit v0.0.0-20180316092928-c15da0234277 // indirect
 	go.uber.org/zap v1.10.0
 	golang.org/x/arch v0.0.0-20190329052859-788fe5ffcd8c // indirect
-	golang.org/x/net v0.0.0-20190509232157-a4d6f7feada5 // indirect
+	golang.org/x/net v0.0.0-20190515122656-3ec191127204 // indirect
 	golang.org/x/oauth2 v0.0.0-20190405164817-9f3314589c9a
 	golang.org/x/sync v0.0.0-20190427212804-112230192c58 // indirect
-	golang.org/x/sys v0.0.0-20190509232157-a5b02f93d862 // indirect
-	google.golang.org/appengine v1.5.0 // indirect
+	golang.org/x/sys v0.0.0-20190515122656-06a5c4944438 // indirect
+	google.golang.org/appengine v1.6.0 // indirect
 	moul.io/zapgorm v0.0.0-20181220094309-2149c5ded6fc
 )
