@@ -29,7 +29,7 @@
 </p>
 
 <p align="center"><b>
-    <a href="https://moul.io/depviz">Website</a> •
+    <a href="https://manfred.life/depviz">Manfred.life</a> •
     <a href="https://twitter.com/moul">Twitter</a>
 </b></p>
 
