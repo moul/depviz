@@ -11,9 +11,7 @@ import (
 
 func main() {
 	defer func() {
-		if err := zap.L().Sync(); err != nil {
-			panic(err)
-		}
+		_ = zap.L().Sync()
 	}()
 	rootCmd := cli.NewRootCommand()
 	if err := rootCmd.Execute(); err != nil {

@@ -26,7 +26,7 @@ func githubPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, ou
 	if err := db.Where("repository_id = ?", target.ProjectURL()).Order("updated_at desc").First(&lastEntry).Error; err == nil {
 		callOpts.Since = lastEntry.UpdatedAt
 	} else {
-		zap.L().Warn("failed to get last entry", zap.Error(err))
+		zap.L().Warn("failed to get last entry", zap.String("repo", target.ProjectURL()), zap.Error(err))
 	}
 
 	for {

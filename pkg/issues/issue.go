@@ -48,8 +48,12 @@ func PullAndCompute(githubToken, gitlabToken string, db *gorm.DB, t Targets) err
 			panic("should not happen")
 		}
 	}
-	wg.Wait()
-	close(out)
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
 	for issues := range out {
 		allIssues = append(allIssues, issues...)
 	}

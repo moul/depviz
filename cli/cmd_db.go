@@ -58,16 +58,25 @@ func (cmd *dbCommand) dbDumpCommand() *cobra.Command {
 }
 
 func dbDump(opts *dbOptions) error {
-	issues := []*issues.Issue{}
-	if err := db.Find(&issues).Error; err != nil {
-		return err
+	query := db.Model(issues.Issue{}).Order("created_at")
+	perPage := 100
+	var allIssues []*issues.Issue
+	for page := 0; ; page++ {
+		var newIssues []*issues.Issue
+		if err := query.Limit(perPage).Offset(perPage * page).Find(&newIssues).Error; err != nil {
+			return err
+		}
+		allIssues = append(allIssues, newIssues...)
+		if len(newIssues) < perPage {
+			break
+		}
 	}
 
-	for _, issue := range issues {
+	for _, issue := range allIssues {
 		issue.PostLoad()
 	}
 
-	out, err := json.MarshalIndent(issues, "", "  ")
+	out, err := json.MarshalIndent(allIssues, "", "  ")
 	if err != nil {
 		return err
 	}
