@@ -29,5 +29,6 @@ require (
 	golang.org/x/sync v0.0.0-20190427212804-112230192c58 // indirect
 	golang.org/x/sys v0.0.0-20190624143730-c5567b49c5d0 // indirect
 	google.golang.org/appengine v1.6.1 // indirect
+	moul.io/graphman v1.0.0 // indirect
 	moul.io/zapgorm v0.0.0-20190624143730-7f287f4f74c9
 )

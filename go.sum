@@ -491,6 +491,8 @@ honnef.co/go/tools v0.0.0-20180728063816-88497007e858/go.mod h1:rf3lG4BRIbNafJWh
 honnef.co/go/tools v0.0.0-20180920025451-e3ad64cb4ed3/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190106161140-3f1c8253044a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
+moul.io/graphman v1.0.0 h1:vXCIHlGMdzuZKb1gBByRj38y7e7PO2rfc/DDK4zYnzA=
+moul.io/graphman v1.0.0/go.mod h1:7OpdQsfE4ibHqHP+Ir1VAUd4p5j25n4xU9bhJvQ+F0g=
 moul.io/zapgorm v0.0.0-20181003053625-c808c1c4adc6 h1:Ljm5aWTlBca3uc62R9myafsLzwakKumgU/6B6fFWTsA=
 moul.io/zapgorm v0.0.0-20181003053625-c808c1c4adc6/go.mod h1:5XkuYCrMvJcscMD3+T4QGDaWsCZiql8k2Pv5iNhTB/g=
 moul.io/zapgorm v0.0.0-20181220094309-2149c5ded6fc h1:Ddo1Fa0ruGmrNMWVOzEfbMcp3yy3XrspnmQMJ4o7mfg=
