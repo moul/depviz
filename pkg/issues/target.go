@@ -113,17 +113,24 @@ func (t Target) Path() string {
 func (t Target) Canonical() string { return string(t) }
 
 func (t Target) Driver() ProviderDriver {
-	if strings.Contains(string(t), "github.com") {
+	if strings.Contains(string(t), "github.com") { // github.com
 		return GithubDriver
 	}
-	return GitlabDriver
+	// FIXME: support GithubEnterpriseDriver (github.company.com)
+	if strings.Contains(string(t), "gitlab") { // gitlab.com and gitlab.company.com
+		return GitlabDriver
+	}
+	if strings.Contains(string(t), "jira") || strings.Contains(string(t), "atlassian") {
+		return JiraDriver
+	}
+	return GitlabDriver // default to gitlab
 }
 
 func (t Target) ProviderURL() string {
 	switch t.Driver() {
 	case GithubDriver:
 		return "https://github.com"
-	case GitlabDriver:
+	case GitlabDriver, JiraDriver:
 		u, err := url.Parse(string(t))
 		if err != nil {
 			return ""

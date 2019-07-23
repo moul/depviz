@@ -124,6 +124,8 @@ const (
 	UnknownProviderDriver ProviderDriver = "unknown"
 	GithubDriver          ProviderDriver = "github"
 	GitlabDriver          ProviderDriver = "gitlab"
+	JiraDriver            ProviderDriver = "jira"
+	// FIXME: GithubEnterprise
 )
 
 type Provider struct {
@@ -131,7 +133,7 @@ type Provider struct {
 
 	// base fields
 	URL    string `json:"url"`
-	Driver string `json:"driver"` // github, gitlab, unknown
+	Driver string `json:"driver"` // github, gitlab, jira, unknown
 }
 
 func (p Provider) ToRecord(cache airtabledb.DB) airtabledb.Record {
