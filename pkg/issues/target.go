@@ -12,68 +12,73 @@ import (
 type Target string
 
 func ParseTargets(inputs []string) (Targets, error) {
-	targetMap := map[string]string{}
+	targetMap := map[Target]bool{}
 	for _, input := range inputs {
-		// check if input is a local path
-		if _, err := os.Stat(input); err == nil {
-			return nil, fmt.Errorf("filesystem target are not yet supported")
+		target, err := ParseTarget(input)
+		if err != nil {
+			return nil, err
 		}
-
-		// parse issue
-		str := input
-		issue := ""
-		parts := strings.Split(str, "/issues/")
-		switch len(parts) {
-		case 1:
-		case 2:
-			str = parts[0]
-			issue = parts[1]
-		default:
-			return nil, fmt.Errorf("invalid target: %q", input)
-		}
-		parts = strings.Split(str, "#")
-		switch len(parts) {
-		case 1:
-		case 2:
-			str = parts[0]
-			issue = parts[1]
-		default:
-			return nil, fmt.Errorf("invalid target: %q", input)
-		}
-
-		// parse scheme
-		parts = strings.Split(str, "/")
-		if len(parts) < 3 {
-			str = fmt.Sprintf("https://github.com/%s", str)
-		}
-
-		if !strings.Contains(str, "://") {
-			str = fmt.Sprintf("https://%s", str)
-		}
-
-		// append issue
-		if issue != "" {
-			_, err := strconv.Atoi(issue)
-			if err != nil {
-				return nil, fmt.Errorf("invalid target (issue): %q", input)
-			}
-			str = str + "/issues/" + issue
-		}
-
-		targetMap[str] = str
+		targetMap[target] = true
 	}
-	targets := []string{}
-	for _, target := range targetMap {
+	targets := Targets{}
+	for target := range targetMap {
 		targets = append(targets, target)
 	}
-	targets = uniqueStrings(targets)
-	sort.Strings(targets)
+	sort.Slice(targets, func(i, j int) bool {
+		return string(targets[i]) < string(targets[j])
+	})
 
-	typed := Targets{}
-	for _, target := range targets {
-		typed = append(typed, Target(target))
+	return targets, nil
+}
+
+func ParseTarget(input string) (Target, error) {
+	// check if input is a local path
+	if _, err := os.Stat(input); err == nil {
+		return "", fmt.Errorf("filesystem target are not yet supported")
 	}
-	return typed, nil
+
+	// parse issue
+	str := input
+	issue := ""
+	parts := strings.Split(str, "/issues/")
+	switch len(parts) {
+	case 1:
+	case 2:
+		str = parts[0]
+		issue = parts[1]
+	default:
+		return "", fmt.Errorf("invalid target: %q", input)
+	}
+	parts = strings.Split(str, "#")
+	switch len(parts) {
+	case 1:
+	case 2:
+		str = parts[0]
+		issue = parts[1]
+	default:
+		return "", fmt.Errorf("invalid target: %q", input)
+	}
+
+	// parse scheme
+	parts = strings.Split(str, "/")
+	if len(parts) < 3 {
+		str = fmt.Sprintf("https://github.com/%s", str)
+	}
+
+	if !strings.Contains(str, "://") {
+		str = fmt.Sprintf("https://%s", str)
+	}
+
+	// append issue
+	if issue != "" {
+		_, err := strconv.Atoi(issue)
+		if err != nil {
+			return "", fmt.Errorf("invalid target (issue): %q", input)
+		}
+		str = str + "/issues/" + issue
+	}
+
+	return Target(str), nil
 }
 
 func (t Target) Issue() string {
@@ -136,8 +141,9 @@ func (t Target) ProviderURL() string {
 			return ""
 		}
 		return fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	default:
+		panic("should not happen")
 	}
-	panic("should not happen")
 }
 
 type Targets []Target
