@@ -1,4 +1,4 @@
-package issues
+package warehouse
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	"moul.io/depviz/pkg/airtabledb"
+	"moul.io/depviz/airtabledb"
 )
 
 type Feature interface {

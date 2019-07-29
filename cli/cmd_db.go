@@ -8,8 +8,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-
-	"moul.io/depviz/pkg/issues"
+	"moul.io/depviz/warehouse"
 )
 
 type dbOptions struct{}
@@ -58,11 +57,11 @@ func (cmd *dbCommand) dbDumpCommand() *cobra.Command {
 }
 
 func dbDump(opts *dbOptions) error {
-	query := db.Model(issues.Issue{}).Order("created_at")
+	query := db.Model(warehouse.Issue{}).Order("created_at")
 	perPage := 100
-	var allIssues []*issues.Issue
+	var allIssues []*warehouse.Issue
 	for page := 0; ; page++ {
-		var newIssues []*issues.Issue
+		var newIssues []*warehouse.Issue
 		if err := query.Limit(perPage).Offset(perPage * page).Find(&newIssues).Error; err != nil {
 			return err
 		}

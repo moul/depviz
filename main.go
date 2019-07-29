@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"go.uber.org/zap"
-
 	"moul.io/depviz/cli"
 )
 
