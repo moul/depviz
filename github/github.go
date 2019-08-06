@@ -10,9 +10,11 @@ import (
 	"github.com/jinzhu/gorm"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
+	"moul.io/depviz/warehouse"
+	"moul.io/multipmuri"
 )
 
-func githubPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, out chan<- []*Issue) {
+func Pull(target multipmuri.Entity, wg *sync.WaitGroup, token string, db *gorm.DB, out chan<- []*warehouse.Issue) {
 	defer wg.Done()
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
@@ -22,7 +24,7 @@ func githubPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, ou
 	totalIssues := 0
 	callOpts := &github.IssueListByRepoOptions{State: "all"}
 
-	var lastEntry Issue
+	var lastEntry warehouse.Issue
 	if err := db.Where("repository_id = ?", target.ProjectURL()).Order("updated_at desc").First(&lastEntry).Error; err == nil {
 		callOpts.Since = lastEntry.UpdatedAt
 	} else {
@@ -136,12 +138,12 @@ func fromGithubLabel(input *github.Label) *Label {
 	}
 }
 
-func fromGithubIssue(input *github.Issue) *Issue {
+func ParseIssue(input *github.Issue) *warehouse.Issue {
 	parts := strings.Split(input.GetHTMLURL(), "/")
 	url := strings.Replace(input.GetHTMLURL(), "/pull/", "/issues/", -1)
 
-	issue := &Issue{
-		Base: Base{
+	issue := &warehouse.Issue{
+		Base: warehouse.Base{
 			ID:        url,
 			CreatedAt: input.GetCreatedAt(),
 			UpdatedAt: input.GetUpdatedAt(),
