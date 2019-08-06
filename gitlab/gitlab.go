@@ -1,23 +1,21 @@
-package github // import "moul.io/depviz/github"
+package gitlab // import "moul.io/depviz/gitlab"
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"sync"
 
-	"github.com/google/go-github/github"
 	"github.com/jinzhu/gorm"
+	gitlab "github.com/xanzy/go-gitlab"
 	"go.uber.org/zap"
-	"golang.org/x/oauth2"
 	"moul.io/depviz/model"
 	"moul.io/multipmuri"
 )
 
 func Pull(input multipmuri.Entity, wg *sync.WaitGroup, token string, db *gorm.DB, out chan<- []*model.Issue) {
 	defer wg.Done()
+	// parse input
 	type multipmuriMinimalInterface interface {
-		RepoEntity() *multipmuri.GitHubRepo
+		RepoEntity() *multipmuri.GitLabRepo
 	}
 	target, ok := input.(multipmuriMinimalInterface)
 	if !ok {
@@ -27,33 +25,39 @@ func Pull(input multipmuri.Entity, wg *sync.WaitGroup, token string, db *gorm.DB
 	repo := target.RepoEntity()
 
 	// create client
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
-
-	// queries
-	totalIssues := 0
-	callOpts := &github.IssueListByRepoOptions{State: "all"}
-	var lastEntry model.Issue
-	if err := db.Where("repository_id = ?", repo.Canonical()).Order("updated_at desc").First(&lastEntry).Error; err == nil {
-		callOpts.Since = lastEntry.UpdatedAt
-	} else {
-		zap.L().Warn("failed to get last entry", zap.String("repo", repo.Canonical()), zap.Error(err))
+	client := gitlab.NewClient(nil, token)
+	if err := client.SetBaseURL(fmt.Sprintf("%s/api/v4", repo.ServiceEntity().Canonical())); err != nil {
+		zap.L().Error("failed to configure GitLab client", zap.Error(err))
+		return
+	}
+	total := 0
+	gitlabOpts := &gitlab.ListProjectIssuesOptions{
+		ListOptions: gitlab.ListOptions{
+			PerPage: 30,
+			Page:    1,
+		},
 	}
 
+	var lastEntry model.Issue
+	if err := db.Where("repository_id = ?", repo.Canonical()).Order("updated_at desc").First(&lastEntry).Error; err == nil {
+		gitlabOpts.UpdatedAfter = &lastEntry.UpdatedAt
+	}
+
+	// FIXME: fetch PRs
+
 	for {
-		issues, resp, err := client.Issues.ListByRepo(ctx, repo.Owner(), repo.Repo(), callOpts)
+		path := fmt.Sprintf("%s/%s", repo.Owner(), repo.Repo())
+		issues, resp, err := client.Issues.ListProjectIssues(path, gitlabOpts)
 		if err != nil {
-			log.Fatal(err)
+			zap.L().Error("failed to pull issues", zap.Error(err))
 			return
 		}
-		totalIssues += len(issues)
+		total += len(issues)
 		zap.L().Debug("paginate",
-			zap.String("provider", "github"),
+			zap.String("provider", "gitlab"),
 			zap.String("repo", repo.Canonical()),
 			zap.Int("new-issues", len(issues)),
-			zap.Int("total-issues", totalIssues),
+			zap.Int("total-issues", total),
 		)
 		normalizedIssues := []*model.Issue{}
 		for _, issue := range issues {
@@ -63,9 +67,6 @@ func Pull(input multipmuri.Entity, wg *sync.WaitGroup, token string, db *gorm.DB
 		if resp.NextPage == 0 {
 			break
 		}
-		callOpts.Page = resp.NextPage
-	}
-	if rateLimits, _, err := client.RateLimits(ctx); err == nil {
-		zap.L().Debug("github API rate limiting", zap.Stringer("limit", rateLimits.GetCore()))
+		gitlabOpts.ListOptions.Page = resp.NextPage
 	}
 }

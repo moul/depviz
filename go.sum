@@ -341,10 +341,8 @@ honnef.co/go/tools v0.0.0-20180728063816-88497007e858/go.mod h1:rf3lG4BRIbNafJWh
 honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190106161140-3f1c8253044a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190418001031-e561f6794a2a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
-moul.io/multipmuri v1.1.0 h1:xB76ZaF45Wc7RBg/kdUVc8Qurc46VzCJtnvmgFFDF+g=
-moul.io/multipmuri v1.1.0/go.mod h1:hVGDxOVIps7p2kmWzW4VziDGG7xhZ3p5TA3dvBb7M3Y=
-moul.io/multipmuri v1.2.0 h1:Xmzd3NrNO02CdX66bIbYHYE+usIblNxdyX25FhBeOnA=
-moul.io/multipmuri v1.2.0/go.mod h1:hVGDxOVIps7p2kmWzW4VziDGG7xhZ3p5TA3dvBb7M3Y=
+moul.io/multipmuri v1.3.0 h1:NHt1h02gO9owPZijAi59NvADM+Ixs0Ks5RpwTb3BelU=
+moul.io/multipmuri v1.3.0/go.mod h1:hVGDxOVIps7p2kmWzW4VziDGG7xhZ3p5TA3dvBb7M3Y=
 moul.io/zapgorm v0.0.0-20190706070406-8138918b527b h1:7A2qUMck+Ikop+5+Ar6wyweFOHTwXEgHbNayY2mEB6Q=
 moul.io/zapgorm v0.0.0-20190706070406-8138918b527b/go.mod h1:JDE3xz5BQ1ccnAijE5+T8Qin6T256Bw2Cpdi+qMfWgw=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=

@@ -1,65 +1,18 @@
-package warehouse
+package gitlab // import "moul.io/depviz/gitlab"
 
 import (
 	"fmt"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/jinzhu/gorm"
+	"moul.io/depviz/model"
+
 	gitlab "github.com/xanzy/go-gitlab"
 	"go.uber.org/zap"
 )
 
-func gitlabPull(target Target, wg *sync.WaitGroup, token string, db *gorm.DB, out chan []*Issue) {
-	defer wg.Done()
-	client := gitlab.NewClient(nil, token)
-	if err := client.SetBaseURL(fmt.Sprintf("%s/api/v4", target.ProviderURL())); err != nil {
-		zap.L().Error("failed to configure GitLab client", zap.Error(err))
-		return
-	}
-	total := 0
-	gitlabOpts := &gitlab.ListProjectIssuesOptions{
-		ListOptions: gitlab.ListOptions{
-			PerPage: 30,
-			Page:    1,
-		},
-	}
-
-	var lastEntry Issue
-	if err := db.Where("repository_id = ?", target.ProjectURL()).Order("updated_at desc").First(&lastEntry).Error; err == nil {
-		gitlabOpts.UpdatedAfter = &lastEntry.UpdatedAt
-	}
-
-	// FIXME: fetch PRs
-
-	for {
-		issues, resp, err := client.Issues.ListProjectIssues(target.Path(), gitlabOpts)
-		if err != nil {
-			zap.L().Error("failed to pull issues", zap.Error(err))
-			return
-		}
-		total += len(issues)
-		zap.L().Debug("paginate",
-			zap.String("provider", "gitlab"),
-			zap.String("repo", target.ProjectURL()),
-			zap.Int("new-issues", len(issues)),
-			zap.Int("total-issues", total),
-		)
-		normalizedIssues := []*Issue{}
-		for _, issue := range issues {
-			normalizedIssues = append(normalizedIssues, fromGitlabIssue(issue))
-		}
-		out <- normalizedIssues
-		if resp.NextPage == 0 {
-			break
-		}
-		gitlabOpts.ListOptions.Page = resp.NextPage
-	}
-}
-
-func fromGitlabIssue(input *gitlab.Issue) *Issue {
+func FromIssue(input *gitlab.Issue) *model.Issue {
 	repoURL := input.Links.Project
 	if repoURL == "" {
 		repoURL = strings.Replace(input.WebURL, fmt.Sprintf("/issues/%d", input.IID), "", -1)
@@ -68,9 +21,9 @@ func fromGitlabIssue(input *gitlab.Issue) *Issue {
 	//out, _ := json.MarshalIndent(input, "", "  ")
 	//fmt.Println(string(out))
 
-	repo := fromGitlabRepositoryURL(repoURL)
-	issue := &Issue{
-		Base: Base{
+	repo := FromRepositoryURL(repoURL)
+	issue := &model.Issue{
+		Base: model.Base{
 			ID:        input.WebURL,
 			CreatedAt: *input.CreatedAt,
 			UpdatedAt: *input.UpdatedAt,
@@ -85,10 +38,10 @@ func fromGitlabIssue(input *gitlab.Issue) *Issue {
 		Comments:   0,     // not supported directly
 		Upvotes:    input.Upvotes,
 		Downvotes:  input.Downvotes,
-		Labels:     make([]*Label, 0),
-		Assignees:  make([]*Account, 0),
-		Author:     fromGitlabIssueAuthor(repo.Provider, input.Author),
-		Milestone:  fromGitlabMilestone(repo, input.Milestone),
+		Labels:     make([]*model.Label, 0),
+		Assignees:  make([]*model.Account, 0),
+		Author:     FromIssueAuthor(repo.Provider, input.Author),
+		Milestone:  FromMilestone(repo, input.Milestone),
 		/*
 			IsOrphan    bool      `json:"is-orphan"`
 			IsHidden    bool      `json:"is-hidden"`
@@ -107,19 +60,19 @@ func fromGitlabIssue(input *gitlab.Issue) *Issue {
 		issue.CompletedAt = *input.ClosedAt
 	}
 	for _, label := range input.Labels {
-		issue.Labels = append(issue.Labels, fromGitlabLabelname(repo, label))
+		issue.Labels = append(issue.Labels, FromLabelname(repo, label))
 	}
-	//issue.Assignees = append(issue.Assignees, fromGitlabIssueAssignee(input.Assignee))
+	//issue.Assignees = append(issue.Assignees, FromIssueAssignee(input.Assignee))
 	for _, assignee := range input.Assignees {
-		issue.Assignees = append(issue.Assignees, fromGitlabIssueAssignee(repo.Provider, assignee))
+		issue.Assignees = append(issue.Assignees, FromIssueAssignee(repo.Provider, assignee))
 	}
 	return issue
 }
 
-func fromGitlabLabelname(repository *Repository, name string) *Label {
+func FromLabelname(repository *model.Repository, name string) *model.Label {
 	url := fmt.Sprintf("%s/labels/%s", repository.URL, name)
-	return &Label{
-		Base: Base{
+	return &model.Label{
+		Base: model.Base{
 			ID: url,
 		},
 		Name:  name,
@@ -129,27 +82,27 @@ func fromGitlabLabelname(repository *Repository, name string) *Label {
 	}
 }
 
-func fromGitlabIssueAssignee(provider *Provider, input *gitlab.IssueAssignee) *Account {
+func FromIssueAssignee(provider *model.Provider, input *gitlab.IssueAssignee) *model.Account {
 	author := gitlab.IssueAuthor(*input)
-	return fromGitlabIssueAuthor(provider, &author)
+	return FromIssueAuthor(provider, &author)
 }
 
-func fromGitlabIssueAuthor(provider *Provider, input *gitlab.IssueAuthor) *Account {
+func FromIssueAuthor(provider *model.Provider, input *gitlab.IssueAuthor) *model.Account {
 	name := input.Name
 	if name == "" {
 		name = input.Username
 	}
-	account := Account{
-		Base: Base{
+	account := model.Account{
+		Base: model.Base{
 			ID: input.WebURL,
 			// UpdatedAt:
 			// CreatedAt:
 		},
-		Provider: &Provider{
-			Base: Base{
+		Provider: &model.Provider{
+			Base: model.Base{
 				ID: "gitlab", // FIXME: support multiple gitlab instances
 			},
-			Driver: string(GitlabDriver),
+			Driver: string(model.GitlabDriver),
 		},
 		// Email:
 		FullName: name,
@@ -166,35 +119,35 @@ func fromGitlabIssueAuthor(provider *Provider, input *gitlab.IssueAuthor) *Accou
 	return &account
 }
 
-func fromGitlabRepositoryURL(input string) *Repository {
+func FromRepositoryURL(input string) *model.Repository {
 	u, err := url.Parse(input)
 	if err != nil {
 		zap.L().Warn("invalid repository URL", zap.String("URL", input))
 		return nil
 	}
 	providerURL := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
-	return &Repository{
-		Base: Base{
+	return &model.Repository{
+		Base: model.Base{
 			ID: input,
 		},
 		URL: input,
-		Provider: &Provider{
-			Base: Base{
+		Provider: &model.Provider{
+			Base: model.Base{
 				ID: "gitlab", // FIXME: support multiple gitlab instances
 			},
 			URL:    providerURL,
-			Driver: string(GitlabDriver),
+			Driver: string(model.GitlabDriver),
 		},
 	}
 }
 
-func fromGitlabMilestone(repository *Repository, input *gitlab.Milestone) *Milestone {
+func FromMilestone(repository *model.Repository, input *gitlab.Milestone) *model.Milestone {
 	if input == nil {
 		return nil
 	}
 	url := fmt.Sprintf("%s/milestones/%d", repository.URL, input.ID)
-	milestone := Milestone{
-		Base: Base{
+	milestone := model.Milestone{
+		Base: model.Base{
 			ID:        url,
 			CreatedAt: *input.CreatedAt,
 			UpdatedAt: *input.UpdatedAt,
