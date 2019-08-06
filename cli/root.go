@@ -97,6 +97,7 @@ func NewRootCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		db.LogMode(true)
 		log.SetOutput(ioutil.Discard)
 		db.Callback().Create().Remove("gorm:update_time_stamp")
 		db.Callback().Update().Remove("gorm:update_time_stamp")

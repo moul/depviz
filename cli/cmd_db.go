@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -34,6 +35,8 @@ func (cmd *dbCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comman
 		Use: "db",
 	}
 	cc.AddCommand(cmd.dbDumpCommand())
+	cc.AddCommand(cmd.dbInfoCommand())
+	// FIXME: db flush
 	return cc
 }
 
@@ -50,6 +53,18 @@ func (cmd *dbCommand) dbDumpCommand() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			return dbDump(&opts)
+		},
+	}
+	cmd.ParseFlags(cc.Flags())
+	return cc
+}
+
+func (cmd *dbCommand) dbInfoCommand() *cobra.Command {
+	cc := &cobra.Command{
+		Use: "info",
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts := cmd.opts
+			return dbInfo(&opts)
 		},
 	}
 	cmd.ParseFlags(cc.Flags())
@@ -80,5 +95,19 @@ func dbDump(opts *dbOptions) error {
 		return err
 	}
 	fmt.Println(string(out))
+	return nil
+}
+
+func dbInfo(opts *dbOptions) error {
+	fmt.Printf("database: %q\n", dbPath)
+	for _, model := range warehouse.AllModels {
+		var count int
+		tableName := db.NewScope(model).TableName()
+		if err := db.Model(model).Count(&count).Error; err != nil {
+			log.Printf("failed to get count for %q: %v", tableName, err)
+			continue
+		}
+		fmt.Printf("stats: %-20s %3d\n", tableName, count)
+	}
 	return nil
 }

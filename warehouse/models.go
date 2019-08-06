@@ -10,6 +10,15 @@ import (
 	"moul.io/depviz/airtabledb"
 )
 
+var AllModels = []interface{}{
+	Repository{},
+	Provider{},
+	Milestone{},
+	Issue{},
+	Label{},
+	Account{},
+}
+
 type Feature interface {
 	String() string
 	GetID() string
