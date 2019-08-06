@@ -1,10 +1,11 @@
-package airtabledb
+package airtablemodel // import "moul.io/depviz/airtablemodel"
 
 import (
 	"encoding/json"
 	"time"
 
 	"github.com/brianloveswords/airtable"
+	"moul.io/depviz/airtabledb"
 )
 
 // Unfortunately, the order matters here.
@@ -30,17 +31,33 @@ var (
 	}
 )
 
+func NewDB() airtabledb.DB {
+	db := airtabledb.DB{
+		Tables: make([]airtabledb.Table, NumTables),
+	}
+	db.Tables[IssueIndex].Elems = &[]IssueRecord{}
+	db.Tables[RepositoryIndex].Elems = &[]RepositoryRecord{}
+	db.Tables[AccountIndex].Elems = &[]AccountRecord{}
+	db.Tables[LabelIndex].Elems = &[]LabelRecord{}
+	db.Tables[MilestoneIndex].Elems = &[]MilestoneRecord{}
+	db.Tables[ProviderIndex].Elems = &[]ProviderRecord{}
+	if len(db.Tables) != NumTables {
+		panic("missing an airtabledb Table")
+	}
+	return db
+}
+
 //
 // provider
 //
 
 type ProviderRecord struct {
-	State State `json:"-"` // internal
+	State airtabledb.State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		Base
+		airtabledb.Base
 
 		// specific
 		URL    string `json:"url"`
@@ -61,12 +78,12 @@ func (r ProviderRecord) String() string {
 //
 
 type LabelRecord struct {
-	State State `json:"-"` // internal
+	State airtabledb.State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		Base
+		airtabledb.Base
 
 		// specific
 		URL         string `json:"url"`
@@ -89,12 +106,12 @@ func (r LabelRecord) String() string {
 //
 
 type AccountRecord struct {
-	State State `json:"-"` // internal
+	State airtabledb.State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		Base
+		airtabledb.Base
 
 		// specific
 		URL       string `json:"url"`
@@ -123,12 +140,12 @@ func (r AccountRecord) String() string {
 //
 
 type RepositoryRecord struct {
-	State State `json:"-"` // internal
+	State airtabledb.State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		Base
+		airtabledb.Base
 
 		// specific
 		URL         string    `json:"url"`
@@ -154,12 +171,12 @@ func (r RepositoryRecord) String() string {
 //
 
 type MilestoneRecord struct {
-	State State `json:"-"` // internal
+	State airtabledb.State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		Base
+		airtabledb.Base
 
 		// specific
 		URL         string    `json:"url"`
@@ -184,12 +201,12 @@ func (r MilestoneRecord) String() string {
 //
 
 type IssueRecord struct {
-	State State `json:"-"` // internal
+	State airtabledb.State `json:"-"` // internal
 
 	airtable.Record // provides ID, CreatedTime
 	Fields          struct {
 		// base
-		Base
+		airtabledb.Base
 
 		// specific
 		URL         string    `json:"url"`
@@ -223,20 +240,4 @@ type IssueRecord struct {
 func (r IssueRecord) String() string {
 	out, _ := json.Marshal(r)
 	return string(out)
-}
-
-func NewDB() DB {
-	db := DB{
-		Tables: make([]Table, NumTables),
-	}
-	db.Tables[IssueIndex].elems = &[]IssueRecord{}
-	db.Tables[RepositoryIndex].elems = &[]RepositoryRecord{}
-	db.Tables[AccountIndex].elems = &[]AccountRecord{}
-	db.Tables[LabelIndex].elems = &[]LabelRecord{}
-	db.Tables[MilestoneIndex].elems = &[]MilestoneRecord{}
-	db.Tables[ProviderIndex].elems = &[]ProviderRecord{}
-	if len(db.Tables) != NumTables {
-		panic("missing an airtabledb Table")
-	}
-	return db
 }
