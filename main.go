@@ -11,7 +11,11 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	//"moul.io/depviz/airtable"
 	"moul.io/depviz/cli"
+	"moul.io/depviz/sql"
+	//"moul.io/depviz/web"
+	//"moul.io/depviz/workflow"
 )
 
 func main() {
@@ -42,24 +46,20 @@ func newRootCommand() *cobra.Command {
 
 	// Add commands
 	commands := cli.Commands{}
-	for name, command := range sqlcli.Commands() {
+	for name, command := range sql.Commands() {
 		commands[name] = command
 	}
-	for name, command := range graphcli.Commands() {
-		commands[name] = command
-	}
-	for name, command := range runcli.Commands() {
-		commands[name] = command
-	}
-	for name, command := range airtablecli.Commands() {
-		commands[name] = command
-	}
-	for name, command := range webcli.Commands() {
-		commands[name] = command
-	}
-	for name, command := range pullcli.Commands() {
-		commands[name] = command
-	}
+	/*
+		for name, command := range workflow.Commands() {
+			commands[name] = command
+		}
+		for name, command := range airtable.Commands() {
+			commands[name] = command
+		}
+		for name, command := range web.Commands() {
+			commands[name] = command
+		}
+	*/
 
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// configure zap
@@ -94,7 +94,7 @@ func newRootCommand() *cobra.Command {
 			}
 		}
 
-		for _, commands := range commands {
+		for _, command := range commands {
 			if err := command.LoadDefaultOptions(); err != nil {
 				return err
 			}
@@ -106,7 +106,7 @@ func newRootCommand() *cobra.Command {
 		if strings.Contains(name, " ") { // do not add commands where level > 1
 			continue
 		}
-		cmd.AddCommand(command.NewCobraCommand(commands))
+		cmd.AddCommand(command.CobraCommand(commands))
 	}
 	return cmd
 }

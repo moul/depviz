@@ -1,5 +1,5 @@
 package workflow // import "moul.io/depviz/workflow"
-
+/*
 import (
 	"encoding/json"
 	"fmt"
@@ -16,20 +16,20 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"moul.io/depviz/warehouse"
+	"moul.io/depviz/model"
 )
 
 type graphOptions struct {
-	Output      string            `mapstructure:"output"`
-	DebugGraph  bool              `mapstructure:"debug-graph"`
-	NoCompress  bool              `mapstructure:"no-compress"`
-	DarkTheme   bool              `mapstructure:"dark-theme"`
-	ShowClosed  bool              `mapstructure:"show-closed"`
-	ShowOrphans bool              `mapstructure:"show-orphans"`
-	ShowPRs     bool              `mapstructure:"show-prs"`
-	Preview     bool              `mapstructure:"preview"`
-	Format      string            `mapstructure:"format"`
-	Targets     warehouse.Targets `mapstructure:"targets"`
+	Output      string        `mapstructure:"output"`
+	DebugGraph  bool          `mapstructure:"debug-graph"`
+	NoCompress  bool          `mapstructure:"no-compress"`
+	DarkTheme   bool          `mapstructure:"dark-theme"`
+	ShowClosed  bool          `mapstructure:"show-closed"`
+	ShowOrphans bool          `mapstructure:"show-orphans"`
+	ShowPRs     bool          `mapstructure:"show-prs"`
+	Preview     bool          `mapstructure:"preview"`
+	Format      string        `mapstructure:"format"`
+	Targets     model.Targets `mapstructure:"targets"`
 	// FocusMode
 	// NoExternal
 }
@@ -72,7 +72,7 @@ func (cmd *graphCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Com
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			var err error
-			if opts.Targets, err = warehouse.ParseTargets(args); err != nil {
+			if opts.Targets, err = model.ParseTargets(args); err != nil {
 				return errors.Wrap(err, "invalid targets")
 			}
 			return graph(&opts)
@@ -84,7 +84,7 @@ func (cmd *graphCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Com
 
 func graph(opts *graphOptions) error {
 	zap.L().Debug("graph", zap.Stringer("opts", *opts))
-	issues, err := warehouse.Load(db, nil)
+	issues, err := model.Load(db, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
@@ -119,7 +119,7 @@ func graph(opts *graphOptions) error {
 	return nil
 }
 
-func isIssueHidden(issue *warehouse.Issue, opts *graphOptions) bool {
+func isIssueHidden(issue *model.Issue, opts *graphOptions) bool {
 	if issue.IsHidden {
 		return true
 	}
@@ -135,7 +135,7 @@ func isIssueHidden(issue *warehouse.Issue, opts *graphOptions) bool {
 	return false
 }
 
-func graphviz(issues warehouse.Issues, opts *graphOptions) (string, error) {
+func graphviz(issues model.Issues, opts *graphOptions) (string, error) {
 	for _, issue := range issues {
 		if isIssueHidden(issue, opts) {
 			continue
@@ -342,7 +342,7 @@ func graphviz(issues warehouse.Issues, opts *graphOptions) (string, error) {
 	return g.String(), nil
 }
 
-func AddNodeToGraph(g *gographviz.Graph, i *warehouse.Issue, parent string) error {
+func AddNodeToGraph(g *gographviz.Graph, i *model.Issue, parent string) error {
 	attrs := map[string]string{}
 	attrs["label"] = GraphNodeTitle(i)
 	//attrs["xlabel"] = ""
@@ -379,7 +379,7 @@ func AddNodeToGraph(g *gographviz.Graph, i *warehouse.Issue, parent string) erro
 	)
 }
 
-func AddEdgesToGraph(g *gographviz.Graph, i *warehouse.Issue, opts *graphOptions, existingNodes map[string]bool) error {
+func AddEdgesToGraph(g *gographviz.Graph, i *model.Issue, opts *graphOptions, existingNodes map[string]bool) error {
 	if isIssueHidden(i, opts) {
 		return nil
 	}
@@ -419,11 +419,11 @@ func AddEdgesToGraph(g *gographviz.Graph, i *warehouse.Issue, opts *graphOptions
 	return nil
 }
 
-func GraphNodeName(i *warehouse.Issue) string {
+func GraphNodeName(i *model.Issue) string {
 	return fmt.Sprintf(`%s#%s`, i.Path()[1:], i.Number())
 }
 
-func GraphNodeTitle(i *warehouse.Issue) string {
+func GraphNodeTitle(i *model.Issue) string {
 	title := fmt.Sprintf("%s: %s", GraphNodeName(i), i.Title)
 	title = strings.Replace(title, "|", "-", -1)
 	title = strings.Replace(html.EscapeString(wrap(title, 20)), "\n", "<br/>", -1)
@@ -483,3 +483,4 @@ func wrap(text string, lineWidth int) string {
 
 	return wrapped
 }
+*/

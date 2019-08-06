@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"moul.io/depviz/warehouse"
+	"moul.io/depviz/model"
 )
 
 type pullOptions struct {
@@ -18,7 +18,7 @@ type pullOptions struct {
 	GitlabToken string `mapstructure:"gitlab-token"`
 	// includeExternalDeps bool
 
-	Targets warehouse.Targets `mapstructure:"targets"`
+	Targets model.Targets `mapstructure:"targets"`
 }
 
 func (opts pullOptions) String() string {
@@ -52,7 +52,7 @@ func (cmd *pullCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comm
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			var err error
-			if opts.Targets, err = warehouse.ParseTargets(args); err != nil {
+			if opts.Targets, err = model.ParseTargets(args); err != nil {
 				return errors.Wrap(err, "invalid targets")
 			}
 			return pullAndCompute(&opts)
@@ -65,11 +65,11 @@ func (cmd *pullCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comm
 func pullAndCompute(opts *pullOptions) error {
 	zap.L().Debug("pull", zap.Stringer("opts", *opts))
 	if os.Getenv("DEPVIZ_NOPULL") != "1" {
-		if err := warehouse.PullAndCompute(opts.GithubToken, opts.GitlabToken, db, opts.Targets); err != nil {
+		if err := model.PullAndCompute(opts.GithubToken, opts.GitlabToken, db, opts.Targets); err != nil {
 			return errors.Wrap(err, "failed to pull")
 		}
 	} else {
-		if err := warehouse.Compute(db); err != nil {
+		if err := model.Compute(db); err != nil {
 			return errors.Wrap(err, "failed to compute")
 		}
 	}

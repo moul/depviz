@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"moul.io/depviz/warehouse"
+	"moul.io/depviz/model"
 )
 
 type runOptions struct {
@@ -51,11 +51,11 @@ func (cmd *runCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comma
 			opts.GraphOptions = dc["graph"].(*graphCommand).opts
 			opts.PullOptions = dc["pull"].(*pullCommand).opts
 
-			targets, err := warehouse.ParseTargets(args)
+			targets, err := model.ParseTargets(args)
 			if err != nil {
 				return errors.Wrap(err, "invalid targets")
 			}
-			additionalPulls, err := warehouse.ParseTargets(opts.AdditionalPulls)
+			additionalPulls, err := model.ParseTargets(opts.AdditionalPulls)
 			if err != nil {
 				return errors.Wrap(err, "invalid targets")
 			}
