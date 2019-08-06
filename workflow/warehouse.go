@@ -1,19 +1,18 @@
-package warehouse
+package workflow // import "moul.io/depviz/workflow"
 
 import (
 	"fmt"
-	"log"
-	"net/http"
-	"net/url"
-	"regexp"
-	"sort"
-	"strconv"
-	"strings"
-	"sync"
 
 	"github.com/jinzhu/gorm"
+	"moul.io/multipmuri"
 )
 
+func Pull(targets []multipmuri.Entity, db *gorm.DB) error {
+	fmt.Println(targets, db)
+	return fmt.Errorf("not implemented")
+}
+
+/*
 var (
 	rxDNSName           = regexp.MustCompile(`^([a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62}){1}(\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*[\._]?$`)
 	childrenRegex, _    = regexp.Compile(`(?i)(require|requires|blocked by|block by|depend on|depends on|parent of) ([a-z0-9:/_.-]+issues/[0-9]+|[a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
@@ -390,3 +389,4 @@ func (i Issue) matchesWithATarget(targets Targets, depth int) bool {
 
 	return false
 }
+*/

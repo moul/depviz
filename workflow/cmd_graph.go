@@ -1,4 +1,4 @@
-package cli
+package workflow // import "moul.io/depviz/workflow"
 
 import (
 	"encoding/json"

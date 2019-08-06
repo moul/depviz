@@ -1,4 +1,4 @@
-package cli
+package sql
 
 import (
 	"encoding/json"
@@ -13,6 +13,40 @@ import (
 )
 
 type dbOptions struct{}
+
+// 	cmd.PersistentFlags().StringVarP(&dbPath, "db-path", "", "$HOME/.depviz.db", "database path")
+
+/*
+	// configure sql
+	dbPath = os.ExpandEnv(dbPath)
+	db, err = gorm.Open("sqlite3", dbPath)
+	if err != nil {
+		return err
+	}
+	db.LogMode(true)
+	log.SetOutput(ioutil.Discard)
+	db.Callback().Create().Remove("gorm:update_time_stamp")
+	db.Callback().Update().Remove("gorm:update_time_stamp")
+	log.SetOutput(os.Stderr)
+	db.SetLogger(zapgorm.New(zap.L().Named("vendor.gorm")))
+	db = db.Set("gorm:auto_preload", true)
+	db = db.Set("gorm:association_autoupdate", true)
+	db.BlockGlobalUpdate(true)
+	db.SingularTable(true)
+	db.LogMode(verbose)
+	if err := db.AutoMigrate(
+		warehouse.Issue{},
+		warehouse.Label{},
+		warehouse.Account{},
+		warehouse.Milestone{},
+		warehouse.Repository{},
+		warehouse.Provider{},
+	).Error; err != nil {
+		return err
+	}
+
+	return nil
+*/
 
 func (opts dbOptions) String() string {
 	out, _ := json.Marshal(opts)

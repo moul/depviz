@@ -1,4 +1,4 @@
-package cli
+package airtable
 
 import (
 	"encoding/json"
