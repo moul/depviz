@@ -1,4 +1,4 @@
-package cli
+package web // import "moul.io/depviz/web"
 
 import (
 	"net/http"

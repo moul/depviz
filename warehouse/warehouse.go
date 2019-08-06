@@ -1,19 +1,6 @@
-package warehouse
+package workflow // import "moul.io/depviz/workflow"
 
-import (
-	"fmt"
-	"log"
-	"net/http"
-	"net/url"
-	"regexp"
-	"sort"
-	"strconv"
-	"strings"
-	"sync"
-
-	"github.com/jinzhu/gorm"
-)
-
+/*
 var (
 	rxDNSName           = regexp.MustCompile(`^([a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62}){1}(\.[a-zA-Z0-9_]{1}[a-zA-Z0-9_-]{0,62})*[\._]?$`)
 	childrenRegex, _    = regexp.Compile(`(?i)(require|requires|blocked by|block by|depend on|depends on|parent of) ([a-z0-9:/_.-]+issues/[0-9]+|[a-z0-9:/_.-]+#[0-9]+|[a-z0-9/_-]*#[0-9]+)`)
@@ -24,49 +11,6 @@ var (
 	hideRegex, _   = regexp.Compile(`(?i)(depviz.hide)`) // FIXME: use label
 )
 
-// PullAndCompute pulls issues from the given targets, computes their fields, and stores the issues in the database.
-func PullAndCompute(githubToken, gitlabToken string, db *gorm.DB, t Targets) error {
-	// FIXME: handle the special '@me' target
-
-	var (
-		wg        sync.WaitGroup
-		allIssues []*Issue
-		out       = make(chan []*Issue, 100)
-	)
-
-	targets := t.UniqueProjects()
-
-	// parallel fetches
-	wg.Add(len(targets))
-	for _, target := range targets {
-		switch target.Driver() {
-		case GithubDriver:
-			go githubPull(target, &wg, githubToken, db, out)
-		case GitlabDriver:
-			go gitlabPull(target, &wg, gitlabToken, db, out)
-		default:
-			panic("should not happen")
-		}
-	}
-
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
-
-	for issues := range out {
-		allIssues = append(allIssues, issues...)
-	}
-
-	// save
-	for _, issue := range allIssues {
-		if err := db.Save(issue).Error; err != nil {
-			return err
-		}
-	}
-
-	return Compute(db)
-}
 
 // Compute loads issues from the given database, computes their fields, and stores the issues back into the database.
 func Compute(db *gorm.DB) error {
@@ -260,20 +204,6 @@ func (i Issue) GetRelativeURL(target string) string {
 	return fmt.Sprintf("%s/%s", strings.TrimRight(i.Repository.Provider.URL, "/"), target)
 }
 
-func (i *Issue) PostLoad() {
-	i.ParentIDs = []string{}
-	i.ChildIDs = []string{}
-	i.DuplicateIDs = []string{}
-	for _, rel := range i.Parents {
-		i.ParentIDs = append(i.ParentIDs, rel.ID)
-	}
-	for _, rel := range i.Children {
-		i.ChildIDs = append(i.ChildIDs, rel.ID)
-	}
-	for _, rel := range i.Duplicates {
-		i.DuplicateIDs = append(i.DuplicateIDs, rel.ID)
-	}
-}
 
 func (i Issue) IsClosed() bool {
 	return i.State == "closed"
@@ -390,3 +320,4 @@ func (i Issue) matchesWithATarget(targets Targets, depth int) bool {
 
 	return false
 }
+*/
