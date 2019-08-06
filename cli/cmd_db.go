@@ -3,13 +3,13 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-
-	"moul.io/depviz/pkg/issues"
+	"moul.io/depviz/warehouse"
 )
 
 type dbOptions struct{}
@@ -35,6 +35,8 @@ func (cmd *dbCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Comman
 		Use: "db",
 	}
 	cc.AddCommand(cmd.dbDumpCommand())
+	cc.AddCommand(cmd.dbInfoCommand())
+	// FIXME: db flush
 	return cc
 }
 
@@ -57,12 +59,24 @@ func (cmd *dbCommand) dbDumpCommand() *cobra.Command {
 	return cc
 }
 
+func (cmd *dbCommand) dbInfoCommand() *cobra.Command {
+	cc := &cobra.Command{
+		Use: "info",
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts := cmd.opts
+			return dbInfo(&opts)
+		},
+	}
+	cmd.ParseFlags(cc.Flags())
+	return cc
+}
+
 func dbDump(opts *dbOptions) error {
-	query := db.Model(issues.Issue{}).Order("created_at")
+	query := db.Model(warehouse.Issue{}).Order("created_at")
 	perPage := 100
-	var allIssues []*issues.Issue
+	var allIssues []*warehouse.Issue
 	for page := 0; ; page++ {
-		var newIssues []*issues.Issue
+		var newIssues []*warehouse.Issue
 		if err := query.Limit(perPage).Offset(perPage * page).Find(&newIssues).Error; err != nil {
 			return err
 		}
@@ -81,5 +95,19 @@ func dbDump(opts *dbOptions) error {
 		return err
 	}
 	fmt.Println(string(out))
+	return nil
+}
+
+func dbInfo(opts *dbOptions) error {
+	fmt.Printf("database: %q\n", dbPath)
+	for _, model := range warehouse.AllModels {
+		var count int
+		tableName := db.NewScope(model).TableName()
+		if err := db.Model(model).Count(&count).Error; err != nil {
+			log.Printf("failed to get count for %q: %v", tableName, err)
+			continue
+		}
+		fmt.Printf("stats: %-20s %3d\n", tableName, count)
+	}
 	return nil
 }

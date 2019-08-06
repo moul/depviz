@@ -14,8 +14,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
-	"moul.io/depviz/pkg/issues"
+	"moul.io/depviz/warehouse"
 	"moul.io/zapgorm"
 )
 
@@ -98,6 +97,7 @@ func NewRootCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		db.LogMode(true)
 		log.SetOutput(ioutil.Discard)
 		db.Callback().Create().Remove("gorm:update_time_stamp")
 		db.Callback().Update().Remove("gorm:update_time_stamp")
@@ -109,12 +109,12 @@ func NewRootCommand() *cobra.Command {
 		db.SingularTable(true)
 		db.LogMode(verbose)
 		if err := db.AutoMigrate(
-			issues.Issue{},
-			issues.Label{},
-			issues.Account{},
-			issues.Milestone{},
-			issues.Repository{},
-			issues.Provider{},
+			warehouse.Issue{},
+			warehouse.Label{},
+			warehouse.Account{},
+			warehouse.Milestone{},
+			warehouse.Repository{},
+			warehouse.Provider{},
 		).Error; err != nil {
 			return err
 		}

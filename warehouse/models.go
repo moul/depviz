@@ -1,4 +1,4 @@
-package issues
+package warehouse
 
 import (
 	"encoding/json"
@@ -7,8 +7,17 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	"moul.io/depviz/pkg/airtabledb"
+	"moul.io/depviz/airtabledb"
 )
+
+var AllModels = []interface{}{
+	Repository{},
+	Provider{},
+	Milestone{},
+	Issue{},
+	Label{},
+	Account{},
+}
 
 type Feature interface {
 	String() string
