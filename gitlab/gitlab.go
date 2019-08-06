@@ -1,4 +1,4 @@
-package warehouse
+package gitlab // import "moul.io/depviz/gitlab"
 
 import (
 	"fmt"

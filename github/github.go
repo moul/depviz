@@ -1,4 +1,4 @@
-package warehouse
+package github // import "moul.io/depviz/github"
 
 import (
 	"context"

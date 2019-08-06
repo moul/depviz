@@ -1,4 +1,4 @@
-package warehouse
+package warehouse // import "moul.io/depviz/warehouse"
 
 import (
 	"encoding/json"
@@ -19,15 +19,15 @@ var AllModels = []interface{}{
 	Account{},
 }
 
-type Feature interface {
+type Model interface {
 	String() string
 	GetID() string
 	ToRecord(airtabledb.DB) airtabledb.Record
 }
 
-// toRecord attempts to automatically convert between an issues.Feature and an airtable Record.
-// It's not particularly robust, but it works for structs following the format of Features and Records.
-func toRecord(cache airtabledb.DB, src Feature, dst interface{}) {
+// toRecord attempts to automatically convert between a warehouse.Model and an airtable Record.
+// It's not particularly robust, but it works for structs following the format of Models and Records.
+func toRecord(cache airtabledb.DB, src Model, dst interface{}) {
 	dV := reflect.ValueOf(dst).Elem().FieldByName("Fields")
 	sV := reflect.ValueOf(src)
 	copyFields(cache, sV, dV)
