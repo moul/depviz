@@ -1,5 +1,5 @@
-package cli
-
+package web // import "moul.io/depviz/web"
+/*
 import (
 	"bytes"
 	"encoding/json"
@@ -172,3 +172,4 @@ func web(opts *webOptions) error {
 	log.Printf("Listening on %s", opts.Bind)
 	return http.ListenAndServe(opts.Bind, r)
 }
+*/

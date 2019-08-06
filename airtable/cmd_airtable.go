@@ -1,5 +1,5 @@
-package cli
-
+package airtable // import "moul.io/depviz/airtable"
+/*
 import (
 	"encoding/json"
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"moul.io/depviz/airtabledb"
-	"moul.io/depviz/warehouse"
+	"moul.io/depviz/model"
 )
 
 type airtableOptions struct {
@@ -27,7 +27,7 @@ type airtableOptions struct {
 	DestroyInvalidRecords bool   `mapstructure:"airtable-destroy-invalid-records"`
 	TableNames            []string
 
-	Targets []warehouse.Target `mapstructure:"targets"`
+	Targets []model.Target `mapstructure:"targets"`
 }
 
 func (opts airtableOptions) String() string {
@@ -92,7 +92,7 @@ func (cmd *airtableCommand) airtableSyncCommand() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			var err error
-			if opts.Targets, err = warehouse.ParseTargets(args); err != nil {
+			if opts.Targets, err = model.ParseTargets(args); err != nil {
 				return errors.Wrap(err, "invalid targets")
 			}
 			return airtableSync(&opts)
@@ -113,16 +113,16 @@ func airtableSync(opts *airtableOptions) error {
 	// prepare
 	//
 
-	loadedIssues, err := warehouse.Load(db, nil)
+	loadedIssues, err := model.Load(db, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
 	loadedIssues = loadedIssues.FilterByTargets(opts.Targets)
 	zap.L().Debug("fetch db entries", zap.Int("count", len(loadedIssues)))
 
-	issueFeatures := make([]map[string]warehouse.Feature, airtabledb.NumTables)
+	issueFeatures := make([]map[string]model.Feature, airtabledb.NumTables)
 	for i := range issueFeatures {
-		issueFeatures[i] = make(map[string]warehouse.Feature)
+		issueFeatures[i] = make(map[string]model.Feature)
 	}
 
 	// Parse the loaded issues into the issueFeature map.
@@ -250,3 +250,4 @@ func airtableSync(opts *airtableOptions) error {
 
 	return nil
 }
+*/

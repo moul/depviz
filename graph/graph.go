@@ -1,90 +1,145 @@
-package cli
+package graph // import "moul.io/depviz/graph"
 
 import (
 	"encoding/json"
 	"fmt"
-	"html"
-	"io"
-	"math"
-	"os"
-	"sort"
-	"strings"
 
-	"github.com/awalterschulze/gographviz"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
+	"github.com/jinzhu/gorm"
 	"go.uber.org/zap"
-	"moul.io/depviz/warehouse"
+	"moul.io/depviz/compute"
+	"moul.io/depviz/sql"
+	"moul.io/graphman"
+	"moul.io/graphman/viz"
+	"moul.io/multipmuri"
 )
 
-type graphOptions struct {
-	Output      string            `mapstructure:"output"`
-	DebugGraph  bool              `mapstructure:"debug-graph"`
-	NoCompress  bool              `mapstructure:"no-compress"`
-	DarkTheme   bool              `mapstructure:"dark-theme"`
-	ShowClosed  bool              `mapstructure:"show-closed"`
-	ShowOrphans bool              `mapstructure:"show-orphans"`
-	ShowPRs     bool              `mapstructure:"show-prs"`
-	Preview     bool              `mapstructure:"preview"`
-	Format      string            `mapstructure:"format"`
-	Targets     warehouse.Targets `mapstructure:"targets"`
-	// FocusMode
-	// NoExternal
+type Options struct {
+	SQL            sql.Options         `mapstructure:"sql"`     // inherited with sql.GetOptions()
+	Targets        []multipmuri.Entity `mapstructure:"targets"` // parsed from Args
+	ShowClosed     bool                `mapstructure:"show-closed"`
+	ShowOrphans    bool                `mapstructure:"show-orphans"`
+	ShowPRs        bool                `mapstructure:"show-prs"`
+	ShowAllRelated bool                `mapstructure:"show-all-related"`
+	NoPert         bool                `mapstructure:"no-pert"`
+	Vertical       bool                `mapstructure:"vertical"`
 }
 
-func (opts graphOptions) String() string {
+func (opts Options) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
 }
 
-type graphCommand struct {
-	opts graphOptions
-}
+func Graph(opts *Options) error {
+	zap.L().Debug("graph", zap.Stringer("opts", *opts))
 
-func (cmd *graphCommand) LoadDefaultOptions() error {
-	if err := viper.Unmarshal(&cmd.opts); err != nil {
+	db, err := sql.FromOpts(&opts.SQL)
+	if err != nil {
 		return err
 	}
+
+	if err := graph(opts, db); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (cmd *graphCommand) ParseFlags(flags *pflag.FlagSet) {
-	flags.BoolVarP(&cmd.opts.ShowClosed, "show-closed", "", false, "show closed issues")
-	flags.BoolVarP(&cmd.opts.DebugGraph, "debug-graph", "", false, "debug graph")
-	flags.BoolVarP(&cmd.opts.ShowOrphans, "show-orphans", "", false, "show issues not linked to an epic")
-	flags.BoolVarP(&cmd.opts.NoCompress, "no-compress", "", false, "do not compress graph (no overlap)")
-	flags.BoolVarP(&cmd.opts.DarkTheme, "dark-theme", "", false, "dark theme")
-	flags.BoolVarP(&cmd.opts.ShowPRs, "show-prs", "", false, "show PRs")
-	flags.StringVarP(&cmd.opts.Output, "output", "o", "-", "output file ('-' for stdout, dot)")
-	flags.StringVarP(&cmd.opts.Format, "format", "f", "", "output file format (if empty, will determine thanks to output extension)")
-	//flags.BoolVarP(&opts.Preview, "preview", "p", false, "preview result")
-	if err := viper.BindPFlags(flags); err != nil {
-		zap.L().Warn("failed to bind flags using Viper", zap.Error(err))
+func graph(opts *Options, db *gorm.DB) error {
+	issues, err := sql.LoadAllIssues(db)
+	if err != nil {
+		return err
 	}
+
+	// compute and filter issues
+	computed := compute.Compute(issues)
+	computed.FilterByTargets(opts.Targets)
+	// FIXME: if !opts.ShowOrphans { computed.FilterOrphans() }
+	// FIXME: if !opts.ShowAllRelated { computed.FilterAllRelated()
+	// FIXME: if !opts.ShowPRs { computed.FilterPRs()
+	// FIXME: if !opts.ShowClosed { computed.FilterClosed()
+
+	// initialize graph config
+	config := graphman.PertConfig{
+		Actions: []graphman.PertAction{},
+		States:  []graphman.PertState{},
+	}
+	config.Opts.NoSimplify = false
+
+	// process computed issues
+	for _, issue := range computed.Issues {
+		// fmt.Println(issue.Hidden, issue.URL)
+		if issue.Hidden {
+			continue
+		}
+		config.Actions = append(
+			config.Actions,
+			graphman.PertAction{
+				ID:        issue.URL,
+				Title:     issue.Title,
+				DependsOn: issue.DependsOn,
+				// Estimate
+				// FIXME: set style based on type, active, etc
+			},
+		)
+	}
+	for _, milestone := range computed.Milestones {
+		config.States = append(
+			config.States,
+			graphman.PertState{
+				ID:        milestone.URL,
+				Title:     milestone.Title,
+				DependsOn: milestone.DependsOn,
+			},
+		)
+	}
+	if len(computed.Repos) > 1 {
+		// FIXME: alternative layout with repo a bordered subgraph
+		for _, repo := range computed.Repos {
+			config.States = append(
+				config.States,
+				graphman.PertState{
+					ID:        repo.URL,
+					Title:     fmt.Sprintf("Repo %q", repo.URL),
+					DependsOn: repo.DependsOn,
+				},
+			)
+		}
+	}
+
+	// initialize graph from config
+	graph := graphman.FromPertConfig(config)
+	if !opts.NoPert {
+		_ = graphman.ComputePert(graph)
+		//for _, e := range graph.Edges() {log.Println("*", e)}
+	}
+
+	// graph fine tuning
+	graph.GetVertex("Start").SetColor("blue")
+	graph.GetVertex("Finish").SetColor("blue")
+	if opts.Vertical {
+		graph.Attrs["rankdir"] = "TB"
+	}
+	// FIXME: hightlight critical paths
+	// FIXME: highlight other infos
+	// FIXME: highlight target
+
+	// graphviz
+	s, err := viz.ToGraphviz(graph, &viz.Opts{
+		CommentsInLabel: true,
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Println(s)
+
+	return nil
 }
 
-func (cmd *graphCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
-	cc := &cobra.Command{
-		Use:   "graph",
-		Short: "Output graph of relationships between all issues stored in database",
-		RunE: func(_ *cobra.Command, args []string) error {
-			opts := cmd.opts
-			var err error
-			if opts.Targets, err = warehouse.ParseTargets(args); err != nil {
-				return errors.Wrap(err, "invalid targets")
-			}
-			return graph(&opts)
-		},
-	}
-	cmd.ParseFlags(cc.Flags())
-	return cc
-}
+/*
 
 func graph(opts *graphOptions) error {
 	zap.L().Debug("graph", zap.Stringer("opts", *opts))
-	issues, err := warehouse.Load(db, nil)
+	issues, err := model.Load(db, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to load issues")
 	}
@@ -119,7 +174,7 @@ func graph(opts *graphOptions) error {
 	return nil
 }
 
-func isIssueHidden(issue *warehouse.Issue, opts *graphOptions) bool {
+func isIssueHidden(issue *model.Issue, opts *graphOptions) bool {
 	if issue.IsHidden {
 		return true
 	}
@@ -135,7 +190,7 @@ func isIssueHidden(issue *warehouse.Issue, opts *graphOptions) bool {
 	return false
 }
 
-func graphviz(issues warehouse.Issues, opts *graphOptions) (string, error) {
+func graphviz(issues model.Issues, opts *graphOptions) (string, error) {
 	for _, issue := range issues {
 		if isIssueHidden(issue, opts) {
 			continue
@@ -342,7 +397,7 @@ func graphviz(issues warehouse.Issues, opts *graphOptions) (string, error) {
 	return g.String(), nil
 }
 
-func AddNodeToGraph(g *gographviz.Graph, i *warehouse.Issue, parent string) error {
+func AddNodeToGraph(g *gographviz.Graph, i *model.Issue, parent string) error {
 	attrs := map[string]string{}
 	attrs["label"] = GraphNodeTitle(i)
 	//attrs["xlabel"] = ""
@@ -379,7 +434,7 @@ func AddNodeToGraph(g *gographviz.Graph, i *warehouse.Issue, parent string) erro
 	)
 }
 
-func AddEdgesToGraph(g *gographviz.Graph, i *warehouse.Issue, opts *graphOptions, existingNodes map[string]bool) error {
+func AddEdgesToGraph(g *gographviz.Graph, i *model.Issue, opts *graphOptions, existingNodes map[string]bool) error {
 	if isIssueHidden(i, opts) {
 		return nil
 	}
@@ -419,11 +474,11 @@ func AddEdgesToGraph(g *gographviz.Graph, i *warehouse.Issue, opts *graphOptions
 	return nil
 }
 
-func GraphNodeName(i *warehouse.Issue) string {
+func GraphNodeName(i *model.Issue) string {
 	return fmt.Sprintf(`%s#%s`, i.Path()[1:], i.Number())
 }
 
-func GraphNodeTitle(i *warehouse.Issue) string {
+func GraphNodeTitle(i *model.Issue) string {
 	title := fmt.Sprintf("%s: %s", GraphNodeName(i), i.Title)
 	title = strings.Replace(title, "|", "-", -1)
 	title = strings.Replace(html.EscapeString(wrap(title, 20)), "\n", "<br/>", -1)
@@ -483,3 +538,4 @@ func wrap(text string, lineWidth int) string {
 
 	return wrapped
 }
+*/
