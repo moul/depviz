@@ -15,7 +15,7 @@ import (
 	"moul.io/depviz/cli"
 	"moul.io/depviz/sql"
 	//"moul.io/depviz/web"
-	"moul.io/depviz/workflow"
+	"moul.io/depviz/pull"
 )
 
 func main() {
@@ -49,7 +49,7 @@ func newRootCommand() *cobra.Command {
 	for name, command := range sql.Commands() {
 		commands[name] = command
 	}
-	for name, command := range workflow.Commands() {
+	for name, command := range pull.Commands() {
 		commands[name] = command
 	}
 	/*
@@ -65,6 +65,7 @@ func newRootCommand() *cobra.Command {
 		// configure zap
 		config := zap.NewDevelopmentConfig()
 		if verbose {
+			os.Setenv("DEPVIZ_DEBUG", "1") // FIXME: can be done in a more gopher way
 			config.Level.SetLevel(zapcore.DebugLevel)
 		} else {
 			config.Level.SetLevel(zapcore.InfoLevel)
@@ -85,7 +86,7 @@ func newRootCommand() *cobra.Command {
 			viper.AddConfigPath(".")
 			viper.SetConfigName(".depviz")
 		}
-		viper.SetEnvPrefix("DEPVIZ")
+		//viper.SetEnvPrefix("DEPVIZ")
 		viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 		viper.AutomaticEnv()
 		if err := viper.MergeInConfig(); err != nil {

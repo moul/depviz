@@ -21,7 +21,7 @@ func Pull(input multipmuri.Entity, wg *sync.WaitGroup, token string, db *gorm.DB
 	}
 	target, ok := input.(multipmuriMinimalInterface)
 	if !ok {
-		zap.L().Warn("invalid input", zap.String("input", fmt.Sprintf("%v", input)))
+		zap.L().Warn("invalid input", zap.String("input", fmt.Sprintf("%v", input.Canonical())))
 		return
 	}
 	repo := target.RepoEntity()

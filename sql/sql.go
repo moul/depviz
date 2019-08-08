@@ -13,6 +13,9 @@ import (
 )
 
 func FromOpts(opts *Options) (*gorm.DB, error) {
+	if os.Getenv("DEPVIZ_DEBUG") == "1" {
+		opts.Verbose = true
+	}
 	// configure sql
 	var (
 		db  *gorm.DB
