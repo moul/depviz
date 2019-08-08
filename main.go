@@ -15,7 +15,7 @@ import (
 	"moul.io/depviz/cli"
 	"moul.io/depviz/sql"
 	//"moul.io/depviz/web"
-	//"moul.io/depviz/workflow"
+	"moul.io/depviz/workflow"
 )
 
 func main() {
@@ -49,10 +49,10 @@ func newRootCommand() *cobra.Command {
 	for name, command := range sql.Commands() {
 		commands[name] = command
 	}
+	for name, command := range workflow.Commands() {
+		commands[name] = command
+	}
 	/*
-		for name, command := range workflow.Commands() {
-			commands[name] = command
-		}
 		for name, command := range airtable.Commands() {
 			commands[name] = command
 		}

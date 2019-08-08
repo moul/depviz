@@ -1,21 +1,51 @@
 package sql
 
-/*
-func (cmd *dbCommand) dbInfoCommand() *cobra.Command {
+import (
+	"fmt"
+	"log"
+
+	"go.uber.org/zap"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
+	"moul.io/depviz/cli"
+	"moul.io/depviz/model"
+)
+
+type infoOptions struct {
+	sql Options `mapstructure:"sql"`
+	// FIXME: add --anonymize
+}
+
+type infoCommand struct{ opts infoOptions }
+
+func (cmd *infoCommand) CobraCommand(commands cli.Commands) *cobra.Command {
 	cc := &cobra.Command{
 		Use: "info",
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
-			return dbInfo(&opts)
+			opts.sql = GetOptions(commands)
+			return runInfo(&opts)
 		},
 	}
 	cmd.ParseFlags(cc.Flags())
+	commands["sql"].ParseFlags(cc.Flags())
 	return cc
 }
+func (cmd *infoCommand) LoadDefaultOptions() error { return viper.Unmarshal(&cmd.opts) }
+func (cmd *infoCommand) ParseFlags(flags *pflag.FlagSet) {
+	if err := viper.BindPFlags(flags); err != nil {
+		zap.L().Warn("failed to bind viper flags", zap.Error(err))
+	}
+}
+func runInfo(opts *infoOptions) error {
+	fmt.Printf("database: %q\n", opts.sql.Config)
+	db, err := FromOpts(&opts.sql)
+	if err != nil {
+		return err
+	}
 
-
-func dbInfo(opts *dbOptions) error {
-	fmt.Printf("database: %q\n", dbPath)
 	for _, model := range model.AllModels {
 		var count int
 		tableName := db.NewScope(model).TableName()
@@ -25,6 +55,6 @@ func dbInfo(opts *dbOptions) error {
 		}
 		fmt.Printf("stats: %-20s %3d\n", tableName, count)
 	}
+
 	return nil
 }
-*/

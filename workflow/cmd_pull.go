@@ -1,5 +1,5 @@
 package workflow // import "moul.io/depviz/workflow"
-
+/*
 import (
 	"encoding/json"
 	"os"
@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"moul.io/depviz/model"
+	"moul.io/multipmuri"
 )
 
 type pullOptions struct {
@@ -18,7 +19,7 @@ type pullOptions struct {
 	GitlabToken string `mapstructure:"gitlab-token"`
 	// includeExternalDeps bool
 
-	Targets model.Targets `mapstructure:"targets"`
+	Targets multipmuri.Entity `mapstructure:"targets"`
 }
 
 func (opts pullOptions) String() string {
@@ -75,3 +76,4 @@ func pullAndCompute(opts *pullOptions) error {
 	}
 	return nil
 }
+*/

@@ -1,5 +1,5 @@
 package workflow // import "moul.io/depviz/workflow"
-
+/*
 import (
 	"encoding/json"
 
@@ -81,3 +81,4 @@ func run(opts *runOptions) error {
 	}
 	return nil
 }
+*/
