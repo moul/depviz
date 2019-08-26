@@ -119,6 +119,13 @@ func graph(opts *Options, db *gorm.DB) error {
 	if opts.Vertical {
 		graph.Attrs["rankdir"] = "TB"
 	}
+	//graph.Attrs["size"] = "\"11,11\""
+	graph.Attrs["overlap"] = "false"
+	graph.Attrs["pack"] = "true"
+	graph.Attrs["splines"] = "true"
+	// graph.Attrs["layout"] = "neato"
+	graph.Attrs["sep"] = "0.1"
+	// graph.Attrs["start"] = "random"
 	// FIXME: hightlight critical paths
 	// FIXME: highlight other infos
 	// FIXME: highlight target

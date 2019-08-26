@@ -347,10 +347,10 @@ honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWh
 honnef.co/go/tools v0.0.0-20190106161140-3f1c8253044a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190418001031-e561f6794a2a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 moul.io/graphman v1.0.0/go.mod h1:7OpdQsfE4ibHqHP+Ir1VAUd4p5j25n4xU9bhJvQ+F0g=
-moul.io/graphman v1.1.0 h1:I9JHf2CSTY2mw1BoIWgMEceiKcaKmnyAHK8YbAenv3k=
-moul.io/graphman v1.1.0/go.mod h1:7OpdQsfE4ibHqHP+Ir1VAUd4p5j25n4xU9bhJvQ+F0g=
-moul.io/graphman/viz v0.0.0-20190723133924-9cfaba2b8149 h1:JeAtKlUH+Z4tJWKCXvBT5Dwt4NxMWspcIrSLYN86aZc=
-moul.io/graphman/viz v0.0.0-20190723133924-9cfaba2b8149/go.mod h1:k+dz23boQvGFXrpIVMrGgWZFLp9mX34dCd8VtfgtVlQ=
+moul.io/graphman v1.1.1-0.20190826140824-9ab11885dd55 h1:4+IcbwdDP7UyrT2id+zJGdtfz2xfDi8tlV+eFV5o1R4=
+moul.io/graphman v1.1.1-0.20190826140824-9ab11885dd55/go.mod h1:7OpdQsfE4ibHqHP+Ir1VAUd4p5j25n4xU9bhJvQ+F0g=
+moul.io/graphman/viz v0.0.0-20190826140824-9ab11885dd55 h1:23p6bNyhVDapVXdXsmqDRxyNicy13Is2xWJolb2NvaU=
+moul.io/graphman/viz v0.0.0-20190826140824-9ab11885dd55/go.mod h1:k+dz23boQvGFXrpIVMrGgWZFLp9mX34dCd8VtfgtVlQ=
 moul.io/multipmuri v1.6.0 h1:lfRCGN58BMCXDq2lZOwb/FBHhvJdeRaJYBV2C6TY5Kk=
 moul.io/multipmuri v1.6.0/go.mod h1:xTE1AUMMTNRFyNRNwnM9E7UgOalny3SNb3B4h5CYv4Q=
 moul.io/zapgorm v0.0.0-20190706070406-8138918b527b h1:7A2qUMck+Ikop+5+Ar6wyweFOHTwXEgHbNayY2mEB6Q=
