@@ -28,7 +28,7 @@ require (
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
 	golang.org/x/oauth2 v0.0.0-20190624143730-0f29369cfe45
 	golang.org/x/sys v0.0.0-20190710143415-6ec70d6a5542 // indirect
-	moul.io/graphman v1.1.1-0.20190826140824-9ab11885dd55
+	moul.io/graphman v1.3.0
 	moul.io/graphman/viz v0.0.0-20190826140824-9ab11885dd55
 	moul.io/multipmuri v1.6.0
 	moul.io/zapgorm v0.0.0-20190706070406-8138918b527b
