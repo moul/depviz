@@ -10,6 +10,7 @@ require (
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/jinzhu/gorm v1.9.10
+	github.com/kr/pty v1.1.8 // indirect
 	github.com/lib/pq v1.1.1
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mattn/go-sqlite3 v1.11.0
@@ -29,7 +30,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20190624143730-0f29369cfe45
 	golang.org/x/sys v0.0.0-20190710143415-6ec70d6a5542 // indirect
 	moul.io/graphman v1.3.0
-	moul.io/graphman/viz v0.0.0-20190826140824-9ab11885dd55
+	moul.io/graphman/viz v0.0.0-20190828003746-3a006dc3d6da
 	moul.io/multipmuri v1.6.0
 	moul.io/zapgorm v0.0.0-20190706070406-8138918b527b
 )
