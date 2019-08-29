@@ -1,27 +1,13 @@
-.PHONY: install
-install:
-	GO111MODULE=on go install -v
+GOPKG ?= 	moul.io/depviz
+GOBINS ?=	. ./tools/opml-to-github-issues ./tools/sed-i-github-issues
+DOCKER_IMAGE ?=	moul/depviz
 
-.PHONY: test
-test:
-	go test -race -cover -v ./...
+all: test install
 
-.PHONY: lint
-lint:
-	golangci-lint run --verbose ./...
+-include rules.mk
 
 .PHONY: update_examples
 update_examples:
 	for dir in $(sort $(dir $(wildcard examples/*/*))); do (cd $$dir && make); done
 	@echo "now you can run:"
 	@echo "    git commit examples -m \"chore: update examples\""
-
-.PHONY: docker.build
-docker.build:
-	docker build -t moul/depviz .
-
-.PHONY: release
-release:
-	goreleaser --snapshot --skip-publish --rm-dist
-	@echo -n "Do you want to release? [y/N] " && read ans && [ $${ans:-N} = y ]
-	goreleaser --rm-dist

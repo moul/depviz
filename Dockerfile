@@ -3,7 +3,7 @@ RUN             apk add --update --no-cache git gcc musl-dev make
 ADD             . /go/src/moul.io/depviz
 WORKDIR         /go/src/moul.io/depviz
 RUN             GO111MODULE=on go get -v .
-RUN             make install
+RUN             GO111MODULE=on make install
 
 FROM            alpine
 RUN             apk add --update --no-cache ca-certificates

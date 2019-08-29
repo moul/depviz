@@ -1,60 +1,14 @@
 version: 2.1
 
-executors:
-  golang:
-    working_directory: /go/src/moul.io/depviz
-    docker:
-      - image: circleci/golang:1.12
-    environment:
-      GO111MODULE: "on"
-      DOCKER_IMAGE: moul/depviz
-
-  docker:
-    docker:
-      - image: docker:18.06.3-ce-git
-
 orbs:
-  codecov: codecov/codecov@1.0.5
-  moul: moul/build@1.5.0
-  tools: gotest/tools@0.0.9
-  retry: moul/retry@0.6.0
-  docker: circleci/docker@0.5.13
-
-jobs:
-  go-build:
-    executor: golang
-    steps:
-      - checkout
-      #- restore_cache:
-      #    keys:
-      #      - go-mod-v1-{{ checksum "go.sum" }}
-      #      - go-mod-v1-
-      - retry/install
-      - tools/mod-download
-      - tools/mod-tidy-check
-      - run: retry -m 5 make install
-      - run: retry -m 5 make test
-      - moul/install_golangci-lint
-      - run: PATH=$PATH:$(pwd)/bin retry -m 3 make lint
-      - codecov/upload:
-          file: coverage.txt
-      #- save_cache:
-      #    key: go-mod-v1-{{ checksum "go.sum" }}
-      #    paths:
-      #      - /go/pkg/mod
-
-  docker-build:
-    executor: docker
-    steps:
-      - checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - docker/build:
-          image: moul/depviz
-      #- docker/dockerlint
+  moul: moul/build@1.9.1 # https://github.com/moul/build
 
 workflows:
   main:
     jobs:
-      - go-build
-      - docker-build
+      - moul/golang-build:
+          gopkg: moul.io/depviz
+      - moul/golang-build:
+          gopkg: moul.io/depviz
+          tag: '1.11'
+      - moul/docker-build
