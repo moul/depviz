@@ -68,7 +68,7 @@ func graph(opts *Options, db *gorm.DB) error {
 	config.Opts.NoSimplify = false
 
 	// process computed issues
-	for _, issue := range computed.Issues {
+	for _, issue := range computed.Issues() {
 		// fmt.Println(issue.Hidden, issue.URL)
 		if issue.Hidden {
 			continue
@@ -84,7 +84,10 @@ func graph(opts *Options, db *gorm.DB) error {
 			},
 		)
 	}
-	for _, milestone := range computed.Milestones {
+	for _, milestone := range computed.Milestones() {
+		if milestone.Hidden {
+			continue
+		}
 		config.States = append(
 			config.States,
 			graphman.PertState{
@@ -94,9 +97,12 @@ func graph(opts *Options, db *gorm.DB) error {
 			},
 		)
 	}
-	if len(computed.Repos) > 1 {
+	if len(computed.Repos()) > 1 {
 		// FIXME: alternative layout with repo a bordered subgraph
-		for _, repo := range computed.Repos {
+		for _, repo := range computed.Repos() {
+			if repo.Hidden {
+				continue
+			}
 			config.States = append(
 				config.States,
 				graphman.PertState{

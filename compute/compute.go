@@ -14,9 +14,9 @@ import (
 //
 
 type Computed struct {
-	Issues     []*ComputedIssue
-	Milestones []*ComputedMilestone
-	Repos      []*ComputedRepo
+	AllIssues     []*ComputedIssue
+	AllMilestones []*ComputedMilestone
+	AllRepos      []*ComputedRepo
 
 	// internal
 	mmap map[string]*ComputedMilestone
@@ -72,7 +72,7 @@ func Compute(input model.Issues) Computed {
 }
 
 func (computed *Computed) FilterByTargets(targets []multipmuri.Entity) {
-	for _, issue := range computed.Issues {
+	for _, issue := range computed.AllIssues {
 		issueEntity := issue.MultipmuriEntity()
 		for _, target := range targets {
 			if issueEntity.Equals(target) || target.Contains(issueEntity) {
@@ -84,7 +84,7 @@ func (computed *Computed) FilterByTargets(targets []multipmuri.Entity) {
 			issue.Hidden = true
 		}
 	}
-	for _, milestone := range computed.Milestones {
+	for _, milestone := range computed.AllMilestones {
 		milestoneEntity := milestone.MultipmuriEntity()
 		for _, target := range targets {
 			if milestoneEntity.Equals(target) || target.Contains(milestoneEntity) {
@@ -96,7 +96,7 @@ func (computed *Computed) FilterByTargets(targets []multipmuri.Entity) {
 			milestone.Hidden = true
 		}
 	}
-	for _, repo := range computed.Repos {
+	for _, repo := range computed.AllRepos {
 		repoEntity := repo.MultipmuriEntity()
 		for _, target := range targets {
 			if repoEntity.Equals(target) || target.Contains(repoEntity) {
@@ -113,9 +113,9 @@ func (computed *Computed) FilterByTargets(targets []multipmuri.Entity) {
 
 func newComputed() Computed {
 	return Computed{
-		Issues:     make([]*ComputedIssue, 0),
-		Milestones: make([]*ComputedMilestone, 0),
-		Repos:      make([]*ComputedRepo, 0),
+		AllIssues:     make([]*ComputedIssue, 0),
+		AllMilestones: make([]*ComputedMilestone, 0),
+		AllRepos:      make([]*ComputedRepo, 0),
 
 		mmap: map[string]*ComputedMilestone{},
 		imap: map[string]*ComputedIssue{},
@@ -128,25 +128,55 @@ func (computed *Computed) mapsToSlices() {
 	// milestones
 	for _, milestone := range computed.mmap {
 		sort.Strings(milestone.DependsOn)
-		computed.Milestones = append(computed.Milestones, milestone)
+		computed.AllMilestones = append(computed.AllMilestones, milestone)
 	}
-	sort.Slice(computed.Milestones, func(i, j int) bool {
-		return computed.Milestones[i].URL < computed.Milestones[j].URL
+	sort.Slice(computed.AllMilestones, func(i, j int) bool {
+		return computed.AllMilestones[i].URL < computed.AllMilestones[j].URL
 	})
 	// repos
 	for _, repo := range computed.rmap {
 		sort.Strings(repo.DependsOn)
-		computed.Repos = append(computed.Repos, repo)
+		computed.AllRepos = append(computed.AllRepos, repo)
 	}
-	sort.Slice(computed.Repos, func(i, j int) bool {
-		return computed.Repos[i].URL < computed.Repos[j].URL
+	sort.Slice(computed.AllRepos, func(i, j int) bool {
+		return computed.AllRepos[i].URL < computed.AllRepos[j].URL
 	})
 	// issues
 	for _, issue := range computed.imap {
 		sort.Strings(issue.DependsOn)
-		computed.Issues = append(computed.Issues, issue)
+		computed.AllIssues = append(computed.AllIssues, issue)
 	}
-	sort.Slice(computed.Issues, func(i, j int) bool {
-		return computed.Issues[i].URL < computed.Issues[j].URL
+	sort.Slice(computed.AllIssues, func(i, j int) bool {
+		return computed.AllIssues[i].URL < computed.AllIssues[j].URL
 	})
+}
+
+func (computed *Computed) Repos() []*ComputedRepo {
+	enabled := []*ComputedRepo{}
+	for _, repo := range computed.AllRepos {
+		if !repo.Hidden {
+			enabled = append(enabled, repo)
+		}
+	}
+	return enabled
+}
+
+func (computed *Computed) Milestones() []*ComputedMilestone {
+	enabled := []*ComputedMilestone{}
+	for _, milestone := range computed.AllMilestones {
+		if !milestone.Hidden {
+			enabled = append(enabled, milestone)
+		}
+	}
+	return enabled
+}
+
+func (computed *Computed) Issues() []*ComputedIssue {
+	enabled := []*ComputedIssue{}
+	for _, issue := range computed.AllIssues {
+		if !issue.Hidden {
+			enabled = append(enabled, issue)
+		}
+	}
+	return enabled
 }
