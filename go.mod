@@ -68,6 +68,7 @@ require (
 	google.golang.org/appengine v1.6.2 // indirect
 	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55 // indirect
 	google.golang.org/grpc v1.23.0 // indirect
+	gopkg.in/yaml.v2 v2.2.2
 	honnef.co/go/tools v0.0.1-2019.2.2 // indirect
 	moul.io/graphman v1.3.0
 	moul.io/graphman/viz v0.0.0-20190829063810-49e30a034740

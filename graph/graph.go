@@ -6,6 +6,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v2"
 	"moul.io/depviz/compute"
 	"moul.io/depviz/sql"
 	"moul.io/graphman"
@@ -14,14 +15,15 @@ import (
 )
 
 type Options struct {
-	SQL            sql.Options         `mapstructure:"sql"`     // inherited with sql.GetOptions()
-	Targets        []multipmuri.Entity `mapstructure:"targets"` // parsed from Args
-	ShowClosed     bool                `mapstructure:"show-closed"`
-	ShowOrphans    bool                `mapstructure:"show-orphans"`
-	ShowPRs        bool                `mapstructure:"show-prs"`
-	ShowAllRelated bool                `mapstructure:"show-all-related"`
-	NoPert         bool                `mapstructure:"no-pert"`
-	Vertical       bool                `mapstructure:"vertical"`
+	SQL             sql.Options         `mapstructure:"sql"`     // inherited with sql.GetOptions()
+	Targets         []multipmuri.Entity `mapstructure:"targets"` // parsed from Args
+	ShowClosed      bool                `mapstructure:"show-closed"`
+	ShowOrphans     bool                `mapstructure:"show-orphans"`
+	ShowPRs         bool                `mapstructure:"show-prs"`
+	ShowAllRelated  bool                `mapstructure:"show-all-related"`
+	NoPertEstimates bool                `mapstructure:"no-pert-estimates"`
+	Vertical        bool                `mapstructure:"vertical"`
+	Format          string              `mapstructure:"format"`
 }
 
 func (opts Options) String() string {
@@ -106,9 +108,18 @@ func graph(opts *Options, db *gorm.DB) error {
 		}
 	}
 
+	if opts.Format == "graphman-pert" {
+		out, err := yaml.Marshal(config)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(out))
+		return nil
+	}
+
 	// initialize graph from config
 	graph := graphman.FromPertConfig(config)
-	if !opts.NoPert {
+	if !opts.NoPertEstimates {
 		_ = graphman.ComputePert(graph)
 		//for _, e := range graph.Edges() {log.Println("*", e)}
 	}
