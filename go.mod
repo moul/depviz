@@ -29,11 +29,11 @@ require (
 	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472 // indirect
 	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297 // indirect
 	golang.org/x/oauth2 v0.0.0-20190624143730-0f29369cfe45
-	golang.org/x/sys v0.0.0-20190826190057-c7b8b68b1456 // indirect
+	golang.org/x/sys v0.0.0-20190830142957-1e83adbbebd0 // indirect
 	google.golang.org/appengine v1.6.2 // indirect
 	gopkg.in/yaml.v2 v2.2.2
-	moul.io/graphman v1.4.0
-	moul.io/graphman/viz v0.0.0-20190829161828-77ea9f90035c
+	moul.io/graphman v1.5.0
+	moul.io/graphman/viz v0.0.0-20190830152634-1bb4245b0456
 	moul.io/multipmuri v1.6.0
 	moul.io/zapgorm v0.0.0-20190706070406-8138918b527b
 )
