@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jinzhu/gorm"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 	"moul.io/depviz/compute"
@@ -31,25 +30,29 @@ func (opts Options) String() string {
 	return string(out)
 }
 
-func Graph(opts *Options) error {
-	zap.L().Debug("graph", zap.Stringer("opts", *opts))
+func PrintGraph(opts *Options) error {
+	zap.L().Debug("PrintGraph", zap.Stringer("opts", *opts))
 
-	db, err := sql.FromOpts(&opts.SQL)
+	str, err := Graph(opts)
 	if err != nil {
 		return err
 	}
 
-	if err := graph(opts, db); err != nil {
-		return err
-	}
-
+	fmt.Println(str)
 	return nil
 }
 
-func graph(opts *Options, db *gorm.DB) error {
+func Graph(opts *Options) (string, error) {
+	zap.L().Debug("Graph", zap.Stringer("opts", *opts))
+
+	db, err := sql.FromOpts(&opts.SQL)
+	if err != nil {
+		return "", err
+	}
+
 	issues, err := sql.LoadAllIssues(db)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// compute and filter issues
@@ -117,10 +120,9 @@ func graph(opts *Options, db *gorm.DB) error {
 	if opts.Format == "graphman-pert" {
 		out, err := yaml.Marshal(config)
 		if err != nil {
-			return err
+			return "", err
 		}
-		fmt.Println(string(out))
-		return nil
+		return string(out), nil
 	}
 
 	// initialize graph from config
@@ -152,11 +154,10 @@ func graph(opts *Options, db *gorm.DB) error {
 		CommentsInLabel: true,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
-	fmt.Println(s)
 
-	return nil
+	return s, nil
 }
 
 /*

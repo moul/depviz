@@ -2,6 +2,7 @@ package model // import "moul.io/depviz/model"
 
 import (
 	"encoding/json"
+	"net/http"
 	"time"
 
 	"github.com/lib/pq"
@@ -172,6 +173,10 @@ func (i Issue) ToRecord(cache airtabledb.DB) airtabledb.Record {
 	record := airtablemodel.IssueRecord{}
 	toRecord(cache, i, &record)
 	return record
+}
+
+func (i *Issue) Render(w http.ResponseWriter, r *http.Request) error {
+	return nil
 }
 
 //

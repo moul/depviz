@@ -6,8 +6,8 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"moul.io/depviz/cli"
+	"moul.io/depviz/model"
 	"moul.io/depviz/sql"
-	"moul.io/multipmuri"
 )
 
 func GetOptions(commands cli.Commands) Options {
@@ -30,15 +30,11 @@ func (cmd *pullCommand) CobraCommand(commands cli.Commands) *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			opts.SQL = sql.GetOptions(commands)
-			opts.Targets = []multipmuri.Entity{}
-			defaultContext := multipmuri.NewGitHubService("")
-			for _, arg := range args {
-				entity, err := defaultContext.RelDecodeString(arg)
-				if err != nil {
-					return err
-				}
-				opts.Targets = append(opts.Targets, entity)
+			targets, err := model.ParseTargets(args)
+			if err != nil {
+				return err
 			}
+			opts.Targets = targets
 			return Pull(&opts)
 		},
 	}

@@ -6,6 +6,7 @@ require (
 	github.com/brianloveswords/airtable v0.0.0-20180329193050-a39294038dd9
 	github.com/denisenkom/go-mssqldb v0.0.0-20190820223206-44cdfe8d8ba9 // indirect
 	github.com/go-chi/chi v4.0.2+incompatible
+	github.com/go-chi/docgen v1.0.5
 	github.com/go-chi/render v1.0.1
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/google/go-github v17.0.0+incompatible

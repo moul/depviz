@@ -14,11 +14,10 @@ import (
 
 	//"moul.io/depviz/airtable"
 	"moul.io/depviz/cli"
-	"moul.io/depviz/sql"
-
-	//"moul.io/depviz/web"
 	"moul.io/depviz/graph"
 	"moul.io/depviz/pull"
+	"moul.io/depviz/sql"
+	"moul.io/depviz/web"
 )
 
 func main() {
@@ -58,11 +57,11 @@ func newRootCommand() *cobra.Command {
 	for name, command := range graph.Commands() {
 		commands[name] = command
 	}
+	for name, command := range web.Commands() {
+		commands[name] = command
+	}
 	/*
 		for name, command := range airtable.Commands() {
-			commands[name] = command
-		}
-		for name, command := range web.Commands() {
 			commands[name] = command
 		}
 	*/
