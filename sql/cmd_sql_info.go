@@ -18,6 +18,10 @@ type infoOptions struct {
 	// FIXME: add --anonymize
 }
 
+func (opts infoOptions) Validate() error {
+	return opts.sql.Validate()
+}
+
 type infoCommand struct{ opts infoOptions }
 
 func (cmd *infoCommand) CobraCommand(commands cli.Commands) *cobra.Command {
@@ -26,6 +30,9 @@ func (cmd *infoCommand) CobraCommand(commands cli.Commands) *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
 			opts.sql = GetOptions(commands)
+			if err := opts.Validate(); err != nil {
+				return err
+			}
 			return runInfo(&opts)
 		},
 	}
@@ -33,12 +40,15 @@ func (cmd *infoCommand) CobraCommand(commands cli.Commands) *cobra.Command {
 	commands["sql"].ParseFlags(cc.Flags())
 	return cc
 }
+
 func (cmd *infoCommand) LoadDefaultOptions() error { return viper.Unmarshal(&cmd.opts) }
+
 func (cmd *infoCommand) ParseFlags(flags *pflag.FlagSet) {
 	if err := viper.BindPFlags(flags); err != nil {
 		zap.L().Warn("failed to bind viper flags", zap.Error(err))
 	}
 }
+
 func runInfo(opts *infoOptions) error {
 	fmt.Printf("database: %q\n", opts.sql.Config)
 	db, err := FromOpts(&opts.sql)

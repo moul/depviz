@@ -25,6 +25,18 @@ type Options struct {
 	Format          string              `mapstructure:"format"`
 }
 
+func (opts Options) Validate() error {
+	if err := opts.SQL.Validate(); err != nil {
+		return err
+	}
+	switch format := opts.Format; format {
+	case "dot", "graphman-pert":
+	default:
+		return fmt.Errorf("invalid format: %q", format)
+	}
+	return nil
+}
+
 func (opts Options) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)

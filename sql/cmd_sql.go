@@ -15,6 +15,10 @@ type Options struct {
 	Verbose bool   `mapstructure:"verbose"`
 }
 
+func (opts Options) Validate() error {
+	return nil
+}
+
 func (opts Options) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)

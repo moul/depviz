@@ -1,8 +1,6 @@
 package graph // import "moul.io/depviz/graph"
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -33,11 +31,6 @@ func (cmd *graphCommand) CobraCommand(commands cli.Commands) *cobra.Command {
 			if err := cobra.MinimumNArgs(1)(c, args); err != nil {
 				return err
 			}
-			switch format := cmd.opts.Format; format {
-			case "dot", "graphman-pert":
-			default:
-				return fmt.Errorf("invalid format: %q", format)
-			}
 			return nil
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -48,6 +41,9 @@ func (cmd *graphCommand) CobraCommand(commands cli.Commands) *cobra.Command {
 				return err
 			}
 			opts.Targets = targets
+			if err := opts.Validate(); err != nil {
+				return err
+			}
 			return PrintGraph(&opts)
 		},
 	}

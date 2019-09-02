@@ -1,84 +1,100 @@
-package workflow // import "moul.io/depviz/workflow"
-/*
-import (
-	"encoding/json"
+package run // import "moul.io/depviz/run"
 
-	"github.com/pkg/errors"
+import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+	"moul.io/depviz/cli"
+	"moul.io/depviz/graph"
 	"moul.io/depviz/model"
+	"moul.io/depviz/pull"
+	"moul.io/depviz/sql"
 )
 
-type runOptions struct {
-	GraphOptions    graphOptions `mapstructure:"graph"`
-	PullOptions     pullOptions  `mapstructure:"pull"`
-	AdditionalPulls []string     `mapstructure:"additional-pulls"`
-	NoPull          bool         `mapstructure:"no-pull"`
+type Options struct {
+	Graph graph.Options
+	Pull  pull.Options
 }
 
-func (opts runOptions) String() string {
-	out, _ := json.Marshal(opts)
-	return string(out)
-}
-
-type runCommand struct {
-	opts runOptions
-}
-
-func (cmd *runCommand) LoadDefaultOptions() error {
-	if err := viper.Unmarshal(&cmd.opts); err != nil {
+func (opts Options) Validate() error {
+	if err := opts.Graph.Validate(); err != nil {
+		return err
+	}
+	if err := opts.Pull.Validate(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (cmd *runCommand) ParseFlags(flags *pflag.FlagSet) {
-	flags.BoolVarP(&cmd.opts.NoPull, "no-pull", "", false, "do not pull new issues before running")
-	flags.StringSliceVarP(&cmd.opts.AdditionalPulls, "additional-pulls", "", []string{}, "additional pull that won't necessarily be displayed on the graph")
-	if err := viper.BindPFlags(flags); err != nil {
-		zap.L().Warn("failed to bind flags using Viper", zap.Error(err))
-	}
+func GetOptions(commands cli.Commands) Options {
+	return commands["run"].(*runCommand).opts
 }
 
-func (cmd *runCommand) NewCobraCommand(dc map[string]DepvizCommand) *cobra.Command {
+func Commands() cli.Commands {
+	return cli.Commands{"run": &runCommand{}}
+}
+
+type runCommand struct {
+	opts Options
+}
+
+func (cmd *runCommand) CobraCommand(commands cli.Commands) *cobra.Command {
 	cc := &cobra.Command{
 		Use:   "run",
-		Short: "Pull issues, update database, and output a graph of relationships between issues",
+		Short: "'pull' + 'graph' in a unique command",
+		Args: func(c *cobra.Command, args []string) error {
+			// FIXME: if no args, then run the whole database
+			if err := cobra.MinimumNArgs(1)(c, args); err != nil {
+				return err
+			}
+			return nil
+		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts := cmd.opts
-			opts.GraphOptions = dc["graph"].(*graphCommand).opts
-			opts.PullOptions = dc["pull"].(*pullCommand).opts
-
+			opts.Pull = pull.GetOptions(commands)
+			opts.Graph = graph.GetOptions(commands)
+			opts.Pull.SQL = sql.GetOptions(commands)
+			opts.Graph.SQL = opts.Pull.SQL
 			targets, err := model.ParseTargets(args)
 			if err != nil {
-				return errors.Wrap(err, "invalid targets")
+				return err
 			}
-			additionalPulls, err := model.ParseTargets(opts.AdditionalPulls)
-			if err != nil {
-				return errors.Wrap(err, "invalid targets")
+			opts.Pull.Targets = targets
+			opts.Graph.Targets = targets
+			if err := opts.Validate(); err != nil {
+				return err
 			}
-			opts.PullOptions.Targets = append(targets, additionalPulls...)
-			opts.GraphOptions.Targets = targets
-			return run(&opts)
+			return Run(&opts)
 		},
 	}
 	cmd.ParseFlags(cc.Flags())
-	dc["graph"].ParseFlags(cc.Flags())
-	dc["pull"].ParseFlags(cc.Flags())
+	commands["sql"].ParseFlags(cc.Flags())
+	commands["graph"].ParseFlags(cc.Flags())
+	commands["pull"].ParseFlags(cc.Flags())
 	return cc
 }
 
-func run(opts *runOptions) error {
-	if !opts.NoPull {
-		if err := pullAndCompute(&opts.PullOptions); err != nil {
-			return errors.Wrap(err, "failed to pull")
-		}
+func (cmd *runCommand) LoadDefaultOptions() error {
+	return viper.Unmarshal(&cmd.opts)
+}
+
+func (cmd *runCommand) ParseFlags(flags *pflag.FlagSet) {
+	if err := viper.BindPFlags(flags); err != nil {
+		zap.L().Warn("failed to bind viper flags", zap.Error(err))
 	}
-	if err := graph(&opts.GraphOptions); err != nil {
-		return errors.Wrap(err, "failed to graph")
+}
+
+func Run(opts *Options) error {
+	if err := pull.Pull(&opts.Pull); err != nil {
+		return err
 	}
+	graph, err := graph.Graph(&opts.Graph)
+	if err != nil {
+		return err
+	}
+	fmt.Println(graph)
 	return nil
 }
-*/

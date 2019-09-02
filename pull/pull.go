@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/jinzhu/gorm"
-
 	"go.uber.org/zap"
 	"moul.io/depviz/github"
 	"moul.io/depviz/gitlab"
@@ -27,6 +26,11 @@ type Options struct {
 func (opts Options) String() string {
 	out, _ := json.Marshal(opts)
 	return string(out)
+}
+
+func (opts Options) Validate() error {
+	// FIXME: verify github/gitlab?
+	return opts.SQL.Validate()
 }
 
 func Pull(opts *Options) error {

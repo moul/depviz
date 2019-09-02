@@ -35,6 +35,9 @@ func (cmd *pullCommand) CobraCommand(commands cli.Commands) *cobra.Command {
 				return err
 			}
 			opts.Targets = targets
+			if err := opts.Validate(); err != nil {
+				return err
+			}
 			return Pull(&opts)
 		},
 	}
