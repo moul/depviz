@@ -6,9 +6,9 @@ import "moul.io/depviz/airtabledb"
 // We must first compute Records which are referenced by other Records...
 const (
 	ProviderIndex = iota
-	LabelIndex
 	AccountIndex
 	RepositoryIndex
+	LabelIndex
 	MilestoneIndex
 	IssueIndex
 	NumTables

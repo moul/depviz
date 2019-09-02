@@ -36,14 +36,19 @@ func Commands() cli.Commands {
 type sqlCommand struct{ opts Options }
 
 func (cmd *sqlCommand) LoadDefaultOptions() error { return viper.Unmarshal(&cmd.opts) }
+
 func (cmd *sqlCommand) ParseFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&cmd.opts.Config, "sql-config", "", "sqlite://$HOME/.depviz.db", "sql connection string")
 	if err := viper.BindPFlags(flags); err != nil {
 		zap.L().Warn("failed to bind viper flags", zap.Error(err))
 	}
 }
+
 func (cmd *sqlCommand) CobraCommand(commands cli.Commands) *cobra.Command {
-	command := &cobra.Command{Use: "sql"}
+	command := &cobra.Command{
+		Use:   "sql",
+		Short: "Manager sql",
+	}
 	command.AddCommand(commands["sql dump"].CobraCommand(commands))
 	command.AddCommand(commands["sql info"].CobraCommand(commands))
 	return command

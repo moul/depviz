@@ -170,21 +170,21 @@ type IssueRecord struct {
 		airtabledb.Base
 
 		// specific
-		URL         string    `json:"url"`
-		CompletedAt time.Time `json:"completed-at"`
-		Title       string    `json:"title"`
-		State       string    `json:"state"`
-		Body        string    `json:"body"`
-		IsPR        bool      `json:"is-pr"`
-		IsLocked    bool      `json:"is-locked"`
-		Comments    int       `json:"comments"`
-		Upvotes     int       `json:"upvotes"`
-		Downvotes   int       `json:"downvotes"`
-		IsOrphan    bool      `json:"is-orphan"`
-		IsHidden    bool      `json:"is-hidden"`
-		Weight      int       `json:"weight"`
-		IsEpic      bool      `json:"is-epic"`
-		HasEpic     bool      `json:"has-epic"`
+		URL          string    `json:"url"`
+		CompletedAt  time.Time `json:"completed-at"`
+		Title        string    `json:"title"`
+		State        string    `json:"state"`
+		Body         string    `json:"body"`
+		IsPR         bool      `json:"is-pr"`
+		IsLocked     bool      `json:"is-locked"`
+		NumComments  int       `json:"num-comments"`
+		NumUpvotes   int       `json:"num-upvotes"`
+		NumDownvotes int       `json:"num-downvotes"`
+		IsOrphan     bool      `json:"is-orphan"`
+		IsHidden     bool      `json:"is-hidden"`
+		// Weight  int       `json:"weight"`
+		// IsEpic  bool `json:"is-epic"`
+		// HasEpic bool `json:"has-epic"`
 
 		// relationships
 		Repository []string `json:"repository"`

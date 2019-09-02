@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	//"moul.io/depviz/airtable"
+	"moul.io/depviz/airtable"
 	"moul.io/depviz/cli"
 	"moul.io/depviz/graph"
 	"moul.io/depviz/pull"
@@ -60,11 +60,9 @@ func newRootCommand() *cobra.Command {
 	for name, command := range web.Commands() {
 		commands[name] = command
 	}
-	/*
-		for name, command := range airtable.Commands() {
-			commands[name] = command
-		}
-	*/
+	for name, command := range airtable.Commands() {
+		commands[name] = command
+	}
 
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// configure zap

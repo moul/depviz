@@ -39,6 +39,7 @@ func copyFields(cache airtabledb.DB, src reflect.Value, dst reflect.Value) {
 			dFV.Set(reflect.ValueOf(strings.Join(sFV.Interface().(pq.StringArray), ", ")))
 			continue
 		}
+		// log.Println("dFV.Type", dFV.Type().String(), "; fieldName", fieldName, "; sFV", sFV)
 		if dFV.Type().String() == "[]string" {
 			if sFV.Pointer() != 0 {
 				tableIndex := 0
