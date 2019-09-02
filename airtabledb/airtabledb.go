@@ -63,22 +63,22 @@ func isSameAirtableDate(a, b time.Time) bool {
 }
 
 type Table struct {
-	elems interface{}
+	Elems interface{}
 }
 
 func (t Table) SetState(idx int, state State) {
-	s := reflect.ValueOf(t.elems).Elem().Index(idx).FieldByName("State")
+	s := reflect.ValueOf(t.Elems).Elem().Index(idx).FieldByName("State")
 	s.SetInt(int64(state))
 }
 
 func (t Table) GetState(idx int) State {
-	return State(reflect.ValueOf(t.elems).Elem().Index(idx).FieldByName("State").Int())
+	return State(reflect.ValueOf(t.Elems).Elem().Index(idx).FieldByName("State").Int())
 }
 
 // CopyFields copies the 'Fields' struct from srcRecord into the Record at idx in the Tabel t.
 // Will panic necessary fields do not exist.
 func (t Table) CopyFields(idx int, srcRecord interface{}) {
-	dstF := reflect.ValueOf(t.elems).Elem().Index(idx).FieldByName("Fields")
+	dstF := reflect.ValueOf(t.Elems).Elem().Index(idx).FieldByName("Fields")
 	srcF := reflect.ValueOf(srcRecord).FieldByName("Fields")
 	dstF.Set(srcF)
 }
@@ -86,34 +86,34 @@ func (t Table) CopyFields(idx int, srcRecord interface{}) {
 // GetFieldID returns the ID field of the Fields struct of the record at idx in the Table t.
 // Will panic necessary fields do not exist.
 func (t Table) GetFieldID(idx int) string {
-	return reflect.ValueOf(t.elems).Elem().Index(idx).FieldByName("Fields").FieldByName("ID").String()
+	return reflect.ValueOf(t.Elems).Elem().Index(idx).FieldByName("Fields").FieldByName("ID").String()
 }
 
 // GetID returns the ID field of the record at idx in the Table t.
 func (t Table) GetID(idx int) string {
-	return reflect.ValueOf(t.elems).Elem().Index(idx).FieldByName("ID").String()
+	return reflect.ValueOf(t.Elems).Elem().Index(idx).FieldByName("ID").String()
 }
 
 // Len returns the number of records in the table.
 func (t Table) Len() int {
-	return reflect.ValueOf(t.elems).Elem().Len()
+	return reflect.ValueOf(t.Elems).Elem().Len()
 }
 
 // Append appends the given record to the table. Will panic if the given record is not of the right type.
 func (t Table) Append(record interface{}) {
-	a := reflect.Append(reflect.ValueOf(t.elems).Elem(), reflect.ValueOf(record))
-	reflect.ValueOf(t.elems).Elem().Set(a)
+	a := reflect.Append(reflect.ValueOf(t.Elems).Elem(), reflect.ValueOf(record))
+	reflect.ValueOf(t.Elems).Elem().Set(a)
 }
 
 // Fetch retrieves the airtable table records from at over the network and inserts the records into the table.
 func (t Table) Fetch(at airtable.Table) error {
-	return at.List(t.elems, &airtable.Options{})
+	return at.List(t.Elems, &airtable.Options{})
 }
 
 // FindByID searches the table for a record with Fields.ID equal to id.
 // Returns the record's ID if a match is found. Otherwise, returns the empty string.
 func (t Table) FindByID(id string) string {
-	slice := reflect.ValueOf(t.elems).Elem()
+	slice := reflect.ValueOf(t.Elems).Elem()
 	for i := 0; i < slice.Len(); i++ {
 		record := slice.Index(i)
 		fieldID := record.FieldByName("Fields").FieldByName("ID").String()
@@ -126,17 +126,17 @@ func (t Table) FindByID(id string) string {
 
 // GetPtr returns an interface containing a pointer to the record in the table at index idx.
 func (t Table) GetPtr(idx int) interface{} {
-	return reflect.ValueOf(t.elems).Elem().Index(idx).Addr().Interface()
+	return reflect.ValueOf(t.Elems).Elem().Index(idx).Addr().Interface()
 }
 
 // Get returns an interface to the record in the table at idx.
 func (t Table) Get(idx int) interface{} {
-	return reflect.ValueOf(t.elems).Elem().Index(idx).Interface()
+	return reflect.ValueOf(t.Elems).Elem().Index(idx).Interface()
 }
 
 // StringAt returns a JSON string of the record in the table at idx.
 func (t Table) StringAt(idx int) string {
-	out := reflect.ValueOf(t.elems).Elem().Index(idx).MethodByName("String").Call(nil)
+	out := reflect.ValueOf(t.Elems).Elem().Index(idx).MethodByName("String").Call(nil)
 	return out[0].String()
 }
 

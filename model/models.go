@@ -1,13 +1,13 @@
-package warehouse
+package model // import "moul.io/depviz/model"
 
 import (
 	"encoding/json"
-	"reflect"
-	"strings"
+	"net/http"
 	"time"
 
 	"github.com/lib/pq"
 	"moul.io/depviz/airtabledb"
+	"moul.io/depviz/airtablemodel"
 )
 
 var AllModels = []interface{}{
@@ -19,68 +19,13 @@ var AllModels = []interface{}{
 	Account{},
 }
 
-type Feature interface {
-	String() string
-	GetID() string
-	ToRecord(airtabledb.DB) airtabledb.Record
-}
-
-// toRecord attempts to automatically convert between an issues.Feature and an airtable Record.
-// It's not particularly robust, but it works for structs following the format of Features and Records.
-func toRecord(cache airtabledb.DB, src Feature, dst interface{}) {
-	dV := reflect.ValueOf(dst).Elem().FieldByName("Fields")
-	sV := reflect.ValueOf(src)
-	copyFields(cache, sV, dV)
-}
-
-func copyFields(cache airtabledb.DB, src reflect.Value, dst reflect.Value) {
-	dT := dst.Type()
-	for i := 0; i < dst.NumField(); i++ {
-		dFV := dst.Field(i)
-		dSF := dT.Field(i)
-		fieldName := dSF.Name
-		// Recursively copy the embedded struct Base.
-		if fieldName == "Base" {
-			copyFields(cache, src, dFV)
-			continue
-		}
-		sFV := src.FieldByName(fieldName)
-		if fieldName == "Errors" {
-			dFV.Set(reflect.ValueOf(strings.Join(sFV.Interface().(pq.StringArray), ", ")))
-			continue
-		}
-		if dFV.Type().String() == "[]string" {
-			if sFV.Pointer() != 0 {
-				tableIndex := 0
-				srcFieldTypeName := strings.Split(strings.Trim(sFV.Type().String(), "*[]"), ".")[1]
-				tableIndex, ok := airtabledb.TableNameToIndex[strings.ToLower(srcFieldTypeName)]
-				if !ok {
-					panic("toRecord: could not find index for table name " + strings.ToLower(srcFieldTypeName))
-				}
-				if sFV.Kind() == reflect.Slice {
-					for i := 0; i < sFV.Len(); i++ {
-						idV := sFV.Index(i).Elem().FieldByName("ID")
-						id := idV.String()
-						dFV.Set(reflect.Append(dFV, reflect.ValueOf(cache.Tables[tableIndex].FindByID(id))))
-					}
-				} else {
-					idV := sFV.Elem().FieldByName("ID")
-					id := idV.String()
-					dFV.Set(reflect.ValueOf([]string{cache.Tables[tableIndex].FindByID(id)}))
-				}
-			}
-		} else {
-			dFV.Set(sFV)
-		}
-	}
-}
-
 //
 // Base
 //
 
 type Base struct {
 	ID        string         `gorm:"primary_key" json:"id"`
+	URL       string         `json:"url"`
 	CreatedAt time.Time      `json:"created-at,omitempty"`
 	UpdatedAt time.Time      `json:"updated-at,omitempty"`
 	Errors    pq.StringArray `json:"errors,omitempty" gorm:"type:varchar[]"`
@@ -98,7 +43,6 @@ type Repository struct {
 	Base
 
 	// base fields
-	URL         string    `json:"url"`
 	Title       string    `json:"name"`
 	Description string    `json:"description"`
 	Homepage    string    `json:"homepage"`
@@ -113,7 +57,7 @@ type Repository struct {
 }
 
 func (r Repository) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.RepositoryRecord{}
+	record := airtablemodel.RepositoryRecord{}
 	toRecord(cache, r, &record)
 	return record
 }
@@ -139,12 +83,11 @@ type Provider struct {
 	Base
 
 	// base fields
-	URL    string `json:"url"`
 	Driver string `json:"driver"` // github, gitlab, unknown
 }
 
 func (p Provider) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.ProviderRecord{}
+	record := airtablemodel.ProviderRecord{}
 	toRecord(cache, p, &record)
 	return record
 }
@@ -162,7 +105,6 @@ type Milestone struct {
 	Base
 
 	// base fields
-	URL         string    `json:"url"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	ClosedAt    time.Time `json:"closed-at"`
@@ -178,7 +120,7 @@ type Milestone struct {
 }
 
 func (m Milestone) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.MilestoneRecord{}
+	record := airtablemodel.MilestoneRecord{}
 	toRecord(cache, m, &record)
 	return record
 }
@@ -196,21 +138,17 @@ type Issue struct {
 	Base
 
 	// base fields
-	URL         string    `json:"url"`
-	CompletedAt time.Time `json:"completed-at"`
-	Title       string    `json:"title"`
-	State       string    `json:"state"`
-	Body        string    `json:"body"`
-	IsPR        bool      `json:"is-pr"`
-	IsLocked    bool      `json:"is-locked"`
-	Comments    int       `json:"comments"`
-	Upvotes     int       `json:"upvotes"`
-	Downvotes   int       `json:"downvotes"`
-	IsOrphan    bool      `json:"is-orphan"`
-	IsHidden    bool      `json:"is-hidden"`
-	Weight      int       `json:"weight"`
-	IsEpic      bool      `json:"is-epic"`
-	HasEpic     bool      `json:"has-epic"`
+	CompletedAt  time.Time `json:"completed-at"`
+	Title        string    `json:"title"`
+	State        string    `json:"state"`
+	Body         string    `json:"body"`
+	IsPR         bool      `json:"is-pr"`
+	IsLocked     bool      `json:"is-locked"`
+	NumComments  int       `json:"num-comments"`
+	NumUpvotes   int       `json:"num-upvotes"`
+	NumDownvotes int       `json:"num-downvotes"`
+	IsOrphan     bool      `json:"is-orphan"`
+	IsHidden     bool      `json:"is-hidden"`
 
 	// relationships
 	Repository   *Repository `json:"repository"`
@@ -223,12 +161,7 @@ type Issue struct {
 	Assignees    []*Account  `gorm:"many2many:issue_assignees" json:"assignees"`
 	Parents      []*Issue    `json:"-" gorm:"many2many:issue_parents;association_jointable_foreignkey:parent_id"`
 	Children     []*Issue    `json:"-" gorm:"many2many:issue_children;association_jointable_foreignkey:child_id"`
-	Duplicates   []*Issue    `json:"-" gorm:"many2many:issue_duplicates;association_jointable_foreignkey:duplicate_id"`
-
-	// internal
-	ChildIDs     []string `json:"child_ids" gorm:"-"`
-	ParentIDs    []string `json:"parent_ids" gorm:"-"`
-	DuplicateIDs []string `json:"duplicate_ids" gorm:"-"`
+	Related      []*Issue    `json:"-" gorm:"many2many:issue_related;association_jointable_foreignkey:related_id"`
 }
 
 func (i Issue) String() string {
@@ -237,10 +170,20 @@ func (i Issue) String() string {
 }
 
 func (i Issue) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.IssueRecord{}
+	record := airtablemodel.IssueRecord{}
 	toRecord(cache, i, &record)
 	return record
 }
+
+func (i *Issue) Render(w http.ResponseWriter, r *http.Request) error {
+	return nil
+}
+
+//
+// Issues
+//
+
+type Issues []*Issue
 
 //
 // Label
@@ -250,14 +193,13 @@ type Label struct {
 	Base
 
 	// base fields
-	URL         string `json:"url"`
 	Name        string `json:"name"`
 	Color       string `json:"color"`
 	Description string `json:"description"`
 }
 
 func (l Label) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.LabelRecord{}
+	record := airtablemodel.LabelRecord{}
 	toRecord(cache, l, &record)
 	return record
 }
@@ -275,7 +217,6 @@ type Account struct {
 	Base
 
 	// base fields
-	URL       string `json:"url"`
 	Login     string `json:"login"`
 	FullName  string `json:"fullname"`
 	Type      string `json:"type"`
@@ -292,7 +233,7 @@ type Account struct {
 }
 
 func (a Account) ToRecord(cache airtabledb.DB) airtabledb.Record {
-	record := airtabledb.AccountRecord{}
+	record := airtablemodel.AccountRecord{}
 	toRecord(cache, a, &record)
 	return record
 }
