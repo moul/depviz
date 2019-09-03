@@ -63,7 +63,7 @@ func runInfo(opts *infoOptions) error {
 			log.Printf("failed to get count for %q: %v", tableName, err)
 			continue
 		}
-		fmt.Printf("stats: %-20s %3d\n", tableName, count)
+		fmt.Printf("stats: %-20s %5d\n", tableName, count)
 	}
 
 	return nil

@@ -62,14 +62,10 @@ func Graph(opts *Options) (string, error) {
 		return "", err
 	}
 
-	issues, err := sql.LoadAllIssues(db)
+	computed, err := compute.LoadIssuesByTargets(db, opts.Targets)
 	if err != nil {
 		return "", err
 	}
-
-	// compute and filter issues
-	computed := compute.Compute(issues)
-	computed.FilterByTargets(opts.Targets)
 	// FIXME: if !opts.ShowOrphans { computed.FilterOrphans() }
 	// FIXME: if !opts.ShowAllRelated { computed.FilterAllRelated()
 	// FIXME: if !opts.ShowPRs { computed.FilterPRs()

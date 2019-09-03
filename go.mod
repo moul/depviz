@@ -35,6 +35,6 @@ require (
 	gopkg.in/yaml.v2 v2.2.2
 	moul.io/graphman v1.5.0
 	moul.io/graphman/viz v0.0.0-20190830152634-1bb4245b0456
-	moul.io/multipmuri v1.6.0
+	moul.io/multipmuri v1.8.0
 	moul.io/zapgorm v0.0.0-20190706070406-8138918b527b
 )

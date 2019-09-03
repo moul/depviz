@@ -17,14 +17,14 @@ import (
 func Pull(input multipmuri.Entity, wg *sync.WaitGroup, token string, db *gorm.DB, out chan<- []*model.Issue) {
 	defer wg.Done()
 	type multipmuriMinimalInterface interface {
-		RepoEntity() *multipmuri.GitHubRepo
+		Repo() *multipmuri.GitHubRepo
 	}
 	target, ok := input.(multipmuriMinimalInterface)
 	if !ok {
 		zap.L().Warn("invalid input", zap.String("input", fmt.Sprintf("%v", input.String())))
 		return
 	}
-	repo := target.RepoEntity()
+	repo := target.Repo()
 
 	// create client
 	ctx := context.Background()
@@ -43,7 +43,7 @@ func Pull(input multipmuri.Entity, wg *sync.WaitGroup, token string, db *gorm.DB
 	}
 
 	for {
-		issues, resp, err := client.Issues.ListByRepo(ctx, repo.Owner(), repo.Repo(), callOpts)
+		issues, resp, err := client.Issues.ListByRepo(ctx, repo.OwnerID(), repo.RepoID(), callOpts)
 		if err != nil {
 			log.Fatal(err)
 			return
