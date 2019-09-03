@@ -142,6 +142,11 @@ func Graph(opts *Options) (string, error) {
 	if !opts.NoPertEstimates {
 		_ = graphman.ComputePert(graph)
 		//for _, e := range graph.Edges() {log.Println("*", e)}
+		shortestPath, _ := graph.FindShortestPath("Start", "Finish")
+		for _, edge := range shortestPath {
+			edge.Dst().SetColor("red")
+			edge.SetColor("red")
+		}
 	}
 
 	// graph fine tuning
