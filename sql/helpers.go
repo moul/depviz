@@ -2,6 +2,7 @@ package sql
 
 import (
 	"github.com/jinzhu/gorm"
+	"go.uber.org/zap"
 	"moul.io/depviz/model"
 )
 
@@ -19,5 +20,6 @@ func LoadAllIssues(db *gorm.DB) (model.Issues, error) {
 			break
 		}
 	}
+	zap.L().Debug("fetched issues", zap.Int("quantity", len(allIssues)))
 	return allIssues, nil
 }

@@ -5,9 +5,15 @@ import (
 
 	"github.com/google/go-github/github"
 	"moul.io/depviz/model"
+	"moul.io/multipmuri"
 )
 
 func FromUser(input *github.User) *model.Account {
+	entity, err := model.ParseTarget(input.GetHTMLURL())
+	if err != nil {
+		panic(err)
+	}
+
 	name := input.GetName()
 	if name == "" {
 		name = input.GetLogin()
@@ -19,7 +25,8 @@ func FromUser(input *github.User) *model.Account {
 			UpdatedAt: input.GetUpdatedAt().Time,
 			URL:       input.GetURL(),
 		},
-		Provider:  githubProvider(),
+		// Type: "user"
+		Provider:  FromServiceURL(multipmuri.ServiceEntity(entity).String()),
 		Location:  input.GetLocation(),
 		Company:   input.GetCompany(),
 		Blog:      input.GetBlog(),
@@ -31,12 +38,32 @@ func FromUser(input *github.User) *model.Account {
 }
 
 func FromRepositoryURL(input string) *model.Repository {
+	entity, err := model.ParseTarget(input)
+	if err != nil {
+		panic(err)
+	}
+	owner := multipmuri.OwnerEntity(entity)
 	return &model.Repository{
 		Base: model.Base{
 			ID:  input,
 			URL: input,
 		},
-		Provider: githubProvider(),
+		Provider: FromServiceURL(multipmuri.ServiceEntity(entity).String()),
+		Owner:    FromOwnerURL(owner.String()),
+	}
+}
+
+func FromOwnerURL(input string) *model.Account {
+	entity, err := model.ParseTarget(input)
+	if err != nil {
+		panic(err)
+	}
+	return &model.Account{
+		Base: model.Base{
+			ID:  input,
+			URL: input,
+		},
+		Provider: FromServiceURL(multipmuri.ServiceEntity(entity).String()),
 	}
 }
 
@@ -77,30 +104,37 @@ func FromLabel(input *github.Label) *model.Label {
 }
 
 func FromIssue(input *github.Issue) *model.Issue {
-	parts := strings.Split(input.GetHTMLURL(), "/")
-	url := strings.Replace(input.GetHTMLURL(), "/pull/", "/issues/", -1)
+	entity, err := model.ParseTarget(input.GetHTMLURL())
+	if err != nil {
+		panic(err)
+	}
+	repo := multipmuri.RepoEntity(entity)
+	owner := multipmuri.OwnerEntity(entity)
+	service := multipmuri.ServiceEntity(entity)
 
 	issue := &model.Issue{
 		Base: model.Base{
-			ID:        url,
-			URL:       url,
+			ID:        entity.String(),
+			URL:       entity.String(),
 			CreatedAt: input.GetCreatedAt(),
 			UpdatedAt: input.GetUpdatedAt(),
 		},
-		CompletedAt:  input.GetClosedAt(),
-		Repository:   FromRepositoryURL(strings.Join(parts[0:len(parts)-2], "/")),
-		Title:        input.GetTitle(),
-		State:        input.GetState(),
-		Body:         input.GetBody(),
-		IsPR:         input.PullRequestLinks != nil,
-		IsLocked:     input.GetLocked(),
-		NumComments:  input.GetComments(),
-		NumUpvotes:   *input.Reactions.PlusOne,
-		NumDownvotes: *input.Reactions.MinusOne,
-		Labels:       make([]*model.Label, 0),
-		Assignees:    make([]*model.Account, 0),
-		Author:       FromUser(input.User),
-		Milestone:    FromMilestone(input.Milestone),
+		CompletedAt:     input.GetClosedAt(),
+		Repository:      FromRepositoryURL(repo.String()),
+		RepositoryOwner: FromOwnerURL(owner.String()),
+		Service:         FromServiceURL(service.String()),
+		Title:           input.GetTitle(),
+		State:           input.GetState(),
+		Body:            input.GetBody(),
+		IsPR:            input.PullRequestLinks != nil,
+		IsLocked:        input.GetLocked(),
+		NumComments:     input.GetComments(),
+		NumUpvotes:      *input.Reactions.PlusOne,
+		NumDownvotes:    *input.Reactions.MinusOne,
+		Labels:          make([]*model.Label, 0),
+		Assignees:       make([]*model.Account, 0),
+		Author:          FromUser(input.User),
+		Milestone:       FromMilestone(input.Milestone),
 	}
 	for _, label := range input.Labels {
 		issue.Labels = append(issue.Labels, FromLabel(&label))
@@ -111,10 +145,11 @@ func FromIssue(input *github.Issue) *model.Issue {
 	return issue
 }
 
-func githubProvider() *model.Provider {
+func FromServiceURL(input string) *model.Provider {
 	return &model.Provider{
 		Base: model.Base{
-			ID: "github", // FIXME: support multiple github instances
+			ID:  input,
+			URL: input,
 		},
 		Driver: string(model.GithubDriver),
 	}

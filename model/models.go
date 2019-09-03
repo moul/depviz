@@ -151,17 +151,21 @@ type Issue struct {
 	IsHidden     bool      `json:"is-hidden"`
 
 	// relationships
-	Repository   *Repository `json:"repository"`
-	RepositoryID string      `json:"repository_id"`
-	Milestone    *Milestone  `json:"milestone"`
-	MilestoneID  string      `json:"milestone_id"`
-	Author       *Account    `json:"author"`
-	AuthorID     string      `json:"author_id"`
-	Labels       []*Label    `gorm:"many2many:issue_labels" json:"labels"`
-	Assignees    []*Account  `gorm:"many2many:issue_assignees" json:"assignees"`
-	Parents      []*Issue    `json:"-" gorm:"many2many:issue_parents;association_jointable_foreignkey:parent_id"`
-	Children     []*Issue    `json:"-" gorm:"many2many:issue_children;association_jointable_foreignkey:child_id"`
-	Related      []*Issue    `json:"-" gorm:"many2many:issue_related;association_jointable_foreignkey:related_id"`
+	Repository        *Repository `json:"repository"`
+	RepositoryID      string      `json:"repository-id"`
+	RepositoryOwner   *Account    `json:"repository-owner"`
+	RepositoryOwnerID string      `json:"repository-owner-id"`
+	Service           *Provider   `json:"service"`
+	ServiceID         string      `json:"service-id"`
+	Milestone         *Milestone  `json:"milestone"`
+	MilestoneID       string      `json:"milestone-id"`
+	Author            *Account    `json:"author"`
+	AuthorID          string      `json:"author-id"`
+	Labels            []*Label    `gorm:"many2many:issue_labels" json:"labels"`
+	Assignees         []*Account  `gorm:"many2many:issue_assignees" json:"assignees"`
+	Parents           []*Issue    `json:"-" gorm:"many2many:issue_parents;association_jointable_foreignkey:parent_id"`
+	Children          []*Issue    `json:"-" gorm:"many2many:issue_children;association_jointable_foreignkey:child_id"`
+	Related           []*Issue    `json:"-" gorm:"many2many:issue_related;association_jointable_foreignkey:related_id"`
 }
 
 func (i Issue) String() string {

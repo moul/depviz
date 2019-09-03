@@ -14,3 +14,8 @@ func ParseTargets(args []string) ([]multipmuri.Entity, error) {
 	}
 	return targets, nil
 }
+
+func ParseTarget(arg string) (multipmuri.Entity, error) {
+	defaultContext := multipmuri.NewGitHubService("")
+	return defaultContext.RelDecodeString(arg)
+}
