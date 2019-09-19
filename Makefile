@@ -4,7 +4,7 @@ DOCKER_IMAGE ?=	moul/depviz
 
 all: test install
 
--include rules.mk
+include rules.mk
 
 .PHONY: update_examples
 update_examples:

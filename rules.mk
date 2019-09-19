@@ -23,6 +23,8 @@
 # ||  |       |  |    | |                   /_/_/_/\___/\_,_/_/  |
 # +--------------------------------------------------------------+
 
+all: help
+
 ##
 ## rules.mk
 ##
@@ -47,6 +49,11 @@ GENERATE_STEPS += generate.authors
 ## Golang
 ##
 
+ifndef GOPKG
+ifneq ($(wildcard go.mod),)
+GOPKG = $(shell sed '/module/!d;s/^omdule\ //' go.mod)
+endif
+endif
 ifdef GOPKG
 GO ?= go
 
@@ -118,6 +125,11 @@ endif
 ## Node
 ##
 
+ifndef NPM_PACKAGES
+ifneq ($(wildcard package.json),)
+NPM_PACKAGES = .
+endif
+endif
 ifdef NPM_PACKAGES
 .PHONY: npm.publish
 npm.publish:
@@ -135,7 +147,13 @@ endif
 ## Docker
 ##
 
+ifndef DOCKER_IMAGE
+ifneq ($(wildcard Dockerfile),)
+DOCKER_IMAGE = $(notdir $(PWD))
+endif
+endif
 ifdef DOCKER_IMAGE
+ifneq ($(DOCKER_IMAGE),none)
 .PHONY: docker.build
 docker.build:
 	docker build \
@@ -145,6 +163,7 @@ docker.build:
 	  -t $(DOCKER_IMAGE) .
 
 BUILD_STEPS += docker.build
+endif
 endif
 
 ##
@@ -200,3 +219,17 @@ ifdef GENERATE_STEPS
 .PHONY: generate
 generate: $(GENERATE_STEPS)
 endif
+
+.PHONY: help
+help:
+	@echo "General commands:"
+	@[ "$(BUILD_STEPS)" != "" ]     && echo "  build"     || true
+	@[ "$(BUMPDEPS_STEPS)" != "" ]  && echo "  bumpdeps"  || true
+	@[ "$(GENERATE_STEPS)" != "" ]  && echo "  generate"  || true
+	@[ "$(INSTALL_STEPS)" != "" ]   && echo "  install"   || true
+	@[ "$(LINT_STEPS)" != "" ]      && echo "  lint"      || true
+	@[ "$(RELEASE_STEPS)" != "" ]   && echo "  release"   || true
+	@[ "$(TEST_STEPS)" != "" ]      && echo "  test"      || true
+	@[ "$(TIDY_STEPS)" != "" ]      && echo "  tidy"      || true
+	@[ "$(UNITTEST_STEPS)" != "" ]  && echo "  unittest"  || true
+	@# FIXME: list other commands
