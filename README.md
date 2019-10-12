@@ -21,6 +21,7 @@
 [![Go Report Card](https://goreportcard.com/badge/moul.io/depviz)](https://goreportcard.com/report/moul.io/depviz)
 [![Docker Metrics](https://images.microbadger.com/badges/image/moul/depviz.svg)](https://microbadger.com/images/moul/depviz)
 [![Made by Manfred Touron](https://img.shields.io/badge/made%20by-Manfred%20Touron-blue.svg?style=flat)](https://manfred.life/)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmoul%2Fdepviz.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmoul%2Fdepviz?ref=badge_shield)
 
 ## Introduction
 dependency visualizer (auto roadmap)
@@ -68,3 +69,6 @@ $ depviz run https://github.com/moul/depviz/issues/42 | dot -Tpng | imgcat
 ## License
 
 Apache
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmoul%2Fdepviz.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmoul%2Fdepviz?ref=badge_large)
