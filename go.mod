@@ -7,7 +7,7 @@ require (
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-chi/docgen v1.0.5
 	github.com/go-chi/render v1.0.1
-	github.com/google/go-github v17.0.0+incompatible
+	github.com/google/go-github/v28 v28.1.1
 	github.com/jinzhu/gorm v1.9.11
 	github.com/lib/pq v1.2.0
 	github.com/mattn/go-sqlite3 v1.11.0
