@@ -1,14 +1,11 @@
 version: 2.1
 
 orbs:
-  moul: moul/build@1.10.0 # https://github.com/moul/build
+  moul: moul/build@1.13.0 # https://github.com/moul/build
 
 workflows:
   main:
     jobs:
       - moul/golang-build:
           gopkg: moul.io/depviz
-      - moul/golang-build:
-          gopkg: moul.io/depviz
-          tag: '1.11'
       - moul/docker-build
