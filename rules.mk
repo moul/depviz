@@ -23,18 +23,29 @@
 # ||  |       |  |    | |                   /_/_/_/\___/\_,_/_/  |
 # +--------------------------------------------------------------+
 
+all: help
+
+##
+## Common helpers
+##
+
+rwildcard = $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
+
 ##
 ## rules.mk
 ##
+ifneq ($(wildcard rules.mk),)
 .PHONY: rulesmk.bumpdeps
 rulesmk.bumpdeps:
 	wget -O rules.mk https://raw.githubusercontent.com/moul/rules.mk/master/rules.mk
 BUMPDEPS_STEPS += rulesmk.bumpdeps
+endif
 
 ##
 ## Maintainer
 ##
 
+ifneq ($(wildcard .git/HEAD),)
 .PHONY: generate.authors
 generate.authors:
 	echo "# This file lists all individuals having contributed content to the repository." > AUTHORS
@@ -42,20 +53,28 @@ generate.authors:
 	echo >> AUTHORS
 	git log --format='%aN <%aE>' | LC_ALL=C.UTF-8 sort -uf >> AUTHORS
 GENERATE_STEPS += generate.authors
+endif
 
 ##
 ## Golang
 ##
 
+ifndef GOPKG
+ifneq ($(wildcard go.mod),)
+GOPKG = $(shell sed '/module/!d;s/^omdule\ //' go.mod)
+endif
+endif
 ifdef GOPKG
 GO ?= go
+GOPATH ?= $(HOME)/go
+GO_INSTALL_OPTS ?=
 
 ifdef GOBINS
 .PHONY: go.install
 go.install:
 	@set -e; for dir in $(GOBINS); do ( set -xe; \
 	  cd $$dir; \
-	  $(GO) install .; \
+	  $(GO) install $(GO_INSTALL_OPTS) .; \
 	); done
 INSTALL_STEPS += go.install
 
@@ -70,7 +89,7 @@ endif
 .PHONY: go.unittest
 go.unittest:
 	echo "" > /tmp/coverage.txt
-	@set -e; for dir in `find . -type f -name "go.mod" | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
+	@set -e; for dir in `find . -type f -name "go.mod" | grep -v /vendor/ | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
 	  cd $$dir; \
 	  $(GO) test -v -cover -coverprofile=/tmp/profile.out -covermode=atomic -race ./...; \
 	  if [ -f /tmp/profile.out ]; then \
@@ -81,30 +100,38 @@ go.unittest:
 
 .PHONY: go.lint
 go.lint:
-	@set -e; for dir in `find . -type f -name "go.mod" | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
+	@set -e; for dir in `find . -type f -name "go.mod" | grep -v /vendor/ | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
 	  cd $$dir; \
 	  golangci-lint run --verbose ./...; \
 	); done
 
 .PHONY: go.tidy
 go.tidy:
-	@set -e; for dir in `find . -type f -name "go.mod" | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
+	@set -e; for dir in `find . -type f -name "go.mod" | grep -v /vendor/ | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
 	  cd $$dir; \
 	  $(GO)	mod tidy; \
 	); done
 
 .PHONY: go.build
 go.build:
-	@set -e; for dir in `find . -type f -name "go.mod" | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
+	@set -e; for dir in `find . -type f -name "go.mod" | grep -v /vendor/ | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
 	  cd $$dir; \
 	  $(GO)	build ./...; \
 	); done
 
 .PHONY: go.bump-deps
 go.bumpdeps:
-	@set -e; for dir in `find . -type f -name "go.mod" | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
+	@set -e; for dir in `find . -type f -name "go.mod" | grep -v /vendor/ | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
 	  cd $$dir; \
 	  $(GO)	get -u ./...; \
+	); done
+
+.PHONY: go.bump-deps
+go.fmt:
+	if ! command -v goimports &>/dev/null; then GO111MODULE=off go get golang.org/x/tools/cmd/goimports; fi
+	@set -e; for dir in `find . -type f -name "go.mod" | grep -v /vendor/ | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
+	  cd $$dir; \
+	  goimports -w . \
 	); done
 
 BUILD_STEPS += go.build
@@ -112,12 +139,18 @@ BUMPDEPS_STEPS += go.bumpdeps
 TIDY_STEPS += go.tidy
 LINT_STEPS += go.lint
 UNITTEST_STEPS += go.unittest
+FMT_STEPS += go.fmt
 endif
 
 ##
 ## Node
 ##
 
+ifndef NPM_PACKAGES
+ifneq ($(wildcard package.json),)
+NPM_PACKAGES = .
+endif
+endif
 ifdef NPM_PACKAGES
 .PHONY: npm.publish
 npm.publish:
@@ -135,7 +168,13 @@ endif
 ## Docker
 ##
 
+ifndef DOCKER_IMAGE
+ifneq ($(wildcard Dockerfile),)
+DOCKER_IMAGE = $(notdir $(PWD))
+endif
+endif
 ifdef DOCKER_IMAGE
+ifneq ($(DOCKER_IMAGE),none)
 .PHONY: docker.build
 docker.build:
 	docker build \
@@ -146,6 +185,7 @@ docker.build:
 
 BUILD_STEPS += docker.build
 endif
+endif
 
 ##
 ## Common
@@ -155,48 +195,67 @@ TEST_STEPS += $(UNITTEST_STEPS)
 TEST_STEPS += $(LINT_STEPS)
 TEST_STEPS += $(TIDY_STEPS)
 
-
 ifneq ($(strip $(TEST_STEPS)),)
 .PHONY: test
-test: $(TEST_STEPS)
+test: $(PRE_TEST_STEPS) $(TEST_STEPS)
 endif
 
 ifdef INSTALL_STEPS
 .PHONY: install
-install: $(INSTALL_STEPS)
+install: $(PRE_INSTALL_STEPS) $(INSTALL_STEPS)
 endif
 
 ifdef UNITTEST_STEPS
 .PHONY: unittest
-unittest: $(UNITTEST_STEPS)
+unittest: $(PRE_UNITTEST_STEPS) $(UNITTEST_STEPS)
 endif
 
 ifdef LINT_STEPS
 .PHONY: lint
-lint: $(LINT_STEPS)
+lint: $(PRE_LINT_STEPS) $(FMT_STEPS) $(LINT_STEPS)
 endif
 
 ifdef TIDY_STEPS
 .PHONY: tidy
-tidy: $(TIDY_STEPS)
+tidy: $(PRE_TIDY_STEPS) $(TIDY_STEPS)
 endif
 
 ifdef BUILD_STEPS
 .PHONY: build
-build: $(BUILD_STEPS)
+build: $(PRE_BUILD_STEPS) $(BUILD_STEPS)
 endif
 
 ifdef RELEASE_STEPS
 .PHONY: release
-release: $(RELEASE_STEPS)
+release: $(PRE_RELEASE_STEPS) $(RELEASE_STEPS)
 endif
 
 ifdef BUMPDEPS_STEPS
 .PHONY: bumpdeps
-bumpdeps: $(BUMPDEPS_STEPS)
+bumpdeps: $(PRE_BUMDEPS_STEPS) $(BUMPDEPS_STEPS)
+endif
+
+ifdef FMT_STEPS
+.PHONY: fmt
+fmt: $(PRE_FMT_STEPS) $(FMT_STEPS)
 endif
 
 ifdef GENERATE_STEPS
 .PHONY: generate
-generate: $(GENERATE_STEPS)
+generate: $(PRE_GENERATE_STEPS) $(GENERATE_STEPS)
 endif
+
+.PHONY: help
+help:
+	@echo "General commands:"
+	@[ "$(BUILD_STEPS)" != "" ]     && echo "  build"     || true
+	@[ "$(BUMPDEPS_STEPS)" != "" ]  && echo "  bumpdeps"  || true
+	@[ "$(FMT_STEPS)" != "" ]       && echo "  fmt"       || true
+	@[ "$(GENERATE_STEPS)" != "" ]  && echo "  generate"  || true
+	@[ "$(INSTALL_STEPS)" != "" ]   && echo "  install"   || true
+	@[ "$(LINT_STEPS)" != "" ]      && echo "  lint"      || true
+	@[ "$(RELEASE_STEPS)" != "" ]   && echo "  release"   || true
+	@[ "$(TEST_STEPS)" != "" ]      && echo "  test"      || true
+	@[ "$(TIDY_STEPS)" != "" ]      && echo "  tidy"      || true
+	@[ "$(UNITTEST_STEPS)" != "" ]  && echo "  unittest"  || true
+	@# FIXME: list other commands
