@@ -1,4 +1,4 @@
-FROM golang:1.12-alpine as build
+FROM golang:1.13-alpine as build
 RUN             apk add --update --no-cache git gcc musl-dev make
 ADD             . /go/src/moul.io/depviz
 WORKDIR         /go/src/moul.io/depviz

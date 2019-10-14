@@ -3,7 +3,7 @@ package github // import "moul.io/depviz/github"
 import (
 	"strings"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v28/github"
 	"moul.io/depviz/model"
 	"moul.io/multipmuri"
 )
