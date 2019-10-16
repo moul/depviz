@@ -66,10 +66,12 @@ func Graph(opts *Options) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if !opts.ShowClosed {
+		computed.FilterClosed()
+	}
 	// FIXME: if !opts.ShowOrphans { computed.FilterOrphans() }
 	// FIXME: if !opts.ShowAllRelated { computed.FilterAllRelated()
 	// FIXME: if !opts.ShowPRs { computed.FilterPRs()
-	// FIXME: if !opts.ShowClosed { computed.FilterClosed()
 
 	// initialize graph config
 	config := graphman.PertConfig{

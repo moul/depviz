@@ -111,6 +111,42 @@ func (computed *Computed) FilterByTargets(targets []multipmuri.Entity) {
 	// FIXME: check for "indirect" matches too
 }
 
+func (computed *Computed) IssueByURL(url string) *ComputedIssue {
+	for _, issue := range computed.AllIssues {
+		if issue.URL == url {
+			return issue
+		}
+	}
+	return nil
+}
+
+func (computed *Computed) FilterClosed() {
+	for _, issue := range computed.AllIssues {
+		if issue.State == "closed" {
+			issue.Hidden = true
+		}
+	}
+
+	for _, milestone := range computed.AllMilestones {
+		hasDeps := false
+		for _, dep := range milestone.DependsOn {
+			issue := computed.IssueByURL(dep)
+			if issue == nil {
+				// if we have at least one unknown dependency, we need to keep the whole object
+				hasDeps = true
+				break
+			}
+			if !issue.Hidden {
+				hasDeps = true
+				break
+			}
+		}
+		if !hasDeps {
+			milestone.Hidden = true
+		}
+	}
+}
+
 func newComputed() Computed {
 	return Computed{
 		AllIssues:     make([]*ComputedIssue, 0),
