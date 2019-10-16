@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+package depviz.model;
+
+import "github.com/golang/protobuf/ptypes/timestamp/timestamp.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option go_package = "moul.io/depviz/internal/dvmodel";
+
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.goproto_registration) = true;
+option (gogoproto.populate_all) = false;
+option (gogoproto.equal_all) = false;
+
+//
+// Owner
+//
+
+// Owner is like a container of tasks or other containers.
+// It's something that is rarely deleted and cannot really "closed" or "due".
+// It's the entity used for Organizations, Teams, Groups, Users
+//   and for Projects, Workspaces, Repos, or a Provider.
+message Owner {
+  enum Kind {
+    UnknownKind = 0;
+    User = 1;
+    Organization = 2;
+    Team = 3;
+    Repo = 4;
+    Provider = 5;
+  }
+  enum ForkStatus {
+    UnknownForkStatus = 0;
+    IsFork = 1;
+    IsSource = 2;
+  }
+
+  string id = 1 [(gogoproto.casttype) = "github.com/cayleygraph/quad.IRI", (gogoproto.moretags) = "quad:\"@id\"", (gogoproto.customname) = "ID"]; // canonical URI
+  google.protobuf.Timestamp created_at = 3 [(gogoproto.moretags) = "quad:\"schema:createdAt,optional\"", (gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+  google.protobuf.Timestamp updated_at = 4 [(gogoproto.moretags) = "quad:\"schema:updatedAt,optional\"", (gogoproto.stdtime) = true, (gogoproto.nullable) = true];
+  string local_id = 5 [(gogoproto.customname) = "LocalID", (gogoproto.moretags) = "quad:\"schema:localId,optional\""];
+
+  Kind kind = 10 [(gogoproto.moretags) = "quad:\"schema:kind,optional\""];
+  string short_name = 11 [(gogoproto.moretags) = "quad:\"schema:shortName,optional\""];
+  string full_name = 12 [(gogoproto.moretags) = "quad:\"schema:fullName,optional\""];
+  Driver driver = 13 [(gogoproto.moretags) = "quad:\"schema:driver,optional\""];
+  string homepage = 14 [(gogoproto.moretags) = "quad:\"schema:homepage,optional\""];
+  string description = 15 [(gogoproto.moretags) = "quad:\"schema:description,optional\""];
+  ForkStatus fork_status = 16 [(gogoproto.moretags) = "quad:\"schema:forkStatus,optional\""];
+  string avatar_url = 17 [(gogoproto.moretags) = "quad:\"schema:avatarUrl,optional\"", (gogoproto.customname) = "AvatarURL"];
+
+  // relationships
+  string has_owner = 100 [(gogoproto.moretags) = "quad:\"hasOwner,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+}
+
+//
+// Task
+//
+
+// Task defines a step or an action.
+// It is owned by an owner and can link to other Owners.
+// A task can contain other tasks (epic, story, milestone).
+// It can be closed and can have due dates.
+// It's the entity used for Issues, Pull Requests, Merge Requests, Cards, Epics, Milestones, Stories.
+message Task {
+  enum Kind {
+    UnknownKind = 0;
+    Issue = 1;
+    MergeRequest = 2;
+    Milestone = 3;
+    Epic = 4;
+    Story = 5;
+    Card = 6;
+  }
+  enum State {
+    UnknownState = 0;
+    Open = 1;
+    Closed = 2;
+  }
+
+  string id = 1 [(gogoproto.casttype) = "github.com/cayleygraph/quad.IRI", (gogoproto.moretags) = "quad:\"@id\"", (gogoproto.customname) = "ID"]; // canonical URI
+  google.protobuf.Timestamp created_at = 3 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false, (gogoproto.moretags) = "quad:\"schema:createdAt,optional\""];
+  google.protobuf.Timestamp updated_at = 4 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false, (gogoproto.moretags) = "quad:\"schema:updatedAt,optional\""];
+  string local_id = 5 [(gogoproto.customname) = "LocalID", (gogoproto.moretags) = "quad:\"schema:localId,optional\""];
+
+  Kind kind = 10 [(gogoproto.moretags) = "quad:\"schema:kind,optional\""];
+  string title = 11 [(gogoproto.moretags) = "quad:\"schema:title,optional\""];
+  string description = 12 [(gogoproto.moretags) = "quad:\"schema:description,optional\""];
+  Driver driver = 13 [(gogoproto.moretags) = "quad:\"schema:driver,optional\""];
+  google.protobuf.Timestamp due_on = 14 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true, (gogoproto.moretags) = "quad:\"schema:dueOn,optional\""];
+  google.protobuf.Timestamp completed_at = 15 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true, (gogoproto.moretags) = "quad:\"schema:completedAt,optional\""];
+  State state = 16 [(gogoproto.moretags) = "quad:\"schema:state,optional\""];
+  bool is_locked = 17 [(gogoproto.nullable) = true, (gogoproto.moretags) = "quad:\"schema:isLocked,optional\""];
+  int32 num_comments = 18 [(gogoproto.moretags) = "quad:\"schema:numComments,optional\""];
+  int32 num_upvotes = 19 [(gogoproto.moretags) = "quad:\"schema:numUpvotes,optional\""];
+  int32 num_downvotes = 20 [(gogoproto.moretags) = "quad:\"schema:numDownvotes,optional\""];
+
+  // relationships
+  string has_author = 100 [(gogoproto.moretags) = "quad:\"hasAuthor,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+  string has_owner = 101 [(gogoproto.moretags) = "quad:\"hasOwner,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+  string has_milestone = 102 [(gogoproto.moretags) = "quad:\"hasMilestone,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+  repeated string has_assignee = 103 [(gogoproto.moretags) = "quad:\"hasAssignee,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+  repeated string has_reviewer = 104 [(gogoproto.moretags) = "quad:\"hasReviewer,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+  repeated string has_label = 105 [(gogoproto.moretags) = "quad:\"hasLabel,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+  repeated string is_depending_on = 106 [(gogoproto.moretags) = "quad:\"isDependingOn,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+  repeated string is_blocking = 107 [(gogoproto.moretags) = "quad:\"isBlocking,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+  repeated string is_related_with = 108 [(gogoproto.moretags) = "quad:\"isRelatedWith,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+  repeated string is_part_of = 109 [(gogoproto.moretags) = "quad:\"isPartOf,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+  repeated string has_part = 110 [(gogoproto.moretags) = "quad:\"isPartOf,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+}
+
+//
+// Topic
+//
+
+message Topic {
+  enum Kind {
+    UnknownKind = 0;
+    Label = 1; // standard GitHub/GitLab label
+  }
+
+  string id = 1 [(gogoproto.casttype) = "github.com/cayleygraph/quad.IRI", (gogoproto.moretags) = "quad:\"@id\"", (gogoproto.customname) = "ID"]; // canonical URI
+  google.protobuf.Timestamp created_at = 3 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true, (gogoproto.moretags) = "quad:\"schema:createdAt,optional\""];
+  google.protobuf.Timestamp updated_at = 4 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true, (gogoproto.moretags) = "quad:\"schema:updatedAt,optional\""];
+  string local_id = 5 [(gogoproto.customname) = "LocalID", (gogoproto.moretags) = "quad:\"schema:localId,optional\""];
+
+  Kind kind = 10 [(gogoproto.moretags) = "quad:\"schema:kind,optional\""];
+  string title = 11 [(gogoproto.moretags) = "quad:\"schema:title,optional\""];
+  Driver driver = 12 [(gogoproto.moretags) = "quad:\"schema:driver,optional\""];
+  string color = 13 [(gogoproto.moretags) = "quad:\"schema:color,optional\""];
+  string description = 14 [(gogoproto.moretags) = "quad:\"schema:description,optional\""];
+
+  // relationships
+  string has_owner = 100 [(gogoproto.moretags) = "quad:\"hasOwner,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
+}
+
+//
+// Constants
+//
+
+enum Driver {
+  UnknownDriver = 0;
+  GitHub = 1;
+  GitLab = 2;
+  Trello = 3;
+  Jira = 4;
+}
