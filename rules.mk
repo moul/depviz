@@ -47,7 +47,8 @@ endif
 
 ifneq ($(wildcard .git/HEAD),)
 .PHONY: generate.authors
-generate.authors:
+generate.authors: AUTHORS
+AUTHORS: .git/
 	echo "# This file lists all individuals having contributed content to the repository." > AUTHORS
 	echo "# For how it is generated, see 'https://github.com/moul/rules.mk'" >> AUTHORS
 	echo >> AUTHORS
@@ -68,6 +69,7 @@ ifdef GOPKG
 GO ?= go
 GOPATH ?= $(HOME)/go
 GO_INSTALL_OPTS ?=
+GO_TEST_OPTS ?= -test.timeout=30s
 
 ifdef GOBINS
 .PHONY: go.install
@@ -91,7 +93,7 @@ go.unittest:
 	echo "" > /tmp/coverage.txt
 	@set -e; for dir in `find . -type f -name "go.mod" | grep -v /vendor/ | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
 	  cd $$dir; \
-	  $(GO) test -v -cover -coverprofile=/tmp/profile.out -covermode=atomic -race ./...; \
+	  $(GO) test $(GO_TEST_OPTS) -cover -coverprofile=/tmp/profile.out -covermode=atomic -race ./...; \
 	  if [ -f /tmp/profile.out ]; then \
 	    cat /tmp/profile.out >> /tmp/coverage.txt; \
 	    rm -f /tmp/profile.out; \
