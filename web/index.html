@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>DepViz Web</title>
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" type="text/css" href="style.css" />
+  </head>
+  <body>
+    <form method="GET" id="controls">
+      <input name="targets" type="text" id="targets" placeholder="user/project" value="moul/depviz-test" />
+
+      <input type="checkbox" id="with-closed" name="with-closed">
+      <label for="with-closed">closed</label>
+
+      <input type="checkbox" id="with-isolated" name="with-isolated" checked>
+      <label for="with-isolated">isolated</label>
+
+      <input type="checkbox" id="with-prs" name="with-prs" checked>
+      <label for="without-isolated">PRs</label>
+
+      <input type="checkbox" id="with-external-deps" name="with-external-deps" checked>
+      <label for="with-external-deps">ext. deps</label>
+
+      <select id="layout" name="layout">
+        <option value="circle" selected>circle</option>
+        <option value="cose">cose</option>
+        <option value="breadthfirst">breadthfirst</option>
+        <option value="concentric">concentric</option>
+        <option value="grid">grid</option>
+        <option value="random">random</option>
+        <option value="cola">cola</option>
+        <option value="elk">elk</option>
+      </select>
+
+      <input type="button" id="redraw" value="redraw" />
+      <input type="submit" id="submit" value="generate" />
+    </form>
+    <div id="cy"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.10.2/cytoscape.min.js" integrity="sha256-6h61EhH/gL/t32vHghM/70U5k4hiB8XMnMQ2lCYV0k0=" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/cytoscape-node-html-label@1.1.5/dist/cytoscape-node-html-label.min.js"></script>
+    <script src="https://unpkg.com/webcola/WebCola/cola.min.js"></script>
+    <script src="https://unpkg.com/cytoscape-cola@2.3.0/cytoscape-cola.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/elkjs@0.3.0/lib/elk.bundled.js"></script>
+    <script src="https://unpkg.com/cytoscape-elk@1.1.10/cytoscape-elk.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/3.1.0/mustache.min.js" integrity="sha256-MPgtcamIpCPKRRm1ppJHkvtNBAuE71xcOM+MmQytXi8=" crossorigin="anonymous"></script>
+    <script src="/depviz.js"></script>
+  </body>
+</html>

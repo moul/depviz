@@ -10,6 +10,7 @@ import (
 	"github.com/cayleygraph/cayley/graph/path"
 	"github.com/cayleygraph/cayley/schema"
 	"github.com/cayleygraph/quad"
+	"go.uber.org/zap"
 	"moul.io/depviz/internal/dvmodel"
 	"moul.io/multipmuri"
 )
@@ -55,7 +56,7 @@ type LoadTasksFilters struct {
 	WithoutExternalDeps bool
 }
 
-func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters) (dvmodel.Tasks, error) {
+func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters, logger *zap.Logger) (dvmodel.Tasks, error) {
 	if filters.Targets == nil || len(filters.Targets) == 0 {
 		return nil, fmt.Errorf("missing filter.targets")
 	}
@@ -69,11 +70,18 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters
 		p := path.StartPath(h, quad.IRI(target.String())).
 			In().
 			Has(quad.IRI("rdf:type"), quad.IRI("dv:Task"))
-		if filters.WithoutPRs {
-			p = p.Has(quad.IRI("schema:kind"), quad.Int(dvmodel.Task_Issue))
-		} else {
-			p = p.Has(quad.IRI("schema:kind"), quad.Int(dvmodel.Task_Issue), quad.Int(dvmodel.Task_MergeRequest))
+		kinds := []quad.Value{
+			quad.Int(dvmodel.Task_Issue),
+			quad.Int(dvmodel.Task_Milestone),
+			quad.Int(dvmodel.Task_Epic),
+			quad.Int(dvmodel.Task_Story),
+			quad.Int(dvmodel.Task_Card),
 		}
+		// FIXME: one option per type
+		if !filters.WithoutPRs {
+			kinds = append(kinds, quad.Int(dvmodel.Task_MergeRequest))
+		}
+		p = p.Has(quad.IRI("schema:kind"), kinds...)
 		if !filters.WithClosed {
 			p = p.Has(quad.IRI("schema:state"), quad.Int(dvmodel.Task_Open))
 		}
@@ -88,23 +96,24 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters
 	}
 
 	if !filters.WithoutExternalDeps {
-		p = p.Or(p.Both(quad.IRI("isDependingOn"), quad.IRI("isBlocking")))
+		p = p.Or(p.Both(
+			quad.IRI("isDependingOn"),
+			quad.IRI("isBlocking"),
+			quad.IRI("IsRelatedWith"),
+			quad.IRI("IsPartOf"),
+			quad.IRI("HasPart"),
+		))
 	}
 
-	allTasks := dvmodel.Tasks{}
-	err := schema.LoadPathTo(ctx, h, &allTasks, p)
+	tasks := dvmodel.Tasks{}
+	p = p.Limit(300)
+	err := schema.LoadPathTo(ctx, h, &tasks, p)
 	if err != nil {
 		return nil, fmt.Errorf("load tasks: %w", err)
 	}
-	tasks := dvmodel.Tasks{}
-	for _, task := range allTasks {
-		if !filters.WithoutIsolated {
-			tasks = append(tasks, task)
-			continue
-		}
-		if len(task.IsDependingOn) > 0 || len(task.IsBlocking) > 0 {
-			tasks = append(tasks, task)
-		}
+
+	if filters.WithoutIsolated {
+		tasks = dvmodel.FilterIsolatedTasks(tasks, logger)
 	}
 
 	sort.Slice(tasks[:], func(i, j int) bool {

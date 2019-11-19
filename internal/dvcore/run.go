@@ -75,7 +75,7 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 			WithoutPRs:          opts.HidePRs,
 			WithoutExternalDeps: opts.HideExternalDeps,
 		}
-		tasks, err := dvstore.LoadTasks(h, opts.Schema, filters)
+		tasks, err := dvstore.LoadTasks(h, opts.Schema, filters, opts.Logger)
 		if err != nil {
 			return fmt.Errorf("load tasks: %w", err)
 		}
