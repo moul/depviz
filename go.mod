@@ -8,7 +8,6 @@ require (
 	github.com/cayleygraph/cayley v0.7.7
 	github.com/cayleygraph/quad v1.1.0
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
-	github.com/gilliek/go-opml v1.0.0
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-chi/render v1.0.1
 	github.com/gobuffalo/packr/v2 v2.7.1
