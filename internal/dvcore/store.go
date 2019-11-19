@@ -7,7 +7,6 @@ import (
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/schema"
 	"moul.io/depviz/internal/dvmodel"
-	"moul.io/godev"
 )
 
 func StoreDumpQuads(h *cayley.Handle) error {
@@ -21,31 +20,36 @@ func StoreDumpQuads(h *cayley.Handle) error {
 	return nil
 }
 
-func getStoreDump(h *cayley.Handle, schema *schema.Config) (*dvmodel.Batch, error) {
-	dump := dvmodel.Batch{}
-	ctx := context.TODO()
-
-	if err := schema.LoadTo(ctx, h, &dump.Owners); err != nil {
+func GetStoreDump(ctx context.Context, h *cayley.Handle, schema *schema.Config) (*dvmodel.Batch, error) {
+	owners := []dvmodel.Owner{}
+	if err := schema.LoadTo(ctx, h, &owners); err != nil {
 		return nil, fmt.Errorf("load owners: %w", err)
 	}
-	if err := schema.LoadTo(ctx, h, &dump.Tasks); err != nil {
+	tasks := []dvmodel.Task{}
+	if err := schema.LoadTo(ctx, h, &tasks); err != nil {
 		return nil, fmt.Errorf("load tasks: %w", err)
 	}
-	if err := schema.LoadTo(ctx, h, &dump.Topics); err != nil {
+	topics := []dvmodel.Topic{}
+	if err := schema.LoadTo(ctx, h, &topics); err != nil {
 		return nil, fmt.Errorf("load topics: %w", err)
 	}
 
-	return &dump, nil
-}
-
-func StoreDumpJSON(h *cayley.Handle, schema *schema.Config) error {
-	dump, err := getStoreDump(h, schema)
-	if err != nil {
-		return err
+	dump := dvmodel.Batch{
+		Owners: make([]*dvmodel.Owner, len(owners)),
+		Tasks:  make([]*dvmodel.Task, len(tasks)),
+		Topics: make([]*dvmodel.Topic, len(topics)),
+	}
+	for idx, owner := range owners {
+		dump.Owners[idx] = &owner
+	}
+	for idx, task := range tasks {
+		dump.Tasks[idx] = &task
+	}
+	for idx, topic := range topics {
+		dump.Topics[idx] = &topic
 	}
 
-	fmt.Println(godev.PrettyJSON(dump))
-	return nil
+	return &dump, nil
 }
 
 func StoreInfo(h *cayley.Handle) error {

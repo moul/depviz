@@ -221,7 +221,7 @@ func saveBatches(h *cayley.Handle, schema *schema.Config, batches []dvmodel.Batc
 				_, _ = schema.WriteAsQuads(dw, working)
 			}
 
-			working = owner
+			working = *owner
 			if _, err := schema.WriteAsQuads(iw, working); err != nil {
 				return fmt.Errorf("write as quads: %w", err)
 			}
@@ -232,7 +232,7 @@ func saveBatches(h *cayley.Handle, schema *schema.Config, batches []dvmodel.Batc
 				_, _ = schema.WriteAsQuads(dw, working)
 			}
 
-			working = task
+			working = *task
 			if _, err := schema.WriteAsQuads(iw, working); err != nil {
 				return fmt.Errorf("write as quads: %w", err)
 			}
@@ -243,7 +243,7 @@ func saveBatches(h *cayley.Handle, schema *schema.Config, batches []dvmodel.Batc
 				_, _ = schema.WriteAsQuads(dw, working)
 			}
 
-			working = topic
+			working = *topic
 			if _, err := schema.WriteAsQuads(iw, working); err != nil {
 				return fmt.Errorf("write as quads: %w", err)
 			}

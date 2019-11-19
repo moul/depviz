@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package depviz.server;
+
+import "google/api/annotations.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger/options/annotations.proto";
+
+import "dvmodel.proto";
+
+option go_package = "moul.io/depviz/internal/dvserver";
+option (gogoproto.sizer_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+service DepvizService {
+  rpc Graph(Graph.Input) returns (Graph.Output) { option (google.api.http) = {get: "/graph"}; };
+  rpc StoreDump(StoreDump.Input) returns (StoreDump.Output) { option (google.api.http) = {get: "/store/dump"}; };
+}
+
+message Graph {
+  message Input {
+    repeated string targets = 1;
+    bool with_closed = 2;
+    bool without_isolated = 3;
+    bool without_prs = 4 [(gogoproto.customname) = "WithoutPRs"];
+    bool without_external_deps = 5;
+  }
+  message Output {
+    repeated depviz.model.Task tasks = 1;
+  }
+}
+
+message StoreDump {
+  message Input {}
+  message Output {
+    depviz.model.Batch batch = 1;
+  }
+}

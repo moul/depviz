@@ -49,10 +49,13 @@ gen.sum: $(GEN_SRC)
 	)
 
 
+PROTOC_OPTS = -I ./vendor/github.com/grpc-ecosystem/grpc-gateway:./api:./vendor:/protobuf
 .PHONY: generate_local
 generate_local:
 	@set -e; for proto in $(PROTOS_SRC); do ( set -xe; \
-	  protoc -I ./api:./vendor:/protobuf --grpc-gateway_out=logtostderr=true:"$(GOPATH)/src" --gogofaster_out="plugins=grpc:$(GOPATH)/src" "$$proto" \
+	  protoc $(PROTOC_OPTS) \
+	    --grpc-gateway_out=logtostderr=true:"$(GOPATH)/src" \
+	    --gogofaster_out="plugins=grpc:$(GOPATH)/src" "$$proto" \
 	); done
 	goimports -w ./pkg ./cmd ./internal
 	shasum $(GEN_SRC) | sort > gen.sum.tmp
