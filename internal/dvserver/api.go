@@ -39,7 +39,8 @@ func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, er
 		Tasks: make([]*dvmodel.Task, len(tasks)),
 	}
 	for idx, task := range tasks {
-		ret.Tasks[idx] = &task
+		clone := task
+		ret.Tasks[idx] = &clone
 	}
 	return &ret, nil
 }

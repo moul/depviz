@@ -40,13 +40,16 @@ func GetStoreDump(ctx context.Context, h *cayley.Handle, schema *schema.Config) 
 		Topics: make([]*dvmodel.Topic, len(topics)),
 	}
 	for idx, owner := range owners {
-		dump.Owners[idx] = &owner
+		clone := owner
+		dump.Owners[idx] = &clone
 	}
 	for idx, task := range tasks {
-		dump.Tasks[idx] = &task
+		clone := task
+		dump.Tasks[idx] = &clone
 	}
 	for idx, topic := range topics {
-		dump.Topics[idx] = &topic
+		clone := topic
+		dump.Topics[idx] = &clone
 	}
 
 	return &dump, nil
