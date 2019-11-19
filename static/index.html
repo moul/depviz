@@ -15,8 +15,19 @@
     <hr />
     <div id="network"></div>
 
+    <script id="task-template" type="x-tmpl-mustache">
+      <svg xmlns="http://www.w3.org/2000/svg" width="300" height="100">
+        <rect x="0" y="0" width="100%" height="100%" fill="#ccccff" stroke-width="2" stroke="#000000" ></rect>100
+        <foreignObject x="15" y="10" width="100%" height="100%">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:20px">
+            {{local_id}} by {{has_author}}
+          </div>
+        </foreignObject>
+      </svg>
+    </script>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/3.1.0/mustache.min.js" integrity="sha256-MPgtcamIpCPKRRm1ppJHkvtNBAuE71xcOM+MmQytXi8=" crossorigin="anonymous"></script>
     <script src="/depviz.js"></script>
   </body>
 </html>
