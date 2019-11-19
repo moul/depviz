@@ -1,24 +1,29 @@
 package main // import "moul.io/depviz"
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
 	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
 	"github.com/cayleygraph/cayley/schema"
+	"github.com/oklog/run"
 	"github.com/peterbourgon/ff"
 	"github.com/peterbourgon/ff/ffcli"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"moul.io/depviz/internal/dvcore"
+	"moul.io/depviz/internal/dvserver"
 	"moul.io/depviz/internal/dvstore"
+	"moul.io/godev"
 )
 
 var (
@@ -36,9 +41,15 @@ var (
 	airtableTasksTab  = airtableFlags.String("tasks", "Tasks", `"Tasks" tab name`)
 	airtableTopicsTab = airtableFlags.String("topics", "Topics", `"Topics" tab name`)
 
-	serverFlags   = flag.NewFlagSet("server", flag.ExitOnError)
-	serverBind    = serverFlags.String("bind", ":8000", "server bind address")
-	serverGodmode = serverFlags.Bool("godmode", false, "enable dangerous API calls")
+	serverFlags              = flag.NewFlagSet("server", flag.ExitOnError)
+	serverHTTPBind           = serverFlags.String("http-bind", ":8000", "HTTP bind address")
+	serverGRPCBInd           = serverFlags.String("grpc-bind", ":9000", "gRPC bind address")
+	serverRequestTimeout     = serverFlags.Duration("request-timeout", 5*time.Second, "request timeout")
+	serverShutdownTimeout    = serverFlags.Duration("shutdowm-timeout", 6*time.Second, "shutdown timeout")
+	serverCORSAllowedOrigins = serverFlags.String("cors-allowed-origins", "*", "allowed CORS origins")
+	serverGodmode            = serverFlags.Bool("godmode", false, "enable dangerous API calls")
+	serverWithPprof          = serverFlags.Bool("with-pprof", false, "enable pprof endpoints")
+	serverWithoutRecovery    = serverFlags.Bool("without-recovery", false, "disable panic recovery (dev)")
 
 	runFlags            = flag.NewFlagSet("run", flag.ExitOnError)
 	runNoPull           = runFlags.Bool("no-pull", false, "don't pull providers (graph only)")
@@ -201,7 +212,14 @@ func execStoreDumpJSON(args []string) error {
 		return fmt.Errorf("init store: %w", err)
 	}
 
-	return dvcore.StoreDumpJSON(store, schemaConfig)
+	ctx := context.Background()
+	batch, err := dvcore.GetStoreDump(ctx, store, schemaConfig)
+	if err != nil {
+		return fmt.Errorf("get store dump: %w", err)
+	}
+
+	fmt.Println(godev.PrettyJSON(batch))
+	return nil
 }
 
 func execStoreInfo(args []string) error {
@@ -251,12 +269,64 @@ func execServer(args []string) error {
 		return err
 	}
 
-	store, err := storeFromArgs()
-	if err != nil {
-		return fmt.Errorf("init store: %w", err)
+	var (
+		ctx = context.Background()
+		g   run.Group
+		svc dvserver.Service
+	)
+
+	{ // server
+		store, err := storeFromArgs()
+		if err != nil {
+			return fmt.Errorf("init store: %w", err)
+		}
+
+		opts := dvserver.Opts{
+			Logger:             logger,
+			HTTPBind:           *serverHTTPBind,
+			GRPCBind:           *serverGRPCBInd,
+			CORSAllowedOrigins: *serverCORSAllowedOrigins,
+			RequestTimeout:     *serverRequestTimeout,
+			ShutdownTimeout:    *serverShutdownTimeout,
+			WithPprof:          *serverWithPprof,
+			WithoutRecovery:    *serverWithoutRecovery,
+			Godmode:            *serverGodmode,
+		}
+		svc, err = dvserver.New(ctx, store, schemaConfig, opts)
+		if err != nil {
+			return fmt.Errorf("init server: %w", err)
+		}
+
+		g.Add(
+			svc.Run,
+			func(error) { svc.Close() },
+		)
 	}
 
-	return dvcore.Server(*serverBind, *serverGodmode, store, logger, schemaConfig)
+	{ // signal handling
+		ctx, cancel := context.WithCancel(ctx)
+		g.Add(func() error {
+			sigch := make(chan os.Signal, 1)
+			signal.Notify(sigch, os.Interrupt)
+			select {
+			case <-sigch:
+			case <-ctx.Done():
+			}
+			return nil
+		}, func(error) {
+			cancel()
+		})
+	}
+
+	logger.Info("server started",
+		zap.String("http-bind", svc.HTTPListenerAddr()),
+		zap.String("grpc-bind", svc.GRPCListenerAddr()),
+	)
+
+	if err := g.Run(); err != nil {
+		return fmt.Errorf("group terminated: %w", err)
+	}
+	return nil
 }
 
 func storeFromArgs() (*cayley.Handle, error) {

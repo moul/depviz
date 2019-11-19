@@ -82,8 +82,8 @@ message Task {
   }
 
   string id = 1 [(gogoproto.casttype) = "github.com/cayleygraph/quad.IRI", (gogoproto.moretags) = "quad:\"@id\"", (gogoproto.customname) = "ID"]; // canonical URI
-  google.protobuf.Timestamp created_at = 3 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false, (gogoproto.moretags) = "quad:\"schema:createdAt,optional\""];
-  google.protobuf.Timestamp updated_at = 4 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false, (gogoproto.moretags) = "quad:\"schema:updatedAt,optional\""];
+  google.protobuf.Timestamp created_at = 3 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true, (gogoproto.moretags) = "quad:\"schema:createdAt,optional\""];
+  google.protobuf.Timestamp updated_at = 4 [(gogoproto.stdtime) = true, (gogoproto.nullable) = true, (gogoproto.moretags) = "quad:\"schema:updatedAt,optional\""];
   string local_id = 5 [(gogoproto.customname) = "LocalID", (gogoproto.moretags) = "quad:\"schema:localId,optional\""];
 
   Kind kind = 10 [(gogoproto.moretags) = "quad:\"schema:kind,optional\""];
@@ -147,4 +147,14 @@ enum Driver {
   GitLab = 2;
   Trello = 3;
   Jira = 4;
+}
+
+//
+// internal
+//
+
+message Batch {
+  repeated Task tasks = 1;
+  repeated Owner owners = 2;
+  repeated Topic topics = 3;
 }

@@ -37,8 +37,8 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 	issue := dvmodel.Task{
 		ID:           quad.IRI(entity.String()),
 		LocalID:      entity.LocalID(),
-		CreatedAt:    input.GetCreatedAt(),
-		UpdatedAt:    input.GetUpdatedAt(),
+		CreatedAt:    input.CreatedAt,
+		UpdatedAt:    input.UpdatedAt,
 		Title:        input.GetTitle(),
 		Description:  input.GetBody(),
 		Driver:       dvmodel.Driver_GitHub,
@@ -140,7 +140,7 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 		}
 	}
 
-	batch.Tasks = append(batch.Tasks, issue)
+	batch.Tasks = append(batch.Tasks, &issue)
 	return nil
 }
 
@@ -184,7 +184,7 @@ func fromUser(batch *dvmodel.Batch, input *github.User) (*dvmodel.Owner, error) 
 		updated := input.GetUpdatedAt().Time
 		user.UpdatedAt = &updated
 	}
-	batch.Owners = append(batch.Owners, user)
+	batch.Owners = append(batch.Owners, &user)
 	return &user, nil
 }
 
@@ -198,8 +198,8 @@ func fromMilestone(batch *dvmodel.Batch, input *github.Milestone) (*dvmodel.Task
 		ID:          quad.IRI(entity.String()),
 		LocalID:     entity.LocalID(),
 		Kind:        dvmodel.Task_Milestone,
-		CreatedAt:   input.GetCreatedAt(),
-		UpdatedAt:   input.GetUpdatedAt(),
+		CreatedAt:   input.CreatedAt,
+		UpdatedAt:   input.UpdatedAt,
 		Title:       input.GetTitle(),
 		Description: input.GetDescription(),
 		Driver:      dvmodel.Driver_GitHub,
@@ -236,7 +236,7 @@ func fromMilestone(batch *dvmodel.Batch, input *github.Milestone) (*dvmodel.Task
 	repo := multipmuri.RepoEntity(entity)
 	milestone.HasOwner = quad.IRI(repo.String())
 
-	batch.Tasks = append(batch.Tasks, milestone)
+	batch.Tasks = append(batch.Tasks, &milestone)
 	return &milestone, err
 }
 
@@ -257,7 +257,7 @@ func fromRepoURL(batch *dvmodel.Batch, url string) (*dvmodel.Owner, error) {
 	repoOwner := multipmuri.OwnerEntity(entity)
 	repo.HasOwner = quad.IRI(repoOwner.String())
 
-	batch.Owners = append(batch.Owners, repo)
+	batch.Owners = append(batch.Owners, &repo)
 	return &repo, err
 }
 
@@ -278,6 +278,6 @@ func fromLabel(batch *dvmodel.Batch, input *github.Label) (*dvmodel.Topic, error
 	repo := multipmuri.RepoEntity(entity)
 	topic.HasOwner = quad.IRI(repo.String())
 
-	batch.Topics = append(batch.Topics, topic)
+	batch.Topics = append(batch.Topics, &topic)
 	return &topic, nil
 }
