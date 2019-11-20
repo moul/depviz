@@ -17,7 +17,7 @@ func fromIssues(issues []*github.Issue, logger *zap.Logger) (dvmodel.Batch, erro
 	for _, issue := range issues {
 		err := fromIssue(&batch, issue)
 		if err != nil {
-			logger.Warn("failed to parse issue", zap.Error(err))
+			logger.Warn("parse issue", zap.String("url", issue.GetHTMLURL()), zap.Error(err))
 			continue
 		}
 	}
