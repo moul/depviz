@@ -22,6 +22,8 @@ import (
 	"github.com/oklog/run"
 	"github.com/rs/cors"
 	chilogger "github.com/treastech/logger"
+	cache "github.com/victorspringer/http-cache"
+	"github.com/victorspringer/http-cache/adapter/memory"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"moul.io/depviz/internal/chiutil"
@@ -37,6 +39,7 @@ type Opts struct {
 	WithoutRecovery    bool
 	WithPprof          bool
 	Godmode            bool
+	WithoutCache       bool
 }
 
 type Service interface {
@@ -144,7 +147,6 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 		r.Use(middleware.Timeout(opts.RequestTimeout))
 		r.Use(middleware.RealIP)
 		r.Use(middleware.RequestID)
-		// FIXME: add caching
 		gwmux := runtime.NewServeMux(
 			runtime.WithMarshalerOption(runtime.MIMEWildcard, &gateway.JSONPb{
 				EmitDefaults: false,
@@ -158,8 +160,31 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 			return nil, fmt.Errorf("register service on gateway: %w", err)
 		}
 
+		var handler http.Handler = gwmux
+
 		// api endpoints
-		r.Mount("/api", http.StripPrefix("/api", gwmux))
+		if !opts.WithoutCache {
+			// FIXME: invalidate cache
+			memcached, err := memory.NewAdapter(
+				memory.AdapterWithAlgorithm(memory.LRU),
+				memory.AdapterWithCapacity(10000000),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("memory cache: %w", err)
+			}
+
+			cacheClient, err := cache.NewClient(
+				cache.ClientWithAdapter(memcached),
+				cache.ClientWithTTL(10*time.Minute),
+				cache.ClientWithRefreshKey("opn"),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("cache client: %w", err)
+			}
+
+			handler = cacheClient.Middleware(handler)
+		}
+		r.Mount("/api", http.StripPrefix("/api", handler))
 
 		// pprof endpoints
 		if opts.WithPprof {

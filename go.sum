@@ -344,6 +344,8 @@ github.com/tylertreat/BoomFilters v0.0.0-20181028192813-611b3dbe80e8 h1:7X4KYG3g
 github.com/tylertreat/BoomFilters v0.0.0-20181028192813-611b3dbe80e8/go.mod h1:OYRfF6eb5wY9VRFkXJH8FFBi3plw2v+giaIu7P054pM=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
+github.com/victorspringer/http-cache v0.0.0-20190721184638-fe78e97af707 h1:Pg/LJmFZnr+hlP9sohJKDaxi1nTSOPvGNo8dBBgRIkM=
+github.com/victorspringer/http-cache v0.0.0-20190721184638-fe78e97af707/go.mod h1:V7CEaXWuLs0tH3DNWqJO+GVr8YgiAwRgBh76T4LNSPU=
 github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c/go.mod h1:lB8K/P019DLNhemzwFU4jHLhdvlE6uDZjXFejJXr49I=
 github.com/xdg/stringprep v1.0.0/go.mod h1:Jhud4/sHMO4oL310DaZAKk9ZaJ08SJfe+sJh0HrGL1Y=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=

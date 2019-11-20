@@ -23,6 +23,7 @@ require (
 	github.com/prometheus/procfs v0.0.7 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/treastech/logger v0.0.0-20180705232552-e381e9ecf2e3
+	github.com/victorspringer/http-cache v0.0.0-20190721184638-fe78e97af707
 	go.uber.org/multierr v1.4.0 // indirect
 	go.uber.org/zap v1.13.0
 	golang.org/x/crypto v0.0.0-20191117063200-497ca9f6d64f // indirect
