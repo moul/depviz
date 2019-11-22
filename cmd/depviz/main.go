@@ -30,9 +30,10 @@ var (
 	logger       *zap.Logger
 	schemaConfig *schema.Config
 
-	globalFlags     = flag.NewFlagSet("depviz", flag.ExitOnError)
-	globalStorePath = globalFlags.String("store-path", os.Getenv("HOME")+"/.depviz", "store path")
-	globalDebug     = globalFlags.Bool("debug", false, "debug mode")
+	globalFlags          = flag.NewFlagSet("depviz", flag.ExitOnError)
+	globalStorePath      = globalFlags.String("store-path", os.Getenv("HOME")+"/.depviz", "store path")
+	globalDebug          = globalFlags.Bool("debug", false, "debug mode")
+	globalWithStacktrace = globalFlags.Bool("with-stacktrace", false, "show stacktrace on warns, errors and worse")
 
 	airtableFlags     = flag.NewFlagSet("airtable", flag.ExitOnError)
 	airtableToken     = airtableFlags.String("token", "", "airtable token")
@@ -137,7 +138,7 @@ func globalPreRun() error {
 	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	if *globalDebug {
 		config.Level.SetLevel(zap.DebugLevel)
-		config.DisableStacktrace = false
+		config.DisableStacktrace = !*globalWithStacktrace
 	} else {
 		config.Level.SetLevel(zap.InfoLevel)
 		config.DisableStacktrace = true

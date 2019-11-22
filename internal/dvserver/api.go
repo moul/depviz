@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/zap"
 	"moul.io/depviz/internal/dvcore"
 	"moul.io/depviz/internal/dvmodel"
 	"moul.io/depviz/internal/dvparser"
@@ -11,6 +12,7 @@ import (
 )
 
 func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, error) {
+	s.opts.Logger.Debug("graph", zap.Any("in", in))
 	// validation
 	if len(in.Targets) == 0 {
 		return nil, fmt.Errorf("targets is required")
@@ -29,7 +31,7 @@ func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, er
 	}
 
 	// load tasks
-	tasks, err := dvstore.LoadTasks(s.h, s.schema, filters)
+	tasks, err := dvstore.LoadTasks(s.h, s.schema, filters, s.opts.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("load tasks: %w", err)
 	}

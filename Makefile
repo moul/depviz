@@ -34,8 +34,8 @@ GEN_SRC := $(PROTOS_SRC) Makefile
 generate: gen.sum
 gen.sum: $(GEN_SRC)
 	shasum $(GEN_SRC) | sort > gen.sum.tmp
-	diff -q gen.sum gen.sum.tmp || ( \
-	  set -e; \
+	@diff -q gen.sum gen.sum.tmp || ( \
+	  set -xe; \
 	  GO111MODULE=on go mod vendor; \
 	  docker run \
 	    --user=`id -u` \

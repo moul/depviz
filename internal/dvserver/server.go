@@ -196,7 +196,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 		}
 
 		// static content
-		box := packr.New("static", "./static")
+		box := packr.New("web", "./web")
 		chiutil.FileServer(r, "/", box)
 
 		http.DefaultServeMux = http.NewServeMux() // disables default handlers registere by importing net/http/pprof for security reasons
