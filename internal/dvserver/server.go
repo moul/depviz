@@ -13,7 +13,7 @@ import (
 	"github.com/cayleygraph/cayley/schema"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/gobuffalo/packr/v2"
+	packr "github.com/gobuffalo/packr/v2"
 	"github.com/gogo/gateway"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -196,7 +196,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 		}
 
 		// static content
-		box := packr.New("web", "./web")
+		box := packr.New("web", "../../web")
 		chiutil.FileServer(r, "/", box)
 
 		http.DefaultServeMux = http.NewServeMux() // disables default handlers registere by importing net/http/pprof for security reasons

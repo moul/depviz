@@ -65,3 +65,9 @@ generate_local:
 .PHONY: clean
 clean:
 	rm -f gen.sum $(wildcard */*/*.pb.go */*/*.pb.gw.go) $(wildcard out/*)
+
+
+.PHONY: packr
+packr:
+	GO111MODULE=off go get github.com/gobuffalo/packr/v2/packr2
+	cd internal/dvserver && packr2

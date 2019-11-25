@@ -6,3 +6,5 @@ coverage.txt
 .#*
 depviz.db
 /vendor/
+packrd/
+*-packr.go
