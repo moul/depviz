@@ -89,8 +89,10 @@ RELEASE_STEPS += go.release
 endif
 
 .PHONY: go.unittest
-go.unittest:
-	echo "" > /tmp/coverage.txt
+go.unittest: coverage.txt
+coverage.txt:
+	@rm -f /tmp/coverage.txt
+	@touch /tmp/coverage.txt
 	@set -e; for dir in `find . -type f -name "go.mod" | grep -v /vendor/ | sed 's@/[^/]*$$@@' | sort | uniq`; do ( set -xe; \
 	  cd $$dir; \
 	  $(GO) test $(GO_TEST_OPTS) -cover -coverprofile=/tmp/profile.out -covermode=atomic -race ./...; \
@@ -99,6 +101,10 @@ go.unittest:
 	    rm -f /tmp/profile.out; \
 	  fi); done
 	mv /tmp/coverage.txt .
+
+.PHONY: go.coverfunc
+go.coverfunc: coverage.txt
+	go tool cover -func=./coverage.txt | grep -v .pb.go: | grep -v .pb.gw.go:
 
 .PHONY: go.lint
 go.lint:
