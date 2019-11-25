@@ -6,11 +6,13 @@ ARG             VERSION
 # build
 FROM            golang:1.13-alpine as build
 RUN             apk add --update --no-cache git gcc musl-dev make
+RUN             GO111MODULE=off go get github.com/gobuffalo/packr/v2/packr2
 WORKDIR         /go/src/moul.io/depviz
 ENV             GO111MODULE=on
 COPY            go.* ./
 RUN             go mod download
 COPY            . ./
+RUN             make packr
 RUN             make install
 
 # minimalist runtime
