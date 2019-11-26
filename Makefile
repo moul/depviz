@@ -15,6 +15,10 @@ PRE_LING_STEPS += generate
 PRE_BUMPDEPS_STEPS += generate
 include rules.mk
 
+.PHONY: run
+run: install
+	time depviz run --no-graph moul/depviz-test moul/depviz moul-bot/depviz-test
+	time depviz --debug server --without-recovery --godmode
 
 .PHONY: update_examples
 update_examples:
@@ -64,7 +68,7 @@ generate_local:
 
 .PHONY: clean
 clean:
-	rm -f gen.sum $(wildcard */*/*.pb.go */*/*.pb.gw.go) $(wildcard out/*)
+	rm -f gen.sum $(wildcard */*/*.pb.go */*/*.pb.gw.go) $(wildcard out/*) $(wildcard */*/*-packr.go) $(wildcard */*/packrd/*)
 
 
 .PHONY: packr
