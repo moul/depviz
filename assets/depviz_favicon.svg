@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="260px" height="260px" viewBox="0 0 260 260" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 60 (88103) - https://sketch.com -->
+    <title>Slice</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group">
+            <rect id="Rectangle" fill="#E9279C" x="0" y="0" width="260" height="260" rx="28"></rect>
+            <g id="icon" transform="translate(30.000000, 27.000000)" stroke="#FFFFFF" stroke-width="12">
+                <rect id="Rectangle" stroke-linejoin="round" x="-6" y="144" width="65" height="67" rx="12"></rect>
+                <rect id="Rectangle" stroke-linejoin="round" x="-6" y="-6" width="65" height="67" rx="12"></rect>
+                <rect id="Rectangle" stroke-linejoin="round" x="143" y="114" width="65" height="67" rx="12"></rect>
+                <line x1="27" y1="61" x2="27" y2="143" id="Line" stroke-linecap="round"></line>
+                <line x1="75" y1="66" x2="138" y2="109" id="Line" stroke-linecap="round" stroke-dasharray="0,22"></line>
+            </g>
+        </g>
+    </g>
+</svg>
