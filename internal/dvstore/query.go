@@ -50,6 +50,7 @@ func LastUpdatedIssueInRepo(ctx context.Context, h *cayley.Handle, entity multip
 
 type LoadTasksFilters struct {
 	Targets             []multipmuri.Entity
+	TheWorld            bool
 	WithClosed          bool
 	WithoutIsolated     bool
 	WithoutPRs          bool
@@ -57,42 +58,46 @@ type LoadTasksFilters struct {
 }
 
 func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters, logger *zap.Logger) (dvmodel.Tasks, error) {
-	if filters.Targets == nil || len(filters.Targets) == 0 {
+	if (filters.Targets == nil || len(filters.Targets) == 0) && !filters.TheWorld {
 		return nil, fmt.Errorf("missing filter.targets")
 	}
 
 	ctx := context.TODO()
 
-	// fetch and filter
+	// fetch targets
 	paths := []*path.Path{}
-	for _, target := range filters.Targets {
-		// FIXME: handle different target types (for now only repo)
-		p := path.StartPath(h, quad.IRI(target.String())).
-			In().
-			Has(quad.IRI("rdf:type"), quad.IRI("dv:Task"))
-		kinds := []quad.Value{
-			quad.Int(dvmodel.Task_Issue),
-			quad.Int(dvmodel.Task_Milestone),
-			quad.Int(dvmodel.Task_Epic),
-			quad.Int(dvmodel.Task_Story),
-			quad.Int(dvmodel.Task_Card),
-		}
-		// FIXME: one option per type
-		if !filters.WithoutPRs {
-			kinds = append(kinds, quad.Int(dvmodel.Task_MergeRequest))
-		}
-		p = p.Has(quad.IRI("schema:kind"), kinds...)
-		if !filters.WithClosed {
-			p = p.Has(quad.IRI("schema:state"), quad.Int(dvmodel.Task_Open))
-		}
-		// FIXME: reverse depends/blocks
+	if filters.TheWorld {
+		paths = append(paths, path.StartPath(h))
+	} else {
+		for _, target := range filters.Targets {
+			// FIXME: handle different target types (for now only repo)
+			p := path.StartPath(h, quad.IRI(target.String())).
+				Both().
+				Has(quad.IRI("rdf:type"), quad.IRI("dv:Task"))
 
-		paths = append(paths, p)
+			// FIXME: reverse depends/blocks
+			paths = append(paths, p)
+		}
 	}
-
 	p := paths[0]
 	for _, path := range paths[1:] {
 		p = p.Or(path)
+	}
+
+	// filters
+	kinds := []quad.Value{
+		quad.Int(dvmodel.Task_Issue),
+		quad.Int(dvmodel.Task_Milestone),
+		quad.Int(dvmodel.Task_Epic),
+		quad.Int(dvmodel.Task_Story),
+		quad.Int(dvmodel.Task_Card),
+	}
+	if !filters.WithoutPRs {
+		kinds = append(kinds, quad.Int(dvmodel.Task_MergeRequest))
+	}
+	p = p.Has(quad.IRI("schema:kind"), kinds...)
+	if !filters.WithClosed {
+		p = p.Has(quad.IRI("schema:state"), quad.Int(dvmodel.Task_Open))
 	}
 
 	if !filters.WithoutExternalDeps {

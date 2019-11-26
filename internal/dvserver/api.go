@@ -18,16 +18,20 @@ func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, er
 		return nil, fmt.Errorf("targets is required")
 	}
 
-	targets, err := dvparser.ParseTargets(in.Targets)
-	if err != nil {
-		return nil, fmt.Errorf("parse targets: %w", err)
-	}
 	filters := dvstore.LoadTasksFilters{
 		WithClosed:          in.WithClosed,
 		WithoutIsolated:     in.WithoutIsolated,
 		WithoutPRs:          in.WithoutPRs,
 		WithoutExternalDeps: in.WithoutExternalDeps,
-		Targets:             targets,
+	}
+	if len(in.Targets) == 1 && in.Targets[0] == "world" {
+		filters.TheWorld = true
+	} else {
+		targets, err := dvparser.ParseTargets(in.Targets)
+		if err != nil {
+			return nil, fmt.Errorf("parse targets: %w", err)
+		}
+		filters.Targets = targets
 	}
 
 	// load tasks
