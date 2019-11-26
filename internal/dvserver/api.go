@@ -65,3 +65,7 @@ func (s *service) StoreDump(ctx context.Context, in *StoreDump_Input) (*StoreDum
 func (s *service) Ping(context.Context, *Ping_Input) (*Ping_Output, error) {
 	return &Ping_Output{Message: "pong"}, nil
 }
+
+func (s *service) Status(context.Context, *Status_Input) (*Status_Output, error) {
+	return &Status_Output{EverythingIsOK: true}, nil
+}

@@ -17,6 +17,7 @@ service DepvizService {
   rpc Graph(Graph.Input) returns (Graph.Output) { option (google.api.http) = {get: "/graph"}; };
   rpc StoreDump(StoreDump.Input) returns (StoreDump.Output) { option (google.api.http) = {get: "/store/dump"}; };
   rpc Ping(Ping.Input) returns (Ping.Output) { option (google.api.http) = {get: "/ping"}; };
+  rpc Status(Status.Input) returns (Status.Output) { option (google.api.http) = {get: "/status"}; };
 }
 
 message Graph {
@@ -43,5 +44,12 @@ message Ping {
   message Input {}
   message Output {
     string message = 1;
+  }
+}
+
+message Status {
+  message Input {}
+  message Output {
+    bool everything_is_ok = 1 [(gogoproto.customname) = "EverythingIsOK"];
   }
 }
