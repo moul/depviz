@@ -40,6 +40,8 @@ type Opts struct {
 	WithPprof          bool
 	Godmode            bool
 	WithoutCache       bool
+	BasicAuth          string
+	Realm              string
 }
 
 type Service interface {
@@ -75,6 +77,9 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 	}
 	if opts.CORSAllowedOrigins == "" {
 		opts.CORSAllowedOrigins = "*"
+	}
+	if opts.Realm == "" {
+		opts.Realm = "DepViz"
 	}
 
 	svc := service{
@@ -133,6 +138,9 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 
 	if opts.HTTPBind != "" {
 		r := chi.NewRouter()
+		if opts.BasicAuth != "" {
+			r.Use(basicAuth(opts.BasicAuth, opts.Realm))
+		}
 		cors := cors.New(cors.Options{
 			AllowedOrigins:   strings.Split(opts.CORSAllowedOrigins, ","),
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
