@@ -207,6 +207,9 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 		box := packr.New("web", "../../web")
 		chiutil.FileServer(r, "/", box)
 
+		// pages
+		r.Get("/", homepage(box, opts))
+
 		http.DefaultServeMux = http.NewServeMux() // disables default handlers registere by importing net/http/pprof for security reasons
 		listener, err := net.Listen("tcp", opts.HTTPBind)
 		if err != nil {
