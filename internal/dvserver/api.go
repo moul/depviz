@@ -61,3 +61,7 @@ func (s *service) StoreDump(ctx context.Context, in *StoreDump_Input) (*StoreDum
 	}
 	return &ret, nil
 }
+
+func (s *service) Ping(context.Context, *Ping_Input) (*Ping_Output, error) {
+	return &Ping_Output{Message: "pong"}, nil
+}

@@ -52,6 +52,8 @@ var (
 	serverWithPprof          = serverFlags.Bool("with-pprof", false, "enable pprof endpoints")
 	serverWithoutRecovery    = serverFlags.Bool("without-recovery", false, "disable panic recovery (dev)")
 	serverWithoutCache       = serverFlags.Bool("without-cache", false, "disable HTTP caching")
+	serverBasicAuth          = serverFlags.String("basic-auth", "", "basic auth password (user='depviz')")
+	serverRealm              = serverFlags.String("realm", "DepViz", "server Realm")
 
 	runFlags            = flag.NewFlagSet("run", flag.ExitOnError)
 	runNoPull           = runFlags.Bool("no-pull", false, "don't pull providers (graph only)")
@@ -293,6 +295,8 @@ func execServer(args []string) error {
 			WithPprof:          *serverWithPprof,
 			WithoutRecovery:    *serverWithoutRecovery,
 			WithoutCache:       *serverWithoutCache,
+			BasicAuth:          *serverBasicAuth,
+			Realm:              *serverRealm,
 			Godmode:            *serverGodmode,
 		}
 		svc, err = dvserver.New(ctx, store, schemaConfig, opts)
