@@ -16,6 +16,7 @@ option (gogoproto.unmarshaler_all) = true;
 service DepvizService {
   rpc Graph(Graph.Input) returns (Graph.Output) { option (google.api.http) = {get: "/graph"}; };
   rpc StoreDump(StoreDump.Input) returns (StoreDump.Output) { option (google.api.http) = {get: "/store/dump"}; };
+  rpc Ping(Ping.Input) returns (Ping.Output) { option (google.api.http) = {get: "/ping"}; };
 }
 
 message Graph {
@@ -35,5 +36,12 @@ message StoreDump {
   message Input {}
   message Output {
     depviz.model.Batch batch = 1;
+  }
+}
+
+message Ping {
+  message Input {}
+  message Output {
+    string message = 1;
   }
 }
