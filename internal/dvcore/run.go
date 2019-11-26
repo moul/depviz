@@ -50,6 +50,8 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	}
 	opts.Logger.Debug("Run called", zap.Strings("args", args), zap.Any("opts", opts))
 
+	// FIXME: support the world
+
 	targets, err := dvparser.ParseTargets(args)
 	if err != nil {
 		return fmt.Errorf("parse targets: %w", err)
