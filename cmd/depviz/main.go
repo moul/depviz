@@ -52,7 +52,7 @@ var (
 	serverWithPprof          = serverFlags.Bool("with-pprof", false, "enable pprof endpoints")
 	serverWithoutRecovery    = serverFlags.Bool("without-recovery", false, "disable panic recovery (dev)")
 	serverWithoutCache       = serverFlags.Bool("without-cache", false, "disable HTTP caching")
-	serverBasicAuth          = serverFlags.String("basic-auth", "", "basic auth password (user='depviz')")
+	serverAuth               = serverFlags.String("auth", "", "authentication password")
 	serverRealm              = serverFlags.String("realm", "DepViz", "server Realm")
 
 	runFlags            = flag.NewFlagSet("run", flag.ExitOnError)
@@ -295,7 +295,7 @@ func execServer(args []string) error {
 			WithPprof:          *serverWithPprof,
 			WithoutRecovery:    *serverWithoutRecovery,
 			WithoutCache:       *serverWithoutCache,
-			BasicAuth:          *serverBasicAuth,
+			Auth:               *serverAuth,
 			Realm:              *serverRealm,
 			Godmode:            *serverGodmode,
 		}
