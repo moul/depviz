@@ -74,7 +74,14 @@ $(document).ready(function() {
             }
             switch (task.state) {
             case "Open":
-              node.data.card_classes = 'open'
+              switch (task.kind) {
+              case "MergeRequest":
+                node.data.card_classes = 'in-progress'
+                break;
+              default:
+                node.data.card_classes = 'open'
+                break;
+              }
               break;
             case "Closed":
             case "Merged":
