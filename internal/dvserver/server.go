@@ -40,7 +40,7 @@ type Opts struct {
 	WithPprof          bool
 	Godmode            bool
 	WithoutCache       bool
-	BasicAuth          string
+	Auth               string
 	Realm              string
 }
 
@@ -97,11 +97,9 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 	{ // local gRPC server
 		serverStreamOpts := []grpc.StreamServerInterceptor{
 			grpc_zap.StreamServerInterceptor(grpcLogger),
-			// auth
 		}
 		serverUnaryOpts := []grpc.UnaryServerInterceptor{
 			grpc_zap.UnaryServerInterceptor(grpcLogger),
-			// auth
 		}
 
 		if !opts.WithoutRecovery {
@@ -138,9 +136,6 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 
 	if opts.HTTPBind != "" {
 		r := chi.NewRouter()
-		if opts.BasicAuth != "" {
-			r.Use(basicAuth(opts.BasicAuth, opts.Realm))
-		}
 		cors := cors.New(cors.Options{
 			AllowedOrigins:   strings.Split(opts.CORSAllowedOrigins, ","),
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -192,7 +187,14 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 
 			handler = cacheClient.Middleware(handler)
 		}
-		r.Mount("/api", http.StripPrefix("/api", handler))
+
+		// API
+		r.Route("/api", func(r chi.Router) {
+			if opts.Auth != "" {
+				r.Use(basicAuth(opts.Auth, opts.Realm))
+			}
+			r.Mount("/", http.StripPrefix("/api", handler))
+		})
 
 		// pprof endpoints
 		if opts.WithPprof {
