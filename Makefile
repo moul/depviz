@@ -18,7 +18,7 @@ include rules.mk
 .PHONY: run
 run: install
 	time depviz --debug run --no-graph moul/depviz-test moul/depviz moul-bot/depviz-test moul/multipmuri moul/graphman
-	time depviz --debug server --without-recovery --godmode
+	time depviz --debug server --without-recovery --godmode --realm "DEV"
 
 .PHONY: update_examples
 update_examples:

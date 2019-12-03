@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"moul.io/depviz/internal/dvcore"
+	"moul.io/depviz/internal/dvparser"
 	"moul.io/depviz/internal/dvserver"
 	"moul.io/depviz/internal/dvstore"
 	"moul.io/godev"
@@ -48,12 +49,16 @@ var (
 	serverRequestTimeout     = serverFlags.Duration("request-timeout", 5*time.Second, "request timeout")
 	serverShutdownTimeout    = serverFlags.Duration("shutdowm-timeout", 6*time.Second, "shutdown timeout")
 	serverCORSAllowedOrigins = serverFlags.String("cors-allowed-origins", "*", "allowed CORS origins")
+	serverGitHubToken        = serverFlags.String("github-token", "", "GitHub token")
+	serverGitLabToken        = serverFlags.String("gitlab-token", "", "GitLab token")
+	serverNoAutoUpdate       = serverFlags.Bool("no-auto-update", false, "don't auto-update projects in background")
 	serverGodmode            = serverFlags.Bool("godmode", false, "enable dangerous API calls")
 	serverWithPprof          = serverFlags.Bool("with-pprof", false, "enable pprof endpoints")
 	serverWithoutRecovery    = serverFlags.Bool("without-recovery", false, "disable panic recovery (dev)")
 	serverWithoutCache       = serverFlags.Bool("without-cache", false, "disable HTTP caching")
 	serverAuth               = serverFlags.String("auth", "", "authentication password")
 	serverRealm              = serverFlags.String("realm", "DepViz", "server Realm")
+	serverAutoUpdateInterval = serverFlags.Duration("auto-update-interval", 2*time.Minute, "time between two auto-updates")
 
 	runFlags            = flag.NewFlagSet("run", flag.ExitOnError)
 	runNoPull           = runFlags.Bool("no-pull", false, "don't pull providers (graph only)")
@@ -257,8 +262,8 @@ func execRun(args []string) error {
 		NoGraph:          *runNoGraph,
 		NoPull:           *runNoPull,
 		Format:           *runFormat,
-		GitHubToken:      *runGitHubToken,
 		Resync:           *runResync,
+		GitHubToken:      *runGitHubToken,
 		GitLabToken:      *runGitLabToken,
 		ShowClosed:       *runShowClosed,
 		HideIsolated:     *runHideIsolated,
@@ -285,6 +290,11 @@ func execServer(args []string) error {
 			return fmt.Errorf("init store: %w", err)
 		}
 
+		targets, err := dvparser.ParseTargets(args)
+		if err != nil {
+			return fmt.Errorf("parse targets: %w", err)
+		}
+
 		opts := dvserver.Opts{
 			Logger:             logger,
 			HTTPBind:           *serverHTTPBind,
@@ -298,6 +308,11 @@ func execServer(args []string) error {
 			Auth:               *serverAuth,
 			Realm:              *serverRealm,
 			Godmode:            *serverGodmode,
+			GitHubToken:        *serverGitHubToken,
+			GitLabToken:        *serverGitLabToken,
+			NoAutoUpdate:       *serverNoAutoUpdate,
+			AutoUpdateTargets:  targets,
+			AutoUpdateInterval: *serverAutoUpdateInterval,
 		}
 		svc, err = dvserver.New(ctx, store, schemaConfig, opts)
 		if err != nil {

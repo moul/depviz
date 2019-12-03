@@ -58,13 +58,8 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	}
 
 	if !opts.NoPull {
-		batches, err := pullBatches(targets, h, opts)
-		if err != nil {
-			return fmt.Errorf("pull batches: %w", err)
-		}
-		err = saveBatches(h, opts.Schema, batches)
-		if err != nil {
-			return fmt.Errorf("save batches: %w", err)
+		if err := PullAndSave(targets, h, opts.Schema, opts.GitHubToken, opts.GitLabToken, opts.Resync, opts.Logger); err != nil {
+			return fmt.Errorf("pull: %w", err)
 		}
 	}
 
@@ -156,7 +151,19 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	return nil
 }
 
-func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, opts RunOpts) ([]dvmodel.Batch, error) {
+func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.Config, githubToken string, gitlabToken string, resync bool, logger *zap.Logger) error {
+	batches, err := pullBatches(targets, h, githubToken, gitlabToken, resync, logger)
+	if err != nil {
+		return fmt.Errorf("pull batches: %w", err)
+	}
+	err = saveBatches(h, schema, batches)
+	if err != nil {
+		return fmt.Errorf("save batches: %w", err)
+	}
+	return nil
+}
+
+func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken string, gitlabToken string, resync bool, logger *zap.Logger) ([]dvmodel.Batch, error) {
 	// FIXME: handle the special '@me' target
 	var (
 		wg      sync.WaitGroup
@@ -175,22 +182,22 @@ func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, opts RunOpts) ([
 
 				ghOpts := githubprovider.Opts{
 					// FIXME: Since: lastUpdated,
-					Logger: opts.Logger.Named("github"),
+					Logger: logger.Named("github"),
 				}
 
-				if !opts.Resync {
+				if !resync {
 					since, err := dvstore.LastUpdatedIssueInRepo(ctx, h, repo)
 					if err != nil {
-						opts.Logger.Warn("failed to get last updated issue", zap.Error(err))
+						logger.Warn("failed to get last updated issue", zap.Error(err))
 
 					}
 					ghOpts.Since = &since
 				}
 
-				githubprovider.FetchRepo(ctx, repo, opts.GitHubToken, out, ghOpts)
+				githubprovider.FetchRepo(ctx, repo, githubToken, out, ghOpts)
 			}(target)
 		//case multipmuri.GitLabProvider:
-		//go gitlab.Pull(target, &wg, opts.GitlabToken, db, out)
+		//go gitlab.Pull(target, &wg, gitlabToken, db, out)
 		default:
 			// FIXME: clean context-based exit
 			panic(fmt.Sprintf("unsupported provider: %v", provider))

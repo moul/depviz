@@ -27,6 +27,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"moul.io/depviz/internal/chiutil"
+	"moul.io/depviz/internal/dvcore"
+	"moul.io/multipmuri"
 )
 
 type Opts struct {
@@ -42,6 +44,11 @@ type Opts struct {
 	WithoutCache       bool
 	Auth               string
 	Realm              string
+	GitHubToken        string
+	GitLabToken        string
+	NoAutoUpdate       bool
+	AutoUpdateTargets  []multipmuri.Entity
+	AutoUpdateInterval time.Duration
 }
 
 type Service interface {
@@ -80,6 +87,9 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 	}
 	if opts.Realm == "" {
 		opts.Realm = "DepViz"
+	}
+	if opts.AutoUpdateInterval == 0 {
+		opts.AutoUpdateInterval = 2 * time.Minute
 	}
 
 	svc := service{
@@ -236,9 +246,34 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 		})
 	}
 
+	if !opts.NoAutoUpdate && len(opts.AutoUpdateTargets) > 0 {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		svc.workers.Add(func() error {
+			svc.recurringTask(opts.AutoUpdateTargets)
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-time.After(opts.AutoUpdateInterval):
+					svc.recurringTask(opts.AutoUpdateTargets)
+				}
+			}
+		}, func(error) {
+			cancel()
+		})
+	}
+
 	// FIXME: add grpc-web support?
 
 	return &svc, nil
+}
+
+func (s *service) recurringTask(targets []multipmuri.Entity) {
+	s.opts.Logger.Debug("pull and save", zap.Any("targets", targets))
+	if err := dvcore.PullAndSave(targets, s.h, s.schema, s.opts.GitHubToken, s.opts.GitLabToken, false, s.opts.Logger); err != nil {
+		s.opts.Logger.Warn("pull and save", zap.Error(err))
+	}
 }
 
 func (s *service) Run() error {
