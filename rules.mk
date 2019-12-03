@@ -88,7 +88,7 @@ go.release:
 RELEASE_STEPS += go.release
 endif
 
-.PHONY: go.unittest
+.PHONY: go.unittest coverage.txt
 go.unittest: coverage.txt
 coverage.txt:
 	@rm -f /tmp/coverage.txt

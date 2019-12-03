@@ -58,7 +58,8 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	}
 
 	if !opts.NoPull {
-		if err := PullAndSave(targets, h, opts.Schema, opts.GitHubToken, opts.GitLabToken, opts.Resync, opts.Logger); err != nil {
+		_, err := PullAndSave(targets, h, opts.Schema, opts.GitHubToken, opts.GitLabToken, opts.Resync, opts.Logger)
+		if err != nil {
 			return fmt.Errorf("pull: %w", err)
 		}
 	}
@@ -151,16 +152,19 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	return nil
 }
 
-func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.Config, githubToken string, gitlabToken string, resync bool, logger *zap.Logger) error {
+func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.Config, githubToken string, gitlabToken string, resync bool, logger *zap.Logger) (bool, error) {
 	batches, err := pullBatches(targets, h, githubToken, gitlabToken, resync, logger)
 	if err != nil {
-		return fmt.Errorf("pull batches: %w", err)
+		return false, fmt.Errorf("pull batches: %w", err)
 	}
-	err = saveBatches(h, schema, batches)
-	if err != nil {
-		return fmt.Errorf("save batches: %w", err)
+	if len(batches) > 0 {
+		err = saveBatches(h, schema, batches)
+		if err != nil {
+			return false, fmt.Errorf("save batches: %w", err)
+		}
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
 func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken string, gitlabToken string, resync bool, logger *zap.Logger) ([]dvmodel.Batch, error) {
@@ -222,7 +226,6 @@ func saveBatches(h *cayley.Handle, schema *schema.Config, batches []dvmodel.Batc
 	dw := graph.NewTxWriter(tx, graph.Delete)
 	iw := graph.NewTxWriter(tx, graph.Add)
 
-	// FIXME: append new owner to existing one (field by field), or just don't delete the source?
 	for _, batch := range batches {
 		for _, owner := range batch.Owners {
 			var working dvmodel.Owner
@@ -257,18 +260,11 @@ func saveBatches(h *cayley.Handle, schema *schema.Config, batches []dvmodel.Batc
 				return fmt.Errorf("write as quads: %w", err)
 			}
 		}
-		/*
-			for _, relationship := range batch.Relationships {
-						tx.AddQuad(quad.Make(quad.IRI(relationship.Subject), relationship.Predicate, quad.IRI(relationship.Object), nil))
-					}
-		*/
 	}
 
 	if err := h.ApplyTransaction(tx); err != nil {
 		return fmt.Errorf("apply tx: %w", err)
 	}
-
-	//return Compute(db)
 	return nil
 }
 
