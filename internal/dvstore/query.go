@@ -45,6 +45,10 @@ func LastUpdatedIssueInRepo(ctx context.Context, h *cayley.Handle, entity multip
 			since = typed
 		}
 	}
+
+	since = since.Add(time.Second) // in order to skip the last one
+	// FIXME: find a better approach
+
 	return since, nil
 }
 

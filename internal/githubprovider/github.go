@@ -58,12 +58,14 @@ func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out 
 			zap.Int("total-issues", totalIssues),
 		)
 
-		batch, err := fromIssues(issues, opts.Logger)
-		if err != nil {
-			opts.Logger.Error("parse issues", zap.Error(err))
-			return
+		if len(issues) > 0 {
+			batch, err := fromIssues(issues, opts.Logger)
+			if err != nil {
+				opts.Logger.Error("parse issues", zap.Error(err))
+				return
+			}
+			out <- batch
 		}
-		out <- batch
 
 		// handle pagination
 		if resp.NextPage == 0 {

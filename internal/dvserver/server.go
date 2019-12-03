@@ -20,10 +20,9 @@ import (
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/oklog/run"
+	cache "github.com/patrickmn/go-cache"
 	"github.com/rs/cors"
 	chilogger "github.com/treastech/logger"
-	cache "github.com/victorspringer/http-cache"
-	"github.com/victorspringer/http-cache/adapter/memory"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"moul.io/depviz/internal/chiutil"
@@ -68,6 +67,7 @@ type service struct {
 	grpcServer       *grpc.Server
 	grpcListenerAddr string
 	httpListenerAddr string
+	cache            *cache.Cache
 }
 
 var _ DepvizServiceServer = (*service)(nil)
@@ -177,25 +177,8 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 
 		// api endpoints
 		if !opts.WithoutCache {
-			// FIXME: invalidate cache
-			memcached, err := memory.NewAdapter(
-				memory.AdapterWithAlgorithm(memory.LRU),
-				memory.AdapterWithCapacity(10000000),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("memory cache: %w", err)
-			}
-
-			cacheClient, err := cache.NewClient(
-				cache.ClientWithAdapter(memcached),
-				cache.ClientWithTTL(10*time.Minute),
-				cache.ClientWithRefreshKey("opn"),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("cache client: %w", err)
-			}
-
-			handler = cacheClient.Middleware(handler)
+			svc.cache = cache.New(5*time.Minute, 10*time.Minute)
+			handler = cacheMiddleware(handler, svc.cache, opts.Logger)
 		}
 
 		// API
@@ -250,13 +233,13 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 		ctx, cancel := context.WithCancel(context.Background())
 
 		svc.workers.Add(func() error {
-			svc.recurringTask(opts.AutoUpdateTargets)
+			svc.autoUpdate(opts.AutoUpdateTargets)
 			for {
 				select {
 				case <-ctx.Done():
 					return nil
 				case <-time.After(opts.AutoUpdateInterval):
-					svc.recurringTask(opts.AutoUpdateTargets)
+					svc.autoUpdate(opts.AutoUpdateTargets)
 				}
 			}
 		}, func(error) {
@@ -269,10 +252,14 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 	return &svc, nil
 }
 
-func (s *service) recurringTask(targets []multipmuri.Entity) {
+func (s *service) autoUpdate(targets []multipmuri.Entity) {
 	s.opts.Logger.Debug("pull and save", zap.Any("targets", targets))
-	if err := dvcore.PullAndSave(targets, s.h, s.schema, s.opts.GitHubToken, s.opts.GitLabToken, false, s.opts.Logger); err != nil {
+	changed, err := dvcore.PullAndSave(targets, s.h, s.schema, s.opts.GitHubToken, s.opts.GitLabToken, false, s.opts.Logger)
+	if err != nil {
 		s.opts.Logger.Warn("pull and save", zap.Error(err))
+	}
+	if changed {
+		s.cache.Flush()
 	}
 }
 
