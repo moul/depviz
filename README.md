@@ -1,5 +1,4 @@
 <h1 align="center">
-  <br>
   <img src="https://raw.githubusercontent.com/moul/depviz/master/assets/depviz.svg?sanitize=true" alt="Depviz" title="Depviz" height="200px">
   <br>
 </h1>
@@ -25,13 +24,9 @@ dependency visualizer (auto roadmap)
 
 _inspired by this discussion: [jbenet/random-ideas#37](https://github.com/jbenet/random-ideas/issues/37)_
 
-## Example
-
-TODO
-
 ## Demo
 
-TODO
+https://depviz-demo.moul.io/
 
 ## Supported providers
 
