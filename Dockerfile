@@ -16,7 +16,7 @@ RUN             make packr
 RUN             make install
 
 # minimalist runtime
-FROM            alpine:3.10
+FROM alpine:3.11
 LABEL           org.label-schema.build-date=$BUILD_DATE \
                 org.label-schema.name="depviz" \
                 org.label-schema.description="" \
