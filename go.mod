@@ -6,7 +6,7 @@ replace github.com/brianloveswords/airtable => github.com/moul/brianloveswords-a
 
 require (
 	github.com/cayleygraph/cayley v0.7.7
-	github.com/cayleygraph/quad v1.1.0
+	github.com/cayleygraph/quad v1.2.0
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-chi/render v1.0.1
@@ -37,8 +37,8 @@ require (
 	golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9 // indirect
 	golang.org/x/tools v0.0.0-20191203134012-c197fd4bf371 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
-	google.golang.org/genproto v0.0.0-20191203145615-049a07e0debe
-	google.golang.org/grpc v1.25.1
+	google.golang.org/genproto v0.0.0-20191223191004-3caeed10a8bf
+	google.golang.org/grpc v1.26.0
 	gopkg.in/yaml.v2 v2.2.7
 	gopkg.in/yaml.v3 v3.0.0-20191120175047-4206685974f2 // indirect
 	moul.io/godev v1.3.0
