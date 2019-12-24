@@ -26,6 +26,7 @@ require (
 	github.com/prometheus/client_model v0.0.0-20191202183732-d1d2010b5bee // indirect
 	github.com/prometheus/procfs v0.0.8 // indirect
 	github.com/rs/cors v1.7.0
+	github.com/stretchr/testify v1.4.0
 	github.com/treastech/logger v0.0.0-20180705232552-e381e9ecf2e3
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/multierr v1.4.0 // indirect

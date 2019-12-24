@@ -31,6 +31,7 @@ github.com/cayleygraph/cayley v0.7.7 h1:z+7xkAbg6bKiXJOtOkEG3zCm2K084sr/aGwFV7xc
 github.com/cayleygraph/cayley v0.7.7/go.mod h1:VUd+PInYf94/VY41ePeFtFyP99BAs953kFT4N+6F7Ko=
 github.com/cayleygraph/quad v1.1.0 h1:w1nXAmn+nz07+qlw89dke9LwWkYpeX+OcvfTvGQRBpM=
 github.com/cayleygraph/quad v1.1.0/go.mod h1:maWODEekEhrO0mdc9h5n/oP7cH1h/OTgqQ2qWbuI9M4=
+github.com/cayleygraph/quad v1.2.0 h1:vqf+71ZINP3eSbtaEzpey0HTr9p4M2xHdmVCda8D7+Q=
 github.com/cenkalti/backoff v2.1.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0 h1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=
