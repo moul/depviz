@@ -6,8 +6,7 @@ replace github.com/brianloveswords/airtable => github.com/moul/brianloveswords-a
 
 require (
 	github.com/cayleygraph/cayley v0.7.7
-	github.com/cayleygraph/quad v1.1.0
-	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/cayleygraph/quad v1.2.1
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-chi/render v1.0.1
 	github.com/gobuffalo/envy v1.8.1 // indirect
@@ -22,23 +21,23 @@ require (
 	github.com/oklog/run v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/peterbourgon/ff v1.6.1-0.20190916204019-6cd704ec2eeb
-	github.com/prometheus/client_golang v1.2.1 // indirect
-	github.com/prometheus/client_model v0.0.0-20191202183732-d1d2010b5bee // indirect
-	github.com/prometheus/procfs v0.0.8 // indirect
+	github.com/prometheus/client_golang v1.3.0 // indirect
+	github.com/rogpeppe/go-internal v1.5.1 // indirect
 	github.com/rs/cors v1.7.0
+	github.com/stretchr/testify v1.4.0
 	github.com/treastech/logger v0.0.0-20180705232552-e381e9ecf2e3
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/multierr v1.4.0 // indirect
 	go.uber.org/zap v1.13.0
-	golang.org/x/crypto v0.0.0-20191202143827-86a70503ff7e // indirect
+	golang.org/x/crypto v0.0.0-20191227163750-53104e6ec876 // indirect
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
-	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933 // indirect
+	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
 	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6
-	golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9 // indirect
-	golang.org/x/tools v0.0.0-20191203134012-c197fd4bf371 // indirect
+	golang.org/x/sys v0.0.0-20191228213918-04cbcbbfeed8 // indirect
+	golang.org/x/tools v0.0.0-20191230220329-2aa90c603ae3 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
-	google.golang.org/genproto v0.0.0-20191203145615-049a07e0debe
-	google.golang.org/grpc v1.25.1
+	google.golang.org/genproto v0.0.0-20191230161307-f3c370f40bfb
+	google.golang.org/grpc v1.26.0
 	gopkg.in/yaml.v2 v2.2.7
 	gopkg.in/yaml.v3 v3.0.0-20191120175047-4206685974f2 // indirect
 	moul.io/godev v1.3.0

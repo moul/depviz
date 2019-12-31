@@ -195,7 +195,9 @@ func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken stri
 						logger.Warn("failed to get last updated issue", zap.Error(err))
 
 					}
-					ghOpts.Since = &since
+					if !since.IsZero() && since.Unix() > 0 {
+						ghOpts.Since = &since
+					}
 				}
 
 				githubprovider.FetchRepo(ctx, repo, githubToken, out, ghOpts)
