@@ -33,7 +33,8 @@ func TestLoadTasks(t *testing.T) {
 		{"all-depviz-test", "moul-and-moulbot-depviz-test", LoadTasksFilters{Targets: parseTargets(t, "moul/depviz-test, moul-bot/depviz-test")}, nil},
 	}
 	alreadySeen := map[string]bool{}
-	for _, test := range tests {
+	for _, testptr := range tests {
+		test := testptr
 		name := fmt.Sprintf("%s/%s", test.golden, test.name)
 		gp := TestingGoldenJSONPath(t, name)
 		if _, found := alreadySeen[gp]; found {
@@ -42,6 +43,7 @@ func TestLoadTasks(t *testing.T) {
 		alreadySeen[gp] = true
 
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			logger := testutil.Logger(t)
 			store, close := TestingGoldenStore(t, test.golden)
 			defer close()
