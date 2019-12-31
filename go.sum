@@ -517,6 +517,7 @@ gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLks
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/errgo.v2 v2.1.0/go.mod h1:hNsd1EY+bozCKY1Ytp96fpM3vjJbqLJn88ws8XvfDNI=
 gopkg.in/fsnotify.v1 v1.4.7/go.mod h1:Tz8NjZHkW78fSQdbUxIjBTcgA1z1m8ZHf0WmKUhAMys=
 gopkg.in/olivere/elastic.v5 v5.0.80/go.mod h1:uhHoB4o3bvX5sorxBU29rPcmBQdV2Qfg0FBrx5D6pV0=
@@ -543,9 +544,15 @@ honnef.co/go/tools v0.0.1-2019.2.3 h1:3JgtbtFHMiCmsznwGVTUWbgGov+pVqnlf1dEJTNAXe
 honnef.co/go/tools v0.0.1-2019.2.3/go.mod h1:a3bituU0lyd329TUQxRnasdCoJDkEUEAqEt0JzvZhAg=
 moul.io/godev v1.3.0 h1:+GGk+scZhZ4citKb/lLubV/QJsu7OvB5UZhSYNQRCx4=
 moul.io/godev v1.3.0/go.mod h1:xsV3hXF1E9vy2T/1b1CLjSImJ1/nQeTfqTDhJHhJCWg=
+moul.io/godev v1.4.0 h1:hEUzBIrRtBRWqZHmp12bFUlLSyKxpvfcMYa3Pipfng8=
+moul.io/godev v1.4.0/go.mod h1:xsV3hXF1E9vy2T/1b1CLjSImJ1/nQeTfqTDhJHhJCWg=
 moul.io/graphman v1.5.0 h1:m2kVB06uI82UEEWSOtR58sKwB2yahhY4eDu3wmIDTCE=
 moul.io/graphman v1.5.0/go.mod h1:A34tMYPJRjkFBWPIsmrVFb481r+dsPyP2Ee83RuObwI=
+moul.io/graphman v1.6.0 h1:p0pOkQDul7fv5R3pdQQZsYXaUIvLPfGMonznNa6cCG0=
+moul.io/graphman v1.6.0/go.mod h1:WfW75G37UTvAu09o4xdmcflGDn+VbZiwStaKmJKxkE0=
 moul.io/graphman/viz v0.0.0-20190925205035-97b8bdad4639 h1:9gsAG7VeFpUVTVTx9aihJRtUnNSCkTq9rH9FRE31N1A=
 moul.io/graphman/viz v0.0.0-20190925205035-97b8bdad4639/go.mod h1:gIMudP/g+QhImUksKOueXPiDi5WRapt1N1wfVdxLMdo=
 moul.io/multipmuri v1.12.0 h1:ns0SF+HuqnudOIzzXJ41oONIbhSAZiojp9LCnUeQfZo=
 moul.io/multipmuri v1.12.0/go.mod h1:7qiDMEzR2yz6XIDl0vldcW/EHpH/uj+TxgQ14+YO5oQ=
+moul.io/multipmuri v1.13.0 h1:DaTEel4qaHV1BNxINkQT5hHyi/1i4ih6uEgKGVv2ASM=
+moul.io/multipmuri v1.13.0/go.mod h1:NinVrznZaHGUDU+4zfcL7L9WzMsHtb/kjLr4RaCbM+c=

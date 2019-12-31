@@ -40,8 +40,8 @@ require (
 	google.golang.org/grpc v1.26.0
 	gopkg.in/yaml.v2 v2.2.7
 	gopkg.in/yaml.v3 v3.0.0-20191120175047-4206685974f2 // indirect
-	moul.io/godev v1.3.0
-	moul.io/graphman v1.5.0
+	moul.io/godev v1.4.0
+	moul.io/graphman v1.6.0
 	moul.io/graphman/viz v0.0.0-20190925205035-97b8bdad4639
-	moul.io/multipmuri v1.12.0
+	moul.io/multipmuri v1.13.0
 )
