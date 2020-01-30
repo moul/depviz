@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+
 import React from "react";
 import { useForm } from "react-hook-form";
 import { fetchDepviz } from "../../api/depviz"
