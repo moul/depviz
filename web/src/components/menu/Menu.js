@@ -1,31 +1,36 @@
 import React from "react";
+import { useForm } from "react-hook-form";
 import "./menu.scss"
 
 const Menu = () => {
+  const { register, handleSubmit } = useForm();
+
+  const onSubmit = data => console.log(data)
+
   return (
-    <section>
+    <form onSubmit={handleSubmit(onSubmit)}>
       <div className="form-group">
-        <label htmlFor="repositoryInput">Repository:</label>
-        <input type="text" name="repository-input" id="repositoryInput" />
+        <label htmlFor="targets">Repository:</label>
+        <input ref={register} type="text" name="targets" id="targets" />
       </div>
 
       <div className="form-group">
-        <input type="checkbox" value="closed" name="closed-checkbox" id="closed" />
-        <label htmlFor="closed">Closed</label>
+        <input ref={register} type="checkbox" name="with-closed" id="with-closed" />
+        <label htmlFor="with-closed">Closed</label>
 
-        <input type="checkbox" value="isolated" name="isolated-checkbox" id="isolated" />
-        <label htmlFor="isolated">Isolated</label>
+        <input ref={register} type="checkbox" name="with-isolated" id="with-isolated" />
+        <label htmlFor="with-isolated">Isolated</label>
 
-        <input type="checkbox" value="prs" name="prs-checkbox" id="prs" />
-        <label htmlFor="prs">PRs</label>
+        <input ref={register} type="checkbox" name="with-prs" id="with-prs" />
+        <label htmlFor="with-prs">PRs</label>
 
-        <input type="checkbox" value="extDeps" name="extDeps-checkbox" id="extDeps" />
-        <label htmlFor="extDeps">Ext. Deps</label>
+        <input ref={register} type="checkbox" name="with-external-deps" id="with-external-deps" />
+        <label htmlFor="with-external-deps">Ext. Deps</label>
       </div>
 
       <div className="form-group">
-        <label htmlFor="visulaizationType">Visulatization type:</label>
-        <select name="visualization" id="visulaizationType">
+        <label htmlFor="layout">Layout:</label>
+        <select ref={register} name="layout" id="layout">
           <option value="circle">circle</option>
           <option value="cose">cose</option>
           <option value="breadthfirst">breadthfirst</option>
@@ -37,7 +42,12 @@ const Menu = () => {
 
         </select>
       </div>
-    </section>
+
+      <div className="button-group">
+        <button type="button">Redraw</button>
+        <button type="submit">Generate</button>
+      </div>
+    </form>
   )
 }
 

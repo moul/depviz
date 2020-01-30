@@ -33,6 +33,7 @@
     "object-assign": "4.1.1",
     "react": "16.11.0",
     "react-dom": "16.11.0",
+    "react-hook-form": "^4.7.2",
     "react-router-dom": "5.1.2"
   },
   "devDependencies": {

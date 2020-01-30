@@ -1,6 +1,14 @@
 .form-group {
     display: inline-block;
-    margin: 20px;
+    margin: 20px 20px 10px;
+}
+
+.button-group {
+    margin: 0 20px 20px;
+}
+
+button + button {
+    margin-left: 10px;
 }
 
 input, select {
