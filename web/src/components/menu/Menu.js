@@ -5,7 +5,26 @@ import "./menu.scss"
 const Menu = () => {
   const { register, handleSubmit } = useForm();
 
-  const onSubmit = data => console.log(data)
+  let cy;
+  let layoutConfig
+  let template
+
+  const onSubmit = data => {
+
+      const {
+        targets,
+        withClosed,
+        withIsolated,
+        withPrs,
+        withExternalDeps
+      } = data;
+
+      // construct url
+      let url = `https://depviz-demo.moul.io/api/graph?targets=${targets}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}`
+
+    console.log(data)
+    console.log(url)
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
@@ -15,17 +34,17 @@ const Menu = () => {
       </div>
 
       <div className="form-group">
-        <input ref={register} type="checkbox" name="with-closed" id="with-closed" />
-        <label htmlFor="with-closed">Closed</label>
+        <input ref={register} type="checkbox" name="withClosed" id="withClosed" />
+        <label htmlFor="withClosed">Closed</label>
 
-        <input ref={register} type="checkbox" name="with-isolated" id="with-isolated" />
-        <label htmlFor="with-isolated">Isolated</label>
+        <input ref={register} defaultChecked type="checkbox" name="withIsolated" id="withIsolated" />
+        <label htmlFor="withIsolated">Isolated</label>
 
-        <input ref={register} type="checkbox" name="with-prs" id="with-prs" />
-        <label htmlFor="with-prs">PRs</label>
+        <input ref={register} defaultChecked type="checkbox" name="withPrs" id="withPrs" />
+        <label htmlFor="withPrs">PRs</label>
 
-        <input ref={register} type="checkbox" name="with-external-deps" id="with-external-deps" />
-        <label htmlFor="with-external-deps">Ext. Deps</label>
+        <input ref={register} defaultChecked type="checkbox" name="withExternalDeps" id="withExternalDeps" />
+        <label htmlFor="withExternalDeps">Ext. Deps</label>
       </div>
 
       <div className="form-group">
