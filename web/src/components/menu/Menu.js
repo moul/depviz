@@ -1,5 +1,6 @@
 import React from "react";
 import { useForm } from "react-hook-form";
+import { fetchDepviz } from "../../api/depviz"
 import "./menu.scss"
 
 const Menu = () => {
@@ -9,18 +10,26 @@ const Menu = () => {
   let layoutConfig
   let template
 
-  const onSubmit = data => {
+  const onSubmit = async data => {
 
       const {
         targets,
         withClosed,
         withIsolated,
         withPrs,
-        withExternalDeps
+        withExternalDeps,
+        layout
       } = data;
 
       // construct url
-      let url = `https://depviz-demo.moul.io/api/graph?targets=${targets}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}`
+      let url = `/graph?targets=${targets}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`
+
+      try {
+        const response = await fetchDepviz(url)
+        console.log("RESPONSE >>", response);
+      } catch (e) {
+        throw e;
+      }
 
     console.log(data)
     console.log(url)
