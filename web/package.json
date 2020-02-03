@@ -31,6 +31,8 @@
     "@hot-loader/react-dom": "16.10.2",
     "connected-react-router": "6.5.2",
     "cytoscape": "^3.13.0",
+    "cytoscape-cola": "^2.3.0",
+    "cytoscape-elk": "^1.1.10",
     "cytoscape-node-html-label": "^1.1.5",
     "object-assign": "4.1.1",
     "react": "16.11.0",

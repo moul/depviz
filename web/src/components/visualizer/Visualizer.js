@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import Card from "./cardTemplate";
 import cytoscape from "cytoscape";
+import cola from "cytoscape-cola";
+// import elk from "cytoscape-elk/src";
 import nodeHtmlLabel from "cytoscape-node-html-label";
 import { computeLayoutConfig } from "./utils";
 import "./card.scss"
@@ -176,6 +178,9 @@ const Visualizer = ({ data, layout }) => {
 
     if (!cyMounted) {
       nodeHtmlLabel(cytoscape);
+      cytoscape.use(cola);
+      // cytoscape.use(elk);
+
       setCyMount(true);
     }
 
