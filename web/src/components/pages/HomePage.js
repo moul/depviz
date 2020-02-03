@@ -1,7 +1,12 @@
 import React from "react";
+import StoreContext from "../../store"
 
 const HomePage = () => {
-  return (<h1>Home Page Component</h1>)
+  return (
+    <StoreContext.Consumer>
+      {(context) => ( console.log("Ai context >>>", context))}
+    </StoreContext.Consumer>
+  )
 }
 
 export default HomePage;
