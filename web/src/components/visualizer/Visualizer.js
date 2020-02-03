@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 
-import React from "react";
+import React, { useState } from "react";
 import Card from "./cardTemplate";
 import cytoscape from "cytoscape";
 import nodeHtmlLabel from "cytoscape-node-html-label";
@@ -8,10 +8,12 @@ import { computeLayoutConfig } from "./utils";
 import "./card.scss"
 
 const Visualizer = ({ data, layout }) => {
+  const [cyMounted, setCyMount] = useState(false);
   const { tasks } = data || {};
   let cy;
   let layoutConfig = computeLayoutConfig(layout);
 
+  console.log(layout)
   if (tasks) {
     let config = {
       container: document.getElementById('cy'),
@@ -172,7 +174,11 @@ const Visualizer = ({ data, layout }) => {
       config.elements.push(node)
     })
 
-    nodeHtmlLabel(cytoscape)
+    if (!cyMounted) {
+      nodeHtmlLabel(cytoscape);
+      setCyMount(true);
+    }
+
     cy = cytoscape(config)
 
     cy.on('tap', 'node', function(){

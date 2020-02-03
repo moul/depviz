@@ -14,6 +14,9 @@ const provider = props => {
         data: state,
         updateApiData: (data, layout) => {
           setState({ ...state, apiData: data, layout: layout});
+        },
+        updateLayout: (layout) => {
+          setState({ ...state, layout: layout })
         }
       }}
     >

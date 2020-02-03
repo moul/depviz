@@ -33,7 +33,7 @@ const Menu = () => {
 
   return (
       <StoreContext.Consumer>
-        {({ updateApiData }) => {
+        {({ updateApiData, updateLayout }) => {
           return(
             <form onSubmit={handleSubmit(data => onSubmit(data, updateApiData))}>
               <div className="form-group">
@@ -57,7 +57,7 @@ const Menu = () => {
 
               <div className="form-group">
                 <label htmlFor="layout">Layout:</label>
-                <select ref={register} name="layout" id="layout">
+                <select ref={register} name="layout" id="layout" onChange={e => updateLayout(e.target.value)}>
                   <option value="circle">circle</option>
                   <option value="cose">cose</option>
                   <option value="breadthfirst">breadthfirst</option>
@@ -71,7 +71,6 @@ const Menu = () => {
               </div>
 
               <div className="button-group">
-                <button type="button">Redraw</button>
                 <button type="submit">Generate</button>
               </div>
             </form>
