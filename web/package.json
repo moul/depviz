@@ -30,6 +30,8 @@
   "dependencies": {
     "@hot-loader/react-dom": "16.10.2",
     "connected-react-router": "6.5.2",
+    "cytoscape": "^3.13.0",
+    "cytoscape-node-html-label": "^1.1.5",
     "object-assign": "4.1.1",
     "react": "16.11.0",
     "react-dom": "16.11.0",

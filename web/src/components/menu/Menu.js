@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+/* eslint-disable no-useless-catch */
 
 import React from "react";
 import { useForm } from "react-hook-form";
@@ -24,7 +25,7 @@ const Menu = () => {
 
       try {
         const response = await fetchDepviz(url)
-        updateApiData(response.data)
+        updateApiData(response.data, layout)
       } catch (e) {
         throw e;
       }
