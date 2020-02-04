@@ -33,11 +33,11 @@ update_examples:
 
 
 PROTOS_SRC := $(wildcard ./api/*.proto) $(wildcard ./api/internal/*.proto)
-GEN_SRC := $(PROTOS_SRC) Makefile
+GEN_DEPS := $(PROTOS_SRC) Makefile
 .PHONY: generate
 generate: gen.sum
-gen.sum: $(GEN_SRC)
-	shasum $(GEN_SRC) | sort > gen.sum.tmp
+gen.sum: $(GEN_DEPS)
+	shasum $(GEN_DEPS) | sort > gen.sum.tmp
 	@diff -q gen.sum gen.sum.tmp || ( \
 	  set -xe; \
 	  GO111MODULE=on go mod vendor; \
@@ -59,10 +59,11 @@ generate_local:
 	@set -e; for proto in $(PROTOS_SRC); do ( set -xe; \
 	  protoc $(PROTOC_OPTS) \
 	    --grpc-gateway_out=logtostderr=true:"$(GOPATH)/src" \
-	    --gogofaster_out="plugins=grpc:$(GOPATH)/src" "$$proto" \
+	    --gogofaster_out="plugins=grpc:$(GOPATH)/src" \
+	    "$$proto" \
 	); done
-	goimports -w ./pkg ./cmd ./internal
-	shasum $(GEN_SRC) | sort > gen.sum.tmp
+	goimportbs -w ./pkg ./cmd ./internal
+	shasum $(GEN_DEPS) | sort > gen.sum.tmp
 	mv gen.sum.tmp gen.sum
 
 
