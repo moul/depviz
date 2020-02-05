@@ -15,7 +15,7 @@ const Visualizer = ({ data, layout }) => {
   let cy;
   let layoutConfig = computeLayoutConfig(layout);
 
-  console.log(layout)
+  console.log(process.env.NODE_ENV)
   if (tasks) {
     let config = {
       container: document.getElementById('cy'),

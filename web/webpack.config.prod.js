@@ -4,11 +4,7 @@ import webpack from 'webpack';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import path from 'path';
-
-const GLOBALS = {
-  'process.env.NODE_ENV': JSON.stringify('production'),
-  __DEV__: false
-};
+import Dotenv from "dotenv-webpack";
 
 export default {
   resolve: {
@@ -28,15 +24,14 @@ export default {
     filename: '[name].[contenthash].js'
   },
   plugins: [
-    // Tells React to build in prod mode. https://facebook.github.io/react/downloads.html
-    new webpack.DefinePlugin(GLOBALS),
+    new Dotenv({
+      path: './.env.prod'
+    }),
 
-    // Generate an external css file with a hash in the filename
     new MiniCssExtractPlugin({
       filename: '[name].[contenthash].css'
     }),
 
-    // Generate HTML file that contains references to generated bundles. See here for how this works: https://github.com/ampedandwired/html-webpack-plugin#basic-usage
     new HtmlWebpackPlugin({
       template: 'src/index.ejs',
       favicon: 'src/favicon.ico',
@@ -52,10 +47,7 @@ export default {
         minifyCSS: true,
         minifyURLs: true
       },
-      inject: true,
-      // Note that you can add custom options here if you need to handle other custom logic in index.html
-      // To track JavaScript errors via TrackJS, sign up for a free trial at TrackJS.com and enter your token below.
-      trackJSToken: ''
+      inject: true
     }),
 
   ],

@@ -2,7 +2,7 @@ import axios from "axios";
 
 const witAuth = function(config) {
   //FIXME: Check auth sending on requests
-	const { au } = {};
+  const au = false;
 	if (au) {
 		config.headers.Authorization = au;
 	}
@@ -10,7 +10,7 @@ const witAuth = function(config) {
 };
 
 export const baseApi = axios.create({
-	baseURL: "https://depviz-demo.moul.io/api"
+	baseURL: process.env.API_URL
 });
 
 // Authenticated routes
