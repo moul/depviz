@@ -30,7 +30,7 @@ https://depviz-demo.moul.io/
 
 ## Supported providers
 
-*Depviz* aggregates the entities of multiple providers into 3 generic ones. 
+*Depviz* aggregates the entities of multiple providers into 3 generic ones.
 
 ---
 
@@ -126,7 +126,7 @@ https://github.com/moul/depviz/releases
 ### Install With Golang
 
 ```
-go get moul.io/depviz/cmd/depviz
+go get moul.io/depviz/cmd/depviz/v3
 ```
 
 ### Using brew
