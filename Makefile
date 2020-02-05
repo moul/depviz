@@ -4,10 +4,6 @@ GOBINS =	./cmd/depviz
 #GOBINS += ./tools/sed-i-github-issues
 DOCKER_IMAGE ?=	moul/depviz
 
-
-all: test install
-
-
 PRE_INSTALL_STEPS += generate
 PRE_TEST_STEPS += generate
 PRE_BUILD_STEPS += generate
@@ -51,6 +47,7 @@ gen.sum: $(GEN_DEPS)
 	    -xec 'make generate_local'; \
 	    make tidy \
 	)
+	@rm -f gen.sum.tmp
 
 
 PROTOC_OPTS = -I ./vendor/github.com/grpc-ecosystem/grpc-gateway:./api:./vendor:/protobuf
@@ -62,7 +59,7 @@ generate_local:
 	    --gogofaster_out="plugins=grpc:$(GOPATH)/src" \
 	    "$$proto" \
 	); done
-	goimportbs -w ./pkg ./cmd ./internal
+	goimports -w ./pkg ./cmd ./internal
 	shasum $(GEN_DEPS) | sort > gen.sum.tmp
 	mv gen.sum.tmp gen.sum
 
