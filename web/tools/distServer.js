@@ -16,11 +16,11 @@ browserSync({
     port: 4001
   },
   server: {
-    baseDir: 'dist'
+    baseDir: 'web/dist'
   },
 
   files: [
-    'src/*.html'
+    'web/src/*.html'
   ],
 
   middleware: [historyApiFallback()]
