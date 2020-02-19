@@ -19,7 +19,7 @@ export default {
   target: 'web',
   mode: 'production',
   output: {
-    path: path.resolve(__dirname, 'web/dist'),
+    path: path.resolve(__dirname, 'dist'),
     publicPath: '/',
     filename: '[name].[contenthash].js'
   },
