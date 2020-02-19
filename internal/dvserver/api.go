@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
-	"moul.io/depviz/internal/dvcore"
-	"moul.io/depviz/internal/dvmodel"
-	"moul.io/depviz/internal/dvparser"
-	"moul.io/depviz/internal/dvstore"
+	"moul.io/depviz/v3/internal/dvcore"
+	"moul.io/depviz/v3/internal/dvmodel"
+	"moul.io/depviz/v3/internal/dvparser"
+	"moul.io/depviz/v3/internal/dvstore"
 )
 
 func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, error) {

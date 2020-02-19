@@ -20,10 +20,10 @@ import (
 	"github.com/peterbourgon/ff/ffcli"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"moul.io/depviz/internal/dvcore"
-	"moul.io/depviz/internal/dvparser"
-	"moul.io/depviz/internal/dvserver"
-	"moul.io/depviz/internal/dvstore"
+	"moul.io/depviz/v3/internal/dvcore"
+	"moul.io/depviz/v3/internal/dvparser"
+	"moul.io/depviz/v3/internal/dvserver"
+	"moul.io/depviz/v3/internal/dvstore"
 	"moul.io/godev"
 )
 

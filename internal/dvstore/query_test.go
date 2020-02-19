@@ -8,8 +8,8 @@ import (
 
 	_ "github.com/cayleygraph/quad/json"
 	"github.com/stretchr/testify/assert"
-	"moul.io/depviz/internal/dvparser"
-	"moul.io/depviz/internal/testutil"
+	"moul.io/depviz/v3/internal/dvparser"
+	"moul.io/depviz/v3/internal/testutil"
 	"moul.io/godev"
 	"moul.io/multipmuri"
 )

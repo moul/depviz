@@ -1,1 +1,1 @@
-package dvserver // import "moul.io/depviz/internal/dvserver"
+package dvserver // import "moul.io/depviz/v3/internal/dvserver"

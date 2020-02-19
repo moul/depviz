@@ -1,1 +1,1 @@
-package dvstore // import "moul.io/depviz/internal/dvstore"
+package dvstore // import "moul.io/depviz/v3/internal/dvstore"

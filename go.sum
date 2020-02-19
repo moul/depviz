@@ -543,7 +543,6 @@ honnef.co/go/tools v0.0.0-20190106161140-3f1c8253044a/go.mod h1:rf3lG4BRIbNafJWh
 honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.1-2019.2.3 h1:3JgtbtFHMiCmsznwGVTUWbgGov+pVqnlf1dEJTNAXeM=
 honnef.co/go/tools v0.0.1-2019.2.3/go.mod h1:a3bituU0lyd329TUQxRnasdCoJDkEUEAqEt0JzvZhAg=
-moul.io/depviz v1.1.0 h1:gx+H9uRFroNarvFUVhTz167ryr8I1VyufHkeylj/y48=
 moul.io/godev v1.4.0 h1:hEUzBIrRtBRWqZHmp12bFUlLSyKxpvfcMYa3Pipfng8=
 moul.io/godev v1.4.0/go.mod h1:xsV3hXF1E9vy2T/1b1CLjSImJ1/nQeTfqTDhJHhJCWg=
 moul.io/graphman v1.6.0 h1:p0pOkQDul7fv5R3pdQQZsYXaUIvLPfGMonznNa6cCG0=

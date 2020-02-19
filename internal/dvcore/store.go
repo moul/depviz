@@ -6,7 +6,7 @@ import (
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/schema"
-	"moul.io/depviz/internal/dvmodel"
+	"moul.io/depviz/v3/internal/dvmodel"
 )
 
 func StoreDumpQuads(h *cayley.Handle) error {

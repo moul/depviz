@@ -1,1 +1,1 @@
-package dvcore // import "moul.io/depviz/internal/dvcore"
+package dvcore // import "moul.io/depviz/v3/internal/dvcore"
