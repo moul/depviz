@@ -11,7 +11,7 @@ import (
 	"github.com/cayleygraph/cayley/schema"
 	"github.com/cayleygraph/quad"
 	"go.uber.org/zap"
-	"moul.io/depviz/internal/dvmodel"
+	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/multipmuri"
 )
 

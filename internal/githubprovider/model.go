@@ -6,8 +6,8 @@ import (
 	"github.com/cayleygraph/quad"
 	"github.com/google/go-github/v28/github"
 	"go.uber.org/zap"
-	"moul.io/depviz/internal/dvmodel"
-	"moul.io/depviz/internal/dvparser"
+	"moul.io/depviz/v3/internal/dvmodel"
+	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/multipmuri"
 	"moul.io/multipmuri/pmbodyparser"
 )

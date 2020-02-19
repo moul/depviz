@@ -59,6 +59,10 @@ generate_local:
 	    --gogofaster_out="plugins=grpc:$(GOPATH)/src" \
 	    "$$proto" \
 	); done
+	@# CUSTOM CHANGE
+	@# due to go module versionning (currently) incompatible with automatic protobuf generated imports
+	sed -i s@moul.io/depviz/@moul.io/depviz/v3/@g internal/dvserver/dvserver.pb.go
+	@# END OF CUSTOM CHANGE
 	goimports -w ./pkg ./cmd ./internal
 	shasum $(GEN_DEPS) | sort > gen.sum.tmp
 	mv gen.sum.tmp gen.sum

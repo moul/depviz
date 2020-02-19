@@ -1,1 +1,1 @@
-package dvmodel // import "moul.io/depviz/internal/dvmodel"
+package dvmodel // import "moul.io/depviz/v3/internal/dvmodel"

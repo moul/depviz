@@ -9,8 +9,8 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/quad"
 	"github.com/stretchr/testify/assert"
-	"moul.io/depviz/internal/dvstore"
-	"moul.io/depviz/internal/testutil"
+	"moul.io/depviz/v3/internal/dvstore"
+	"moul.io/depviz/v3/internal/testutil"
 	"moul.io/multipmuri"
 )
 
