@@ -18,8 +18,9 @@ jobs:
           key: dependency-cache-{{ checksum "web/package-lock.json" }}
           paths:
             - ./web/node_modules
-      - run: "cd web && npm build"
+      - run: "cd web && npm run build"
       - run: "cd web && npm run test:CI"
+      - run: "cd web && npm run lint"
 
 workflows:
   main:
