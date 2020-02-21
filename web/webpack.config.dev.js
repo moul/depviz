@@ -1,7 +1,6 @@
 import webpack from 'webpack';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import path from 'path';
-import HardSourceWebpackPlugin from 'hard-source-webpack-plugin';
 import Dotenv from "dotenv-webpack";
 
 export default {
@@ -29,9 +28,8 @@ export default {
   },
   plugins: [
     new Dotenv({
-      path: './.env'
+      path: './.env.dev'
     }),
-    new HardSourceWebpackPlugin(),
     new webpack.HotModuleReplacementPlugin(),
     new webpack.NoEmitOnErrorsPlugin(),
     new HtmlWebpackPlugin({     // Create HTML file that includes references to bundled CSS and JS.
