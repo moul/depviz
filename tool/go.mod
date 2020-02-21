@@ -1,4 +1,4 @@
-module moul.io/depviz/tool/v3
+module moul.io/depviz/v3/tool
 
 go 1.13
 
