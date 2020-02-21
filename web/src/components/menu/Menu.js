@@ -61,7 +61,7 @@ const Menu = () => {
                   <option value="circle">circle</option>
                   <option value="cose">cose</option>
                   <option value="breadthfirst">breadthfirst</option>
-                  <option value="concetric">concetric</option>
+                  <option value="concentric">concentric</option>
                   <option value="grid">grid</option>
                   <option value="random">random</option>
                   <option value="cola">cola</option>

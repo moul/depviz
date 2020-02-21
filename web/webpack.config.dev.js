@@ -29,7 +29,7 @@ export default {
   },
   plugins: [
     new Dotenv({
-      path: './.env'
+      path: './.env.dev'
     }),
     new HardSourceWebpackPlugin(),
     new webpack.HotModuleReplacementPlugin(),
