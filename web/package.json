@@ -30,14 +30,14 @@
   "dependencies": {
     "@hot-loader/react-dom": "16.10.2",
     "connected-react-router": "6.5.2",
-    "cytoscape": "^3.13.0",
-    "cytoscape-cola": "^2.3.0",
-    "cytoscape-elk": "^1.1.10",
-    "cytoscape-node-html-label": "^1.1.5",
+    "cytoscape": "3.14.0",
+    "cytoscape-cola": "2.3.0",
+    "cytoscape-elk": "1.1.10",
+    "cytoscape-node-html-label": "1.2.0",
     "object-assign": "4.1.1",
     "react": "16.11.0",
     "react-dom": "16.11.0",
-    "react-hook-form": "^4.7.2",
+    "react-hook-form": "4.9.7",
     "react-router-dom": "5.1.2"
   },
   "devDependencies": {
@@ -65,7 +65,7 @@
     "coveralls": "3.0.7",
     "css-loader": "3.2.0",
     "cssnano": "4.1.10",
-    "dotenv-webpack": "^1.7.0",
+    "dotenv-webpack": "1.7.0",
     "enzyme": "3.10.0",
     "enzyme-adapter-react-16": "1.15.1",
     "eslint": "6.6.0",

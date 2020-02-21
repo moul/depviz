@@ -2536,13 +2536,13 @@ cyclist@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/cyclist/-/cyclist-1.0.1.tgz#596e9698fd0c80e12038c2b82d6eb1b35b6224d9"
 
-cytoscape-cola@^2.3.0:
+cytoscape-cola@2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/cytoscape-cola/-/cytoscape-cola-2.3.0.tgz#24104eaab46e0a88dfeedb02199610450525208d"
   dependencies:
     webcola "^3.3.6"
 
-cytoscape-elk@^1.1.10:
+cytoscape-elk@1.1.10:
   version "1.1.10"
   resolved "https://registry.yarnpkg.com/cytoscape-elk/-/cytoscape-elk-1.1.10.tgz#b9c5f4c91e3a11744ab94e207a814591a2f37225"
   dependencies:
@@ -2550,11 +2550,11 @@ cytoscape-elk@^1.1.10:
     elkjs "^0.3.0"
     webworker-threads "^0.7.16"
 
-cytoscape-node-html-label@^1.1.5:
+cytoscape-node-html-label@1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/cytoscape-node-html-label/-/cytoscape-node-html-label-1.2.0.tgz#584bb5a222a3a566348e8958dcde2961bb6967ac"
 
-cytoscape@^3.13.0:
+cytoscape@3.14.0:
   version "3.14.0"
   resolved "https://registry.yarnpkg.com/cytoscape/-/cytoscape-3.14.0.tgz#fa23e38209bebb759415dbbd88f8320b37e9ae56"
   dependencies:
@@ -2836,7 +2836,7 @@ dotenv-defaults@^1.0.2:
   dependencies:
     dotenv "^6.2.0"
 
-dotenv-webpack@^1.7.0:
+dotenv-webpack@1.7.0:
   version "1.7.0"
   resolved "https://registry.yarnpkg.com/dotenv-webpack/-/dotenv-webpack-1.7.0.tgz#4384d8c57ee6f405c296278c14a9f9167856d3a1"
   dependencies:
@@ -6922,7 +6922,7 @@ react-dom@16.11.0:
     prop-types "^15.6.2"
     scheduler "^0.17.0"
 
-react-hook-form@^4.7.2:
+react-hook-form@4.9.7:
   version "4.9.7"
   resolved "https://registry.yarnpkg.com/react-hook-form/-/react-hook-form-4.9.7.tgz#3854c02b53f9846abac3f46108869edbabaa11b9"
 
