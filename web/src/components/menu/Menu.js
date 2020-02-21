@@ -65,7 +65,7 @@ const Menu = () => {
                   <option value="grid">grid</option>
                   <option value="random">random</option>
                   <option value="cola">cola</option>
-                  <option value="elk">elk</option>
+              {/*<option value="elk">elk</option>*/}
 
                 </select>
               </div>
