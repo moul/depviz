@@ -3,9 +3,28 @@ version: 2.1
 orbs:
   moul: moul/build@1.13.0 # https://github.com/moul/build
 
+jobs:
+  web:
+    working_directory: ~/depviz
+    docker:
+      - image: circleci/node:10
+    steps:
+      - checkout
+      - run: sudo npm install -g npm@latest
+      - restore_cache:
+          key: dependency-cache-{{ checksum "web/package-lock.json" }}
+      - run: cd web && npm install
+      - save_cache:
+          key: dependency-cache-{{ checksum "web/package-lock.json" }}
+          paths:
+            - ./web/node_modules
+      - run: "cd web && npm build"
+      - run: "cd web && npm run test:CI"
+
 workflows:
   main:
     jobs:
       - moul/golang-build:
           gopkg: moul.io/depviz
       - moul/docker-build
+      - web
