@@ -551,3 +551,5 @@ moul.io/graphman/viz v0.0.0-20200107124335-9891d9dbbff6 h1:qMXEnr6dZjjcFVrvlIIQM
 moul.io/graphman/viz v0.0.0-20200107124335-9891d9dbbff6/go.mod h1:LrMvUXoSlBip3ZXSG7mFEVrDUjEKFVtLlLbInfEoJJs=
 moul.io/multipmuri v1.13.0 h1:DaTEel4qaHV1BNxINkQT5hHyi/1i4ih6uEgKGVv2ASM=
 moul.io/multipmuri v1.13.0/go.mod h1:NinVrznZaHGUDU+4zfcL7L9WzMsHtb/kjLr4RaCbM+c=
+moul.io/srand v1.4.0 h1:r5ZMiWDN0ni0lTV7KzJR/jx0K7GivJYW5WaXmufgeik=
+moul.io/srand v1.4.0/go.mod h1:P2uaZB+GFstFNo8sEj6/U8FRV1n25kD0LLckFpJ+qvc=

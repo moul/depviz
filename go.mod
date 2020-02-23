@@ -45,4 +45,5 @@ require (
 	moul.io/graphman v1.6.0
 	moul.io/graphman/viz v0.0.0-20200107124335-9891d9dbbff6
 	moul.io/multipmuri v1.13.0
+	moul.io/srand v1.4.0
 )
