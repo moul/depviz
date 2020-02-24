@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-github/v28/github"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
-	"moul.io/depviz/internal/dvmodel"
+	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/multipmuri"
 )
 

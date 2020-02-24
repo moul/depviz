@@ -4,10 +4,6 @@ GOBINS =	./cmd/depviz
 #GOBINS += ./tools/sed-i-github-issues
 DOCKER_IMAGE ?=	moul/depviz
 
-
-all: test install
-
-
 PRE_INSTALL_STEPS += generate
 PRE_TEST_STEPS += generate
 PRE_BUILD_STEPS += generate
@@ -33,11 +29,11 @@ update_examples:
 
 
 PROTOS_SRC := $(wildcard ./api/*.proto) $(wildcard ./api/internal/*.proto)
-GEN_SRC := $(PROTOS_SRC) Makefile
+GEN_DEPS := $(PROTOS_SRC) Makefile
 .PHONY: generate
 generate: gen.sum
-gen.sum: $(GEN_SRC)
-	shasum $(GEN_SRC) | sort > gen.sum.tmp
+gen.sum: $(GEN_DEPS)
+	shasum $(GEN_DEPS) | sort > gen.sum.tmp
 	@diff -q gen.sum gen.sum.tmp || ( \
 	  set -xe; \
 	  GO111MODULE=on go mod vendor; \
@@ -51,6 +47,7 @@ gen.sum: $(GEN_SRC)
 	    -xec 'make generate_local'; \
 	    make tidy \
 	)
+	@rm -f gen.sum.tmp
 
 
 PROTOC_OPTS = -I ./vendor/github.com/grpc-ecosystem/grpc-gateway:./api:./vendor:/protobuf
@@ -59,10 +56,15 @@ generate_local:
 	@set -e; for proto in $(PROTOS_SRC); do ( set -xe; \
 	  protoc $(PROTOC_OPTS) \
 	    --grpc-gateway_out=logtostderr=true:"$(GOPATH)/src" \
-	    --gogofaster_out="plugins=grpc:$(GOPATH)/src" "$$proto" \
+	    --gogofaster_out="plugins=grpc:$(GOPATH)/src" \
+	    "$$proto" \
 	); done
+	@# CUSTOM CHANGE
+	@# due to go module versionning (currently) incompatible with automatic protobuf generated imports
+	sed -i s@moul.io/depviz/@moul.io/depviz/v3/@g internal/dvserver/dvserver.pb.go
+	@# END OF CUSTOM CHANGE
 	goimports -w ./pkg ./cmd ./internal
-	shasum $(GEN_SRC) | sort > gen.sum.tmp
+	shasum $(GEN_DEPS) | sort > gen.sum.tmp
 	mv gen.sum.tmp gen.sum
 
 

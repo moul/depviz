@@ -25,8 +25,8 @@ import (
 	chilogger "github.com/treastech/logger"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"moul.io/depviz/internal/chiutil"
-	"moul.io/depviz/internal/dvcore"
+	"moul.io/depviz/v3/internal/dvcore"
+	"moul.io/depviz/v3/pkg/chiutil"
 	"moul.io/multipmuri"
 )
 

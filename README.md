@@ -6,7 +6,7 @@
 <h3 align="center">👓 Issue dependency visualizer, a.k.a. "auto-roadmap".</h3>
 
 [![CircleCI](https://circleci.com/gh/moul/depviz.svg?style=shield)](https://circleci.com/gh/moul/depviz)
-[![GoDoc](https://godoc.org/moul.io/depviz?status.svg)](https://godoc.org/moul.io/depviz)
+[![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/moul.io/depviz/v3)
 [![License](https://img.shields.io/badge/license-Apache--2.0%20%2F%20MIT-%2397ca00.svg)](https://github.com/moul/depviz/blob/master/COPYRIGHT)
 [![GitHub release](https://img.shields.io/github/release/moul/depviz.svg)](https://github.com/moul/depviz/releases)
 [![Go Report Card](https://goreportcard.com/badge/moul.io/depviz)](https://goreportcard.com/report/moul.io/depviz)
@@ -30,7 +30,7 @@ https://depviz-demo.moul.io/
 
 ## Supported providers
 
-*Depviz* aggregates the entities of multiple providers into 3 generic ones. 
+*Depviz* aggregates the entities of multiple providers into 3 generic ones.
 
 ---
 
@@ -126,7 +126,7 @@ https://github.com/moul/depviz/releases
 ### Install With Golang
 
 ```
-go get moul.io/depviz/cmd/depviz
+go get moul.io/depviz/cmd/depviz/v3
 ```
 
 ### Using brew
