@@ -8,7 +8,7 @@ import { fetchDepviz } from "../../api/depviz";
 import "./menu.scss";
 
 const Menu = () => {
-  const { register, handleSubmit } = useForm();
+  const { register, getValues, handleSubmit } = useForm();
 
   const onSubmit = async (data, updateApiData) => {
       const {
@@ -42,16 +42,16 @@ const Menu = () => {
               </div>
 
               <div className="form-group">
-                <input ref={register} type="checkbox" name="withClosed" id="withClosed" />
+                <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={() => onSubmit(getValues(), updateApiData)} />
                 <label htmlFor="withClosed">Closed</label>
 
-                <input ref={register} defaultChecked type="checkbox" name="withIsolated" id="withIsolated" />
+                <input ref={register} defaultChecked type="checkbox" name="withIsolated" id="withIsolated" onChange={() => onSubmit(getValues(), updateApiData)} />
                 <label htmlFor="withIsolated">Isolated</label>
 
-                <input ref={register} defaultChecked type="checkbox" name="withPrs" id="withPrs" />
+                <input ref={register} defaultChecked type="checkbox" name="withPrs" id="withPrs" onChange={() => onSubmit(getValues(), updateApiData)} />
                 <label htmlFor="withPrs">PRs</label>
 
-                <input ref={register} defaultChecked type="checkbox" name="withExternalDeps" id="withExternalDeps" />
+                <input ref={register} defaultChecked type="checkbox" name="withExternalDeps" id="withExternalDeps" onChange={() => onSubmit(getValues(), updateApiData)} />
                 <label htmlFor="withExternalDeps">Ext. Deps</label>
               </div>
 
