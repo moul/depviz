@@ -3,6 +3,7 @@
 
 import React, { useEffect, useContext } from "react";
 import { useForm } from "react-hook-form";
+import { forEachObjIndexed } from "ramda";
 import StoreContext from "../../store";
 import { fetchDepviz } from "../../api/depviz";
 import "./menu.scss";
@@ -14,30 +15,37 @@ const Menu = () => {
   let searchParams = new URLSearchParams(window.location.search)
 
   useEffect(() => {
+    let urlData = {
+      targets: searchParams.getAll("targets").join(",") || undefined,
+      withClosed: searchParams.get("withClosed") || undefined,
+      withIsolated: searchParams.get("withIsolated") || undefined,
+      withPrs: searchParams.get("withPrs") || undefined,
+      withExternalDeps: searchParams.get("withoutExternal-deps") || undefined,
+      layout: searchParams.get("layout") || undefined
+    }
+
+    const setFormValue = (value, key) => {
+      if (value) {
+        setValue(key, value)
+      }
+    };
+
+    forEachObjIndexed(setFormValue, urlData);
+
+    if (urlData.targets) {
+      try {
+        makeAPICall(urlData);
+      } catch(error) {
+        throw error;
+      }
+    }
   }, [])
 
-  const onSubmit = async (data) => {
-      const {
-        targets,
-        withClosed,
-        withIsolated,
-        withPrs,
-        withExternalDeps,
-        layout
-      } = data;
-
-      // construct url
-      let url = `/graph?${targets.split(",").map(target => `targets=${target.trim()}`).join("&")}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`
-
-      try {
-        const response = await fetchDepviz(url)
-        updateApiData(response.data, layout)
-      } catch (e) {
-        throw e;
-      }
+  const onSubmit = (data) => {
+      makeAPICall(data);
   }
 
-  const makeAPICall = async () => {
+  const makeAPICall = async (data) => {
     const {
       targets,
       withClosed,
@@ -48,13 +56,14 @@ const Menu = () => {
     } = data;
 
     // construct url
-    let url = `/graph?${targets.split(",").map(target => `targets=${target.trim()}`).join("&")}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`
+    let url = `?${targets.split(",").map(target => `targets=${target.trim()}`).join("&")}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`
 
     try {
-      const response = await fetchDepviz(url)
+      const response = await fetchDepviz(`/graph${url}`)
       updateApiData(response.data, layout)
-    } catch (e) {
-      throw e;
+      window.history.replaceState({} , "DepViz - Dependecy Visualization", url)
+    } catch (error) {
+      throw error;
     }
   }
 
