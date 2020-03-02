@@ -75,16 +75,16 @@ const Menu = () => {
       </div>
 
       <div className="form-group">
-        <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={() => onSubmit(getValues(), updateApiData)} />
+        <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={() => onSubmit(getValues())} />
         <label htmlFor="withClosed">Closed</label>
 
-        <input ref={register} defaultChecked type="checkbox" name="withIsolated" id="withIsolated" onChange={() => onSubmit(getValues(), updateApiData)} />
+        <input ref={register} defaultChecked type="checkbox" name="withIsolated" id="withIsolated" onChange={() => onSubmit(getValues())} />
         <label htmlFor="withIsolated">Isolated</label>
 
-        <input ref={register} defaultChecked type="checkbox" name="withPrs" id="withPrs" onChange={() => onSubmit(getValues(), updateApiData)} />
+        <input ref={register} defaultChecked type="checkbox" name="withPrs" id="withPrs" onChange={() => onSubmit(getValues())} />
         <label htmlFor="withPrs">PRs</label>
 
-        <input ref={register} defaultChecked type="checkbox" name="withExternalDeps" id="withExternalDeps" onChange={() => onSubmit(getValues(), updateApiData)} />
+        <input ref={register} defaultChecked type="checkbox" name="withExternalDeps" id="withExternalDeps" onChange={() => onSubmit(getValues())} />
         <label htmlFor="withExternalDeps">Ext. Deps</label>
       </div>
 
