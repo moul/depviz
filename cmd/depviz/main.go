@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"time"
 
+	bearer "github.com/Bearer/bearer-go"
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
 	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
@@ -32,10 +33,11 @@ var (
 	logger       *zap.Logger
 	schemaConfig *schema.Config
 
-	globalFlags          = flag.NewFlagSet("depviz", flag.ExitOnError)
-	globalStorePath      = globalFlags.String("store-path", os.Getenv("HOME")+"/.depviz", "store path")
-	globalDebug          = globalFlags.Bool("debug", false, "debug mode")
-	globalWithStacktrace = globalFlags.Bool("with-stacktrace", false, "show stacktrace on warns, errors and worse")
+	globalFlags           = flag.NewFlagSet("depviz", flag.ExitOnError)
+	globalStorePath       = globalFlags.String("store-path", os.Getenv("HOME")+"/.depviz", "store path")
+	globalDebug           = globalFlags.Bool("debug", false, "debug mode")
+	globalWithStacktrace  = globalFlags.Bool("with-stacktrace", false, "show stacktrace on warns, errors and worse")
+	globalBearerSecretKey = globalFlags.String("bearer-secretkey", "", "optional bearer.sh secret key")
 
 	airtableFlags     = flag.NewFlagSet("airtable", flag.ExitOnError)
 	airtableToken     = airtableFlags.String("token", "", "airtable token")
@@ -105,6 +107,7 @@ func main() {
 			}, {
 				Name:      "store",
 				ShortHelp: "manage the data store",
+				Options:   []ff.Option{ff.WithEnvVarNoPrefix()},
 				Subcommands: []*ffcli.Command{
 					{Name: "dump-quads", Exec: execStoreDumpQuads},
 					{Name: "dump-json", Exec: execStoreDumpJSON},
@@ -141,6 +144,10 @@ func main() {
 
 func globalPreRun() error {
 	rand.Seed(srand.Secure())
+
+	if *globalBearerSecretKey != "" {
+		bearer.ReplaceGlobals(bearer.Init(*globalBearerSecretKey))
+	}
 
 	config := zap.NewDevelopmentConfig()
 	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
