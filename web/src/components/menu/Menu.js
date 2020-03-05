@@ -5,6 +5,8 @@ import React, { useEffect, useContext } from "react";
 import { useForm } from "react-hook-form";
 import { forEachObjIndexed } from "ramda";
 import StoreContext from "../../store";
+import { generateUrl, updateBrowserHistory } from "./utils";
+import { computeLayoutConfig } from "../../components/visualizer/utils";
 import { fetchDepviz } from "../../api/depviz";
 import "./menu.scss";
 
@@ -45,26 +47,32 @@ const Menu = () => {
       makeAPICall(data);
   }
 
+  const onRedraw = (layout) => {
+    let layoutConfig = computeLayoutConfig(layout)
+    let cyLayout = window.cy.layout(layoutConfig)
+    cyLayout.run();
+}
+
   const makeAPICall = async (data) => {
     const {
-      targets,
-      withClosed,
-      withIsolated,
-      withPrs,
-      withExternalDeps,
       layout
     } = data;
 
     // construct url
-    let url = `?${targets.split(",").map(target => `targets=${target.trim()}`).join("&")}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`
+    let url = generateUrl(data);
 
     try {
       const response = await fetchDepviz(`/graph${url}`)
       updateApiData(response.data, layout)
-      window.history.replaceState({} , "DepViz - Dependecy Visualization", url)
+      updateBrowserHistory(url)
     } catch (error) {
       throw error;
     }
+  }
+
+  const onLayoutChange = data => {
+    updateLayout(data.layout);
+    updateBrowserHistory(generateUrl(data));
   }
 
   return (
@@ -90,7 +98,7 @@ const Menu = () => {
 
       <div className="form-group">
         <label htmlFor="layout">Layout:</label>
-        <select ref={register} name="layout" id="layout" onChange={e => updateLayout(e.target.value)}>
+        <select ref={register} name="layout" id="layout" onChange={() => onLayoutChange(getValues())}>
           <option value="circle">circle</option>
           <option value="cose">cose</option>
           <option value="breadthfirst">breadthfirst</option>
@@ -104,6 +112,7 @@ const Menu = () => {
 
       <div className="button-group">
         <button type="submit">Generate</button>
+        <button type="button" onClick={() => onRedraw(getValues().layout)}>Redraw</button>
       </div>
     </form>
   )

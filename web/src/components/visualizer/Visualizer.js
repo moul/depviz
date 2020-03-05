@@ -15,7 +15,6 @@ const Visualizer = ({ data, layout }) => {
   let cy;
   let layoutConfig = computeLayoutConfig(layout);
 
-  console.log(process.env.NODE_ENV)
   if (tasks) {
     let config = {
       container: document.getElementById('cy'),
@@ -185,6 +184,7 @@ const Visualizer = ({ data, layout }) => {
     }
 
     cy = cytoscape(config)
+    window.cy = cy
 
     cy.on('tap', 'node', function(){
       try { // your browser may block popups
