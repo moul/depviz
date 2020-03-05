@@ -5,6 +5,7 @@ import React, { useEffect, useContext } from "react";
 import { useForm } from "react-hook-form";
 import { forEachObjIndexed } from "ramda";
 import StoreContext from "../../store";
+import { computeLayoutConfig } from "../../components/visualizer/utils"
 import { fetchDepviz } from "../../api/depviz";
 import "./menu.scss";
 
@@ -44,6 +45,12 @@ const Menu = () => {
   const onSubmit = (data) => {
       makeAPICall(data);
   }
+
+  const onRedraw = (layout) => {
+    let layoutConfig = computeLayoutConfig(layout)
+    let cyLayout = window.cy.layout(layoutConfig)
+    cyLayout.run();
+}
 
   const makeAPICall = async (data) => {
     const {
@@ -104,6 +111,7 @@ const Menu = () => {
 
       <div className="button-group">
         <button type="submit">Generate</button>
+        <button type="button" onClick={() => onRedraw(getValues().layout)}>Redraw</button>
       </div>
     </form>
   )

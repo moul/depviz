@@ -184,6 +184,7 @@ const Visualizer = ({ data, layout }) => {
     }
 
     cy = cytoscape(config)
+    window.cy = cy
 
     cy.on('tap', 'node', function(){
       try { // your browser may block popups
