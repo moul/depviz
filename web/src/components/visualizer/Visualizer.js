@@ -1,22 +1,47 @@
 /* eslint-disable react/prop-types */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Card from "./cardTemplate";
 import cytoscape from "cytoscape";
 import cola from "cytoscape-cola";
 import elk from "cytoscape-elk/src";
 import nodeHtmlLabel from "cytoscape-node-html-label";
+import mermaid, {mermaidAPI} from 'mermaid';
 import { computeLayoutConfig } from "./utils";
 import "./card.scss"
 
 const Visualizer = ({ data, layout }) => {
   const [cyMounted, setCyMount] = useState(false);
+  const [mermaidGraph, setMermaidGraph] = useState('Loading diagram...')
+  const mTemplate = `
+  graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+  `
+
   const { tasks } = data || {};
   let cy;
   let layoutConfig = computeLayoutConfig(layout);
+  console.log('mermaidGraph: ', mermaidGraph)
+  useEffect(() => {
+    /* mermaid.initialize({
+      securityLevel: 'loose',
+       startOnLoad: true,
+       flowchart: {
+          useMaxWidth: false,
+          htmlLabels: true
+      }
+    }) */
+    mermaidAPI.render('diagram', mTemplate.toString(), (html) => setMermaidGraph(html))
+  })
 
   console.log(process.env.NODE_ENV)
-  if (tasks) {
+  if (tasks && layoutConfig) {
+    if (layoutConfig.name === 'gantt' || layoutConfig.name === 'flow') {
+      return null
+    }
     let config = {
       container: document.getElementById('cy'),
       elements: [],
@@ -235,12 +260,15 @@ const Visualizer = ({ data, layout }) => {
         }
       })
     })
-
+    return (
+      <div id="cy"></div>
+    );
+  } else if (layoutConfig) {
+    if (layoutConfig.name === 'gantt' || layoutConfig.name === 'flow') {
+      return <div className="mermaid" dangerouslySetInnerHTML={{__html: mermaidGraph }}></div>
+    }
   }
-
-  return (
-    <div id="cy"></div>
-  );
+  return <div className="mermaid" dangerouslySetInnerHTML={{__html: mermaidGraph}}></div>
 }
 
 export default Visualizer;

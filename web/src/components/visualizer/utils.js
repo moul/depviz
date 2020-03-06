@@ -61,6 +61,16 @@ export const computeLayoutConfig = (layout) => {
         },
       }
       break;
+    case "gantt":
+      layoutConfig = {
+        name: 'gantt',
+      }
+      break;
+    case "flow":
+      layoutConfig = {
+        name: 'flow',
+      }
+      break;
     default:
       break;
   }

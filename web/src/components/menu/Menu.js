@@ -66,7 +66,8 @@ const Menu = () => {
                   <option value="random">random</option>
                   <option value="cola">cola</option>
                   <option value="elk">elk</option>
-
+                  <option value="gantt">gantt</option>
+                  <option value="flow">flow</option>
                 </select>
               </div>
 
