@@ -25,10 +25,10 @@ const Menu = () => {
     } = data
 
     // construct url
-    const url = `/graph?targets=${targets || 'moul/depviz-test'}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`
+    const url = `/graph?targets=${targets || 'moul-bot/depviz-test'}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`
 
     const response = await fetchDepviz(url)
-    updateApiData(response.data, layout)
+    updateApiData(response.data, layout, targets)
   }
 
   return (

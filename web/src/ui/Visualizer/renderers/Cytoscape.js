@@ -101,7 +101,7 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
         }
       })
     })
-  })
+  }, [layout.name])
 
   return (
     <div id="cy" />

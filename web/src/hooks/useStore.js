@@ -522,9 +522,10 @@ const DEFAULT_STATE = {
     tasks: testData,
   },
   layout: {
-    name: 'circle',
+    name: 'gantt',
     avoidOverlap: true,
   },
+  repName: 'moul-bot/depviz-test',
 }
 
 function createContextValue(state, setState) {
@@ -608,8 +609,10 @@ function createContextValue(state, setState) {
   }
   return {
     ...state,
-    updateApiData: (data, layout) => {
-      setState({ ...state, apiData: data, layout: computeLayoutConfig(layout) })
+    updateApiData: (data, layout, repName) => {
+      setState({
+        ...state, apiData: data, layout: computeLayoutConfig(layout), repName,
+      })
     },
     updateLayout: (layout) => {
       setState({ ...state, layout: computeLayoutConfig(layout) })
