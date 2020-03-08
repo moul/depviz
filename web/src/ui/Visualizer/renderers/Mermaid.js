@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { mermaidAPI } from 'mermaid'
 import { useStore } from '../../../hooks/useStore'
-import './card.scss'
-
-const mTemplate = `
-graph TD;
-  A-->B;
-  A-->C;
-  B-->D;
-  C-->D;
-`
 
 const MermaidRenderer = ({ nodes, layout }) => {
   const { repName } = useStore()
@@ -26,6 +17,8 @@ const MermaidRenderer = ({ nodes, layout }) => {
     }) */
     if (layout.name === 'gantt') {
       mermaidAPI.render('gantt', renderGanttTemplate(), (html) => setMermaidGraph(html))
+    } else if (layout.name === 'flow') {
+      mermaidAPI.render('diagram', renderFlowTemplate(), (html) => setMermaidGraph(html))
     }
   }, [layout.name])
 
@@ -87,6 +80,55 @@ const MermaidRenderer = ({ nodes, layout }) => {
     Active task               :active,  des2, 2019-01-09, 3d
     Future task               :         des3, after des2, 5d
     Future task2              :         des4, after des3, 5d
+    ` */
+
+    const ganttStr = ganttTemplate.toString()
+    return ganttStr
+  }
+
+  /*
+    params:
+      orientation: String
+        possible values
+        TB - top bottom
+        BT - bottom top
+        RL - right left
+        LR - left right
+        TD - same as TB
+  */
+  const renderFlowTemplate = (orientation = 'TB') => {
+    let ganttTemplate = `graph ${orientation}
+      issue_1(Issue 1)
+      issue_2(Issue 2)
+      issue_3(Issue 3)
+      issue_4(Issue 4)
+    `
+    const ganttTasks = []
+    nodes.forEach((node) => {
+      const item = node.data
+      let ganttStr = `issue_${item.local_id.replace(repName, '').replace('/', '_')}("${item.description}")`
+      if (item.is_depending_on) {
+        ganttStr += ' --> '
+        for (let i = 0; i < item.is_depending_on.length - 1; i++) {
+          const urlArr = item.is_depending_on[i].split('/')
+          const issId = urlArr[urlArr.length - 1]
+          ganttStr += `issue_${issId.replace('/', '_')}&`
+        }
+        const urlArr = item.is_depending_on[item.is_depending_on.length - 1].split('/')
+        const issId = urlArr[urlArr.length - 1]
+        ganttStr += `issue_${issId.replace('/', '_')}`
+      }
+      ganttTasks.push(ganttStr)
+    })
+    ganttTemplate += `\t${ganttTasks.join('\n\t\t')}`
+
+
+    /* const ganttTemplate = `graph TD
+    issue_1(Issue 1)
+    issue_2(Issue 2)
+    issue_3(Issue 3)
+    issue_4(Issue 4)
+    issue_5(Depends on #4) --> issue_1
     ` */
 
     const ganttStr = ganttTemplate.toString()
