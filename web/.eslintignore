@@ -1,0 +1,8 @@
+package.js  // Package, Cordova and Npm vars are set as global, so no need to ignore this file
+package.json  // You might want to keep this though, because config prefers single quotes
+node_modules/
+bower_components/
+.npm/
+build/
+packages/
+.git/
