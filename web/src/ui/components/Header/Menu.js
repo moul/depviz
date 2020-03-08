@@ -14,7 +14,7 @@ const Menu = () => {
   const { register, handleSubmit } = useForm()
   const { updateApiData, updateLayout } = useStore()
 
-  const onSubmit = async (data, updateApiData) => {
+  const onSubmit = async (data) => {
     const {
       targets,
       withClosed,
@@ -25,18 +25,18 @@ const Menu = () => {
     } = data
 
     // construct url
-    const url = `/graph?targets=${targets}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`
+    const url = `/graph?targets=${targets || 'moul/depviz-test'}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`
 
     const response = await fetchDepviz(url)
     updateApiData(response.data, layout)
   }
 
   return (
-    <form onSubmit={handleSubmit((data) => onSubmit(data, updateApiData))}>
+    <form onSubmit={handleSubmit((data) => onSubmit(data))}>
       <div className="form-group">
         <label htmlFor="targets">
           Repository:
-          <input ref={register} type="text" name="targets" id="targets" />
+          <input ref={register} type="text" name="targets" id="targets" defaultValue="" />
         </label>
       </div>
 

@@ -1,97 +1,12 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { useStore } from '../../hooks/useStore'
 import CytoscapeRenderer from './renderers/Cytoscape'
 import MermaidRenderer from './renderers/Mermaid'
 
 const VisualizerWrapper = () => {
-  let layoutConfig
+  const { apiData, layout } = useStore()
+  const { tasks } = apiData || {}
 
-  const { data, layout } = useStore()
-  const { tasks } = data || {}
-
-  const computeLayoutConfig = (layout) => {
-    let layoutConfig
-
-    switch (layout) {
-      case 'circle':
-        layoutConfig = {
-          name: 'circle',
-          avoidOverlap: true,
-        }
-        break
-      case 'cose':
-        layoutConfig = {
-          name: 'cose',
-          animate: false,
-          componentSpacing: 0.5,
-          nodeOverlap: 2,
-          nodeRepulsion: 0.5,
-          nestingFactor: 19,
-          gravity: 200,
-          numIter: 2000,
-          coolingFactor: 0.2,
-        }
-        break
-      case 'breadthfirst':
-        layoutConfig = {
-          name: 'breadthfirst',
-        }
-        break
-      case 'concentric':
-        layoutConfig = {
-          name: 'concentric',
-        }
-        break
-      case 'grid':
-        layoutConfig = {
-          name: 'grid',
-          condense: true,
-        }
-        break
-      case 'random':
-        layoutConfig = {
-          name: 'random',
-        }
-        break
-      case 'cola':
-        layoutConfig = {
-          name: 'cola',
-          animate: false,
-          refresh: 1,
-          padding: 30,
-          maxSimulationTime: 100,
-        }
-        break
-      case 'elk':
-        layoutConfig = {
-          name: 'elk',
-          elk: {
-            zoomToFit: true,
-            algorithm: 'mrtree',
-            separateConnectedComponents: false,
-          },
-        }
-        break
-      case 'gantt':
-        layoutConfig = {
-          name: 'gantt',
-        }
-        break
-      case 'flow':
-        layoutConfig = {
-          name: 'flow',
-        }
-        break
-      default:
-        break
-    }
-
-    return layoutConfig
-  }
-
-  useEffect(() => {
-    layoutConfig = computeLayoutConfig(layout)
-  }, [layout])
   console.log('tasks: ', tasks)
 
   const nodes = []
@@ -223,13 +138,14 @@ const VisualizerWrapper = () => {
 
       nodes.push(node)
     })
-    if (layoutConfig) {
-      if (layoutConfig.name === 'gantt' || layoutConfig.name === 'flow') {
-        return <MermaidRenderer nodes={nodes} edges={edges} layoutConfig={layoutConfig} />
+    if (layout) {
+      if (layout.name === 'gantt' || layout.name === 'flow') {
+        return <MermaidRenderer nodes={nodes} edges={edges} layout={layout} />
       }
     }
-    return <CytoscapeRenderer nodes={nodes} edges={edges} layoutConfig={layoutConfig} />
+    return <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
   }
+  return <MermaidRenderer nodes={nodes} edges={edges} layout={layout} />
   return (
     <div>
       Tasks not found or Repository url is empty
