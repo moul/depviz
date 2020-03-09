@@ -24,9 +24,24 @@ dependency visualizer (auto roadmap)
 
 _inspired by this discussion: [jbenet/random-ideas#37](https://github.com/jbenet/random-ideas/issues/37)_
 
+## Philosophy
+
+The ultimate goal of this tool is to allow the tech and the non-tech to collaborate seamlessly.
+
+Oftentimes, there are “non-technical project managers” that love tools like Jira and try to define everything, including the delay required.
+Developers, however, mostly hate Jira-like tools and prefer to focus on small tasks with a simple interface, like Trello, github issues, gitlab issues.
+
+The idea of depviz is to:
+
+* link those different tools (aggregate the different sources and find the relationships: find that this exact “Jira user story” belongs to those 5 technical issues on github
+* create various visual ways of displaying this information. Then, we can easily have a copmany that has some non-technical project manager only focusing on user stories and their priorities, and devs that focus on tasks and estimate the tasks by themselves (everyone doing what they are good at)
+* in general, help everyone have the overall vision more clear
+
 ## Demo
 
 https://depviz-demo.moul.io/
+
+_Limited to the following repos: [moul/depviz](https://github.com/moul/depviz), [moul/depviz-test](https://github.com/moul/depviz-test), [moul-bot/depviz-test](https://github.com/moul-bot/depviz-test)._
 
 ## Supported providers
 
