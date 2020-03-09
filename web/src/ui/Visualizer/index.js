@@ -145,7 +145,6 @@ const VisualizerWrapper = () => {
     }
     return <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
   }
-  return <MermaidRenderer nodes={nodes} edges={edges} layout={layout} />
   return (
     <div>
       Tasks not found or Repository url is empty
