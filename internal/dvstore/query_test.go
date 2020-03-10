@@ -66,6 +66,22 @@ func TestLoadTasks(t *testing.T) {
 				assert.NoError(t, err, name)
 			}
 
+			{ // check for duplicates
+				duplicateMap := map[string]int{}
+				hasDuplicates := false
+				for _, task := range tasks {
+					if _, found := duplicateMap[string(task.ID)]; !found {
+						duplicateMap[string(task.ID)] = 0
+					} else {
+						hasDuplicates = true
+					}
+					duplicateMap[string(task.ID)]++
+				}
+				if !assert.False(t, hasDuplicates) {
+					fmt.Println(godev.PrettyJSON(duplicateMap))
+				}
+			}
+
 			g, err := ioutil.ReadFile(gp)
 			assert.NoError(t, err, name)
 			assert.Equal(t, len(string(g)), len(actual), gp)
