@@ -81,6 +81,7 @@ func TestLoadTasks(t *testing.T) {
 					fmt.Println(godev.PrettyJSON(duplicateMap))
 				}
 			}
+			t.Log("\n" + tasks.DebugTree(true, false))
 
 			g, err := ioutil.ReadFile(gp)
 			assert.NoError(t, err, name)

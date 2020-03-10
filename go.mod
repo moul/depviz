@@ -45,7 +45,7 @@ require (
 	gopkg.in/yaml.v2 v2.2.8
 	gopkg.in/yaml.v3 v3.0.0-20200121175148-a6ecf24a6d71 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
-	moul.io/godev v1.4.0
+	moul.io/godev v1.5.0
 	moul.io/graphman v1.6.0
 	moul.io/graphman/viz v0.0.0-20200107124335-9891d9dbbff6
 	moul.io/multipmuri v1.13.0

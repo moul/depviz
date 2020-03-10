@@ -1,6 +1,8 @@
 package dvmodel
 
 import (
+	"fmt"
+
 	"github.com/cayleygraph/quad"
 	"go.uber.org/zap"
 )
@@ -18,6 +20,16 @@ func (t *Task) AllDeps() []quad.IRI {
 		allDeps[n+i] = dep
 	}
 	return allDeps
+}
+
+func (t Task) DebugLine(useLocalID bool) string {
+	out := string(t.ID)
+	if useLocalID {
+		out = string(t.LocalID)
+	}
+
+	out += fmt.Sprintf("  %s", t.State)
+	return out
 }
 
 func FilterIsolatedTasks(in []Task, logger *zap.Logger) []Task {
