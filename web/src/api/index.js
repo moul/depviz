@@ -1,40 +1,41 @@
 import axios from 'axios'
 
-const witAuth = (config) => {
-  config.headers.common.Authorization = `Basic ${btoa(`depviz:${config.params.auth}`)}`
-  return config
-}
+export const baseApi = axios.create({
+  baseURL: process.env.API_URL,
+})
 
-const baseApi = (url, params) => {
-  const api = axios.create({
-    baseURL: process.env.API_URL,
-    params,
-  })
-
-  // Authenticated routes
-  api.interceptors.request.use(
-    witAuth,
-    (error) => {
-      // Do something with request error
-      Promise.reject(error)
-    },
-  )
-
-  // Add a response interceptor
-  api.interceptors.response.use((response) =>
-    // Any status code that lie within the range of 2xx cause this function to trigger
-    // Do something with response data
-    response,
+// Authenticated routes
+/* baseApi.interceptors.request.use(
+  (config) => {
+    config.headers.common.Authorization = `Basic ${btoa(`depviz:${config.params.auth}`)}`
+    return config
+  },
   (error) => {
     // Any status codes that falls outside the range of 2xx cause this function to trigger
     // Do something with response error
-    if (error.status == 401) {
+    if (error.status === 401) {
       Promise.reject(error)
     }
 
     console.error('failed', error, status, error)
     alert(`failed: ${error}`)
-  })
-}
+  },
+) */
 
-export default baseApi
+// Add a response interceptor
+baseApi.interceptors.response.use((response) => response,
+  (error) => {
+    const status = error.response ? error.response.status : null
+
+    if (status === 401) {
+      const auth = 'd3pviz' // FIXME: remove hardcoded value
+      // return refreshToken(store, _ => {
+      error.config.headers.Authorization = `Basic ${btoa(`depviz:${auth}`)}`
+      // error.config.baseURL = undefined
+      return baseApi.request(error.config)
+    // });
+    }
+    console.error('failed', error, status, error)
+    alert(`failed: ${error}`)
+    return Promise.reject(error)
+  })
