@@ -1,5 +1,5 @@
 export const updateBrowserHistory = (url) => {
-  window.history.replaceState({} , "DepViz - Dependecy Visualization", url);
+  window.history.replaceState({}, 'DepViz - Dependecy Visualization', url)
 }
 
 export const generateUrl = (data) => {
@@ -9,11 +9,12 @@ export const generateUrl = (data) => {
     withIsolated,
     withPrs,
     withExternalDeps,
-    layout
-  } = data;
+    layout,
+    auth = 'd3pviz',
+  } = data
 
   // construct url
-  let url = `?${targets.split(",").map(target => `targets=${target.trim()}`).join("&")}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`;
+  const url = `?${targets.split(',').map((target) => `targets=${target.trim()}`).join('&')}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}&auth=${auth}`
 
-  return url;
+  return url
 }

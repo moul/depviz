@@ -1,5 +1,5 @@
-import { baseApi } from "./index";
+import { baseApi } from './index'
 
-export function fetchDepviz(url) {
-	return baseApi.get(`${url}`);
+export function fetchDepviz(url, params) {
+  return baseApi.get(`${url}`, params)
 }
