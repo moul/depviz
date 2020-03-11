@@ -28,6 +28,7 @@ export default {
   },
   plugins: [
     new Dotenv({
+      systemvars: true,
       path: './.env.dev',
     }),
     new webpack.HotModuleReplacementPlugin(),

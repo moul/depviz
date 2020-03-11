@@ -25,6 +25,7 @@ export default {
   },
   plugins: [
     new Dotenv({
+      systemvars: true,
       path: './.env.prod',
     }),
 

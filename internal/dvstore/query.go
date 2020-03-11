@@ -125,6 +125,20 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters
 		tasks = dvmodel.FilterIsolatedTasks(tasks, logger)
 	}
 
+	{ // remove duplicates
+		// FIXME: remove duplicates from the query itself
+		taskMap := map[quad.IRI]dvmodel.Task{}
+		for _, task := range tasks {
+			taskMap[task.ID] = task
+		}
+		tasks = make(dvmodel.Tasks, len(taskMap))
+		i := 0
+		for _, task := range taskMap {
+			tasks[i] = task
+			i++
+		}
+	}
+
 	sort.Slice(tasks[:], func(i, j int) bool {
 		return tasks[i].ID < tasks[j].ID
 	})
