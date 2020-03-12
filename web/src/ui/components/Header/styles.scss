@@ -14,3 +14,26 @@ button + button {
 input, select {
     margin: 0 5px 0 10px;
 }
+
+.debug-info {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 6rem;
+  background-color: #edf2fa;
+  padding: 0.35rem 1rem;
+  border-radius: 0.2rem;
+  &>div {
+    margin: 0.15rem 0;
+  }
+}
+
+#debug-info {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  &>div {
+    position: relative!important;
+    display: flex;
+    align-items: center;
+  }
+}

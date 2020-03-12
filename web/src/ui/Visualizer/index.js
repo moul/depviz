@@ -4,7 +4,7 @@ import CytoscapeRenderer from './renderers/Cytoscape'
 import MermaidRenderer from './renderers/Mermaid'
 
 const VisualizerWrapper = () => {
-  const { apiData, layout } = useStore()
+  const { apiData, layout, setDebugInfo } = useStore()
   const { tasks } = apiData || {}
 
   console.log('tasks: ', tasks)
@@ -138,6 +138,7 @@ const VisualizerWrapper = () => {
 
       nodes.push(node)
     })
+    setDebugInfo({ nodes: nodes.length })
     if (layout) {
       if (layout.name === 'gantt' || layout.name === 'flow') {
         return <MermaidRenderer nodes={nodes} edges={edges} layout={layout} />

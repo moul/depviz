@@ -4,9 +4,11 @@ import cola from 'cytoscape-cola'
 import elk from 'cytoscape-elk/src'
 import nodeHtmlLabel from 'cytoscape-node-html-label'
 import Card from './cardTemplate'
+import { useStore } from '../../../hooks/useStore'
 import './card.scss'
 
 const CytoscapeRenderer = ({ nodes, edges, layout }) => {
+  const { setDebugInfo } = useStore()
   const [cyMounted, setCyMount] = useState(false)
 
   useEffect(() => {
@@ -100,6 +102,7 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
           cy.add(edge)
         }
       })
+      setDebugInfo({ edges: edges.count() })
     })
   }, [layout.name])
 

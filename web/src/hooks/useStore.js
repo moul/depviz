@@ -9,6 +9,15 @@ const DEFAULT_STATE = {
     avoidOverlap: true,
   },
   repName: 'moul-bot/depviz-test',
+  debugInfo: {
+    fps: 0,
+    nodes: 0,
+    edges: 0,
+    openedIssues: 0,
+    closedIssues: 0,
+    prsIssues: 0,
+    extDepsIssues: 0,
+  },
 }
 
 function createContextValue(state, setState) {
@@ -99,6 +108,9 @@ function createContextValue(state, setState) {
     },
     updateLayout: (layout) => {
       setState({ ...state, layout: computeLayoutConfig(layout) })
+    },
+    setDebugInfo: (info) => {
+      setState({ ...state, debugInfo: { ...state.debugInfo, ...info } })
     },
   }
 }

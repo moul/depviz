@@ -76,8 +76,8 @@ const MermaidRenderer = ({ nodes, layout }) => {
         TD - same as TB
   */
   const renderFlowTemplate = (orientation = 'TB') => {
-    let flowTemplate = `graph ${orientation}
-    `
+    let flowTemplate = `graph ${orientation}`
+
     const flowTasks = []
     nodes.forEach((node) => {
       const item = node.data

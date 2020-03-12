@@ -14,7 +14,12 @@ export const generateUrl = (data) => {
   } = data
 
   // construct url
-  const url = `?${targets.split(',').map((target) => `targets=${target.trim()}`).join('&')}&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}&auth=${auth}`
+  let url = '?'
+  if (targets) {
+    url += `${targets.split(',').map((target) => `targets=${target.trim()}`).join('&')}`
+  }
+  // url += `&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}&auth=${auth}`
+  url += `&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}&auth=${auth}`
 
   return url
 }
