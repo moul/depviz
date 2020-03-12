@@ -20,7 +20,7 @@ input, select {
   bottom: 0.5rem;
   right: 6rem;
   background-color: #edf2fa;
-  padding: 0.35rem 1rem;
+  padding: 0.2rem 1rem;
   border-radius: 0.2rem;
   &>div {
     margin: 0.15rem 0;
@@ -28,9 +28,11 @@ input, select {
 }
 
 #debug-info {
-  position: absolute;
+  position: absolute!important;
   bottom: 0.5rem;
   right: 0.5rem;
+  top: auto!important;
+  left: auto!important;
   &>div {
     position: relative!important;
     display: flex;

@@ -1,10 +1,15 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import Stats from 'stats.js'
 import { useStore } from '../../hooks/useStore'
 import CytoscapeRenderer from './renderers/Cytoscape'
 import MermaidRenderer from './renderers/Mermaid'
 
+const showDebug = process.env.NODE_ENV === 'development'
+
 const VisualizerWrapper = () => {
-  const { apiData, layout, setDebugInfo } = useStore()
+  const {
+    apiData, layout, setDebugInfo, debugInfo,
+  } = useStore()
   const { tasks } = apiData || {}
 
   console.log('tasks: ', tasks)
@@ -138,17 +143,60 @@ const VisualizerWrapper = () => {
 
       nodes.push(node)
     })
-    setDebugInfo({ nodes: nodes.length })
-    if (layout) {
-      if (layout.name === 'gantt' || layout.name === 'flow') {
-        return <MermaidRenderer nodes={nodes} edges={edges} layout={layout} />
-      }
-    }
-    return <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
   }
-  return (
+
+  useEffect(() => {
+    if (showDebug) {
+      const stats = new Stats()
+      stats.showPanel(0) // 0: fps, 1: ms, 2: mb, 3+: custom
+      stats.dom.id = 'debug-info'
+      document.body.appendChild(stats.dom)
+
+      const animate = () => {
+        stats.begin()
+        // monitored code goes here
+
+        stats.end()
+
+        requestAnimationFrame(animate)
+      }
+
+      requestAnimationFrame(animate)
+    }
+  })
+
+  useEffect(() => {
+    setDebugInfo({ nodes: nodes.length, edges: edges.length })
+  }, [tasks, layout])
+
+  let rendererBlock = (
     <div>
       Tasks not found or Repository url is empty
+    </div>
+  )
+  if (tasks && layout) {
+    if (layout.name === 'gantt' || layout.name === 'flow') {
+      rendererBlock = <MermaidRenderer nodes={nodes} edges={edges} layout={layout} />
+    }
+    rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
+  }
+  return (
+    <div className="viz-wrapper">
+      {rendererBlock}
+      {showDebug && (
+      <div className="debug-info">
+        <div>
+          nodes:
+          {' '}
+          {debugInfo.nodes}
+        </div>
+        <div>
+          edges:
+          {' '}
+          {debugInfo.edges}
+        </div>
+      </div>
+      )}
     </div>
   )
 }
