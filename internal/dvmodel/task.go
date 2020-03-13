@@ -25,7 +25,7 @@ func (t *Task) AllDeps() []quad.IRI {
 func (t Task) DebugLine(useLocalID bool) string {
 	out := string(t.ID)
 	if useLocalID {
-		out = string(t.LocalID)
+		out = t.LocalID
 	}
 
 	out += fmt.Sprintf("  %s", t.State)
