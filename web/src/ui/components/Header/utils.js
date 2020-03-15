@@ -10,7 +10,6 @@ export const generateUrl = (data) => {
     withPrs,
     withExternalDeps,
     layout,
-    auth = 'd3pviz',
   } = data
 
   // construct url
@@ -19,7 +18,7 @@ export const generateUrl = (data) => {
     url += `${targets.split(',').map((target) => `targets=${target.trim()}`).join('&')}`
   }
   // url += `&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}&auth=${auth}`
-  url += `&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}&auth=${auth}`
+  url += `&withClosed=${withClosed}&withIsolated=${withIsolated}&withPrs=${withPrs}&withoutExternal-deps=${withExternalDeps}&layout=${layout}`
 
   return url
 }

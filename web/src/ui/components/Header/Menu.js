@@ -9,21 +9,40 @@ import './styles.scss'
 
 const Menu = () => {
   const {
-    updateApiData, updateLayout, layout,
+    updateApiData, updateLayout,
   } = useStore()
   const {
     register, getValues, setValue, handleSubmit,
   } = useForm()
   const searchParams = new URLSearchParams(window.location.search)
+  const urlData = {
+    targets: searchParams.getAll('targets').join(',') || '',
+    withClosed: searchParams.get('withClosed') || '',
+    withIsolated: searchParams.get('withIsolated') || '',
+    withPrs: searchParams.get('withPrs') || '',
+    withExternalDeps: searchParams.get('withoutExternal-deps') || '',
+    layout: searchParams.get('layout') || '',
+  }
 
   useEffect(() => {
-    const urlData = {
-      targets: searchParams.getAll('targets').join(',') || undefined,
-      withClosed: searchParams.get('withClosed') || undefined,
-      withIsolated: searchParams.get('withIsolated') || undefined,
-      withPrs: searchParams.get('withPrs') || undefined,
-      withExternalDeps: searchParams.get('withoutExternal-deps') || undefined,
-      layout: searchParams.get('layout') || undefined,
+    const formValues = getValues()
+    if (formValues.targets) {
+      urlData.targets = formValues.targets.legnth > 1 ? formValues.targets.join(',') : formValues.targets
+    }
+    if (formValues.withClosed) {
+      urlData.withClosed = formValues.withClosed
+    }
+    if (formValues.withIsolated) {
+      urlData.withIsolated = formValues.withIsolated
+    }
+    if (formValues.withPrs) {
+      urlData.withPrs = formValues.withPrs
+    }
+    if (formValues.withExternalDeps) {
+      urlData.withExternalDeps = formValues.withExternalDeps
+    }
+    if (formValues.layout) {
+      urlData.layout = formValues.layout
     }
 
     const setFormValue = (value, key) => {
@@ -35,11 +54,7 @@ const Menu = () => {
     forEachObjIndexed(setFormValue, urlData)
 
     if (urlData.targets) {
-      try {
-        makeAPICall(urlData)
-      } catch (error) {
-        throw error
-      }
+      makeAPICall(urlData)
     }
   }, [])
 
@@ -62,28 +77,29 @@ const Menu = () => {
     makeAPICall(data)
   }
 
-  const onRedraw = () => {
-    const cyLayout = window.cy.layout(layout)
-    cyLayout.run()
-  }
-
   const onLayoutChange = (data) => {
     updateLayout(data.layout)
     updateBrowserHistory(generateUrl(data))
   }
 
   return (
-    <div className="header collapse d-lg-flex p-0">
+    <div className="header d-lg-flex p-3">
       <div className="container">
-        <div className="row align-items-center">
-          <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)} className="row align-items-center">
+          <div className="col-lg-3 order-lg-first">
             <div className="form-group">
               <label htmlFor="targets" className="form-label">
-                Repository:
-                <input ref={register} type="text" name="targets" id="targets" className="form-control" />
+                <div className="input-group">
+                  <input ref={register} type="text" name="targets" id="targets" placeholder="Repository" className="form-control" value={urlData.targets} />
+                  <div className="input-group-append">
+                    <button type="submit" className="btn btn-primary ml-auto">Generate</button>
+                    {/* <button type="button" onClick={onRedraw} className="btn btn-primary ml-auto">Redraw</button> */}
+                  </div>
+                </div>
               </label>
             </div>
-
+          </div>
+          <div className="col-lg ml-right">
             <div className="form-group">
 
               <label htmlFor="withClosed" className="custom-control custom-checkbox custom-control-inline">
@@ -110,9 +126,9 @@ const Menu = () => {
               </label>
             </div>
 
-            <div className="form-group">
+            <div className="form-group layout-select">
               <label htmlFor="layout">
-                Layout:
+                <span className="custom-control">Layout:</span>
                 <select ref={register} name="layout" id="layout" onChange={() => onLayoutChange(getValues())} className="form-control custom-select selectized">
                   <option value="circle">circle</option>
                   <option value="cose">cose</option>
@@ -127,13 +143,8 @@ const Menu = () => {
                 </select>
               </label>
             </div>
-
-            <div className="button-group">
-              <button type="submit" className="btn btn-primary ml-auto">Generate</button>
-              {/* <button type="button" onClick={onRedraw} className="btn btn-primary ml-auto">Redraw</button> */}
-            </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   )

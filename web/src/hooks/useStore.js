@@ -8,7 +8,7 @@ const DEFAULT_STATE = {
     name: 'circle',
     avoidOverlap: true,
   },
-  repName: 'moul-bot/depviz-test',
+  repName: 'moul/depviz-test',
   debugInfo: {
     fps: 0,
     nodes: 0,
@@ -125,7 +125,6 @@ export function useStore() {
 }
 
 export function StoreProvider({ context, children }) {
-  // console.log('authContext: ', context)
   const [state, setState] = useState({
     ...DEFAULT_STATE,
     ...context,
