@@ -449,6 +449,18 @@
   }
 }
 
+.modal-blur {
+  background-color: rgba(35,35,35,0.5);
+}
+#modal-auth-modal {
+  .modal-body {
+    display: block;
+    text-align: center;
+    p {
+      text-align: left;
+    }
+  }
+}
 
 .debug-info {
   position: absolute;

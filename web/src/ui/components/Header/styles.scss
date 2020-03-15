@@ -26,3 +26,11 @@ input, select {
 .ml-right {
   text-align: right;
 }
+
+.repo-and-token {
+  display: flex;
+  align-items: center;
+  .form-label {
+    margin-bottom: 0;
+  }
+}

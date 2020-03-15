@@ -1,11 +1,13 @@
 /* eslint-disable import/no-named-as-default */
 import { Route, Switch, BrowserRouter as Router } from 'react-router-dom'
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { hot } from 'react-hot-loader'
 import Stats from 'stats.js'
 import { StoreProvider, useStore } from './hooks/useStore'
 import HomePage from './ui/pages/HomePage/HomePage'
 import Menu from './ui/components/Header/Menu'
+import Modal from './ui/components/Modal/Modal'
+import store from './utils/store'
 
 // Import Tabler styles
 import './assets/scss/tabler.scss'
@@ -18,6 +20,9 @@ const App = () => {
   const {
     debugInfo,
   } = useStore()
+
+  const [showAuthModal, setShowAuthModal] = useState(!store.getItem('auth_token'))
+  const [authToken, setAuthToken] = useState(store.getItem('auth_token') || '')
 
   useEffect(() => {
     if (showDebug) {
@@ -39,11 +44,23 @@ const App = () => {
     }
   })
 
+  const handleChange = (e) => {
+    e.preventDefault()
+    const token = event.target.value
+    store.setItem('auth_token', token)
+    setAuthToken(token)
+    setShowAuthModal(!token)
+  }
+
+  const handleClose = (e) => {
+    e.preventDefault()
+    setShowAuthModal(false)
+  }
   return (
     <StoreProvider>
       <div className="page">
         <div className="flex-fill">
-          <Menu />
+          <Menu authToken={authToken} handleShowToken={() => setShowAuthModal(true)} />
           <Router>
             <Switch>
               <Route exact path="/" component={HomePage} />
@@ -73,6 +90,26 @@ const App = () => {
           </div>
         </div>
         )}
+        <Modal
+          showModal={showAuthModal}
+          id="auth-modal"
+          size="lg"
+        >
+          <div className="modal-header">
+            <h5 className="modal-title">Enter auth token</h5>
+            <button type="button" className="close" data-dismiss="modal" aria-label="Close" onClick={handleClose}>
+              <i className="fe fe-x" />
+            </button>
+          </div>
+          <div className="modal-body">
+            <p>Enter your auth token below.</p>
+            <form onSubmit={handleClose}>
+              <input type="text" name="authToken" id="authToken" placeholder="Auth token" className="form-control" value={authToken} onChange={handleChange} />
+              <br />
+              <button type="submit" className="btn btn-primary" data-dismiss="modal">Save auth token</button>
+            </form>
+          </div>
+        </Modal>
       </div>
     </StoreProvider>
   )

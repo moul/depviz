@@ -7,7 +7,7 @@ import { fetchDepviz } from '../../../api/depviz'
 
 import './styles.scss'
 
-const Menu = () => {
+const Menu = ({ showAuth = false, handleShowToken }) => {
   const {
     updateApiData, updateLayout,
   } = useStore()
@@ -28,6 +28,7 @@ const Menu = () => {
     const formValues = getValues()
     if (formValues.targets) {
       urlData.targets = formValues.targets.legnth > 1 ? formValues.targets.join(',') : formValues.targets
+      setValue('targets', urlData.targets)
     }
     if (formValues.withClosed) {
       urlData.withClosed = formValues.withClosed
@@ -86,18 +87,22 @@ const Menu = () => {
     <div className="header d-lg-flex p-3">
       <div className="container">
         <form onSubmit={handleSubmit(onSubmit)} className="row align-items-center">
-          <div className="col-lg-3 order-lg-first">
-            <div className="form-group">
+          <div className="col-lg-5 order-lg-first">
+            <div className="form-group repo-and-token">
               <label htmlFor="targets" className="form-label">
                 <div className="input-group">
-                  <input ref={register} type="text" name="targets" id="targets" placeholder="Repository" className="form-control" value={urlData.targets} />
+                  <input ref={register} type="text" name="targets" id="targets" placeholder="Repository" className="form-control" />
                   <div className="input-group-append">
                     <button type="submit" className="btn btn-primary ml-auto">Generate</button>
                     {/* <button type="button" onClick={onRedraw} className="btn btn-primary ml-auto">Redraw</button> */}
                   </div>
                 </div>
               </label>
+              <a onClick={handleShowToken} className="btn">
+                {authToken ? 'Change token' : '+ Add token'}
+              </a>
             </div>
+
           </div>
           <div className="col-lg ml-right">
             <div className="form-group">
