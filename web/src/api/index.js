@@ -1,5 +1,5 @@
 import axios from 'axios'
-// import store from '../utils/store'
+import store from '../utils/store'
 
 export const baseApi = axios.create({
   baseURL: process.env.API_URL,
@@ -8,7 +8,7 @@ export const baseApi = axios.create({
 // Add a response interceptor
 baseApi.interceptors.request.use(
   (config) => {
-    const auth = process.env.AUTH_TOKEN // store.getItem('auth_token')
+    const auth = store.getItem('auth_token')
     config.headers.Authorization = `Basic ${btoa(`depviz:${auth}`)}`
     return config
   },
@@ -21,7 +21,7 @@ baseApi.interceptors.response.use((response) => response,
 
     if (status === 401) {
       const auth = process.env.AUTH_TOKEN
-      // store.setItem('auth_token', auth)
+      store.setItem('auth_token', auth)
       error.config.headers.Authorization = `Basic ${btoa(`depviz:${auth}`)}`
       return baseApi.request(error.config)
     // });

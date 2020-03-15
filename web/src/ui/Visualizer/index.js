@@ -1,14 +1,11 @@
 import React, { useEffect } from 'react'
-import Stats from 'stats.js'
 import { useStore } from '../../hooks/useStore'
 import CytoscapeRenderer from './renderers/Cytoscape'
 import MermaidRenderer from './renderers/Mermaid'
 
-const showDebug = process.env.NODE_ENV === 'development'
-
 const VisualizerWrapper = () => {
   const {
-    apiData, layout, setDebugInfo, debugInfo,
+    apiData, layout, setDebugInfo,
   } = useStore()
   const { tasks } = apiData || {}
 
@@ -145,25 +142,6 @@ const VisualizerWrapper = () => {
     })
   }
 
-  useEffect(() => {
-    if (showDebug) {
-      const stats = new Stats()
-      stats.showPanel(0) // 0: fps, 1: ms, 2: mb, 3+: custom
-      stats.dom.id = 'debug-info'
-      document.body.appendChild(stats.dom)
-
-      const animate = () => {
-        stats.begin()
-        // monitored code goes here
-
-        stats.end()
-
-        requestAnimationFrame(animate)
-      }
-
-      requestAnimationFrame(animate)
-    }
-  })
 
   useEffect(() => {
     setDebugInfo({ nodes: nodes.length, edges: edges.length })
@@ -181,22 +159,8 @@ const VisualizerWrapper = () => {
     rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
   }
   return (
-    <div className="viz-wrapper">
+    <div className="viz-wrapper card">
       {rendererBlock}
-      {showDebug && (
-      <div className="debug-info">
-        <div>
-          nodes:
-          {' '}
-          {debugInfo.nodes}
-        </div>
-        <div>
-          edges:
-          {' '}
-          {debugInfo.edges}
-        </div>
-      </div>
-      )}
     </div>
   )
 }

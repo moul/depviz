@@ -73,64 +73,68 @@ const Menu = () => {
   }
 
   return (
-    <div className="header">
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="form-group">
-          <label htmlFor="targets">
-            Repository:
-            <input ref={register} type="text" name="targets" id="targets" />
-          </label>
+    <div className="header collapse d-lg-flex p-0">
+      <div className="container">
+        <div className="row align-items-center">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="form-group">
+              <label htmlFor="targets" className="form-label">
+                Repository:
+                <input ref={register} type="text" name="targets" id="targets" className="form-control" />
+              </label>
+            </div>
+
+            <div className="form-group">
+
+              <label htmlFor="withClosed" className="custom-control custom-checkbox custom-control-inline">
+                <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={() => onSubmit(getValues())} className="custom-control-input" />
+                <span className="custom-control-label">Closed</span>
+              </label>
+
+
+              <label htmlFor="withIsolated" className="custom-control custom-checkbox custom-control-inline">
+                <input ref={register} defaultChecked type="checkbox" name="withIsolated" id="withIsolated" onChange={() => onSubmit(getValues())} className="custom-control-input" />
+                <span className="custom-control-label">Isolated</span>
+              </label>
+
+
+              <label htmlFor="withPrs" className="custom-control custom-checkbox custom-control-inline">
+                <input ref={register} defaultChecked type="checkbox" name="withPrs" id="withPrs" onChange={() => onSubmit(getValues())} className="custom-control-input" />
+                <span className="custom-control-label">PRs</span>
+              </label>
+
+
+              <label htmlFor="withExternalDeps" className="custom-control custom-checkbox custom-control-inline">
+                <input ref={register} defaultChecked type="checkbox" name="withExternalDeps" id="withExternalDeps" onChange={() => onSubmit(getValues())} className="custom-control-input" />
+                <span className="custom-control-label">Ext. Deps</span>
+              </label>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="layout">
+                Layout:
+                <select ref={register} name="layout" id="layout" onChange={() => onLayoutChange(getValues())} className="form-control custom-select selectized">
+                  <option value="circle">circle</option>
+                  <option value="cose">cose</option>
+                  <option value="breadthfirst">breadthfirst</option>
+                  <option value="concentric">concentric</option>
+                  <option value="grid">grid</option>
+                  <option value="random">random</option>
+                  <option value="cola">cola</option>
+                  <option value="elk">elk</option>
+                  <option value="gantt">gantt</option>
+                  <option value="flow">flow</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="button-group">
+              <button type="submit" className="btn btn-primary ml-auto">Generate</button>
+              {/* <button type="button" onClick={onRedraw} className="btn btn-primary ml-auto">Redraw</button> */}
+            </div>
+          </form>
         </div>
-
-        <div className="form-group">
-
-          <label htmlFor="withClosed">
-            <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={() => onSubmit(getValues())} />
-            Closed
-          </label>
-
-
-          <label htmlFor="withIsolated">
-            <input ref={register} defaultChecked type="checkbox" name="withIsolated" id="withIsolated" onChange={() => onSubmit(getValues())} />
-            Isolated
-          </label>
-
-
-          <label htmlFor="withPrs">
-            <input ref={register} defaultChecked type="checkbox" name="withPrs" id="withPrs" onChange={() => onSubmit(getValues())} />
-            PRs
-          </label>
-
-
-          <label htmlFor="withExternalDeps">
-            <input ref={register} defaultChecked type="checkbox" name="withExternalDeps" id="withExternalDeps" onChange={() => onSubmit(getValues())} />
-            Ext. Deps
-          </label>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="layout">
-            Layout:
-            <select ref={register} name="layout" id="layout" onChange={() => onLayoutChange(getValues())}>
-              <option value="circle">circle</option>
-              <option value="cose">cose</option>
-              <option value="breadthfirst">breadthfirst</option>
-              <option value="concentric">concentric</option>
-              <option value="grid">grid</option>
-              <option value="random">random</option>
-              <option value="cola">cola</option>
-              <option value="elk">elk</option>
-              <option value="gantt">gantt</option>
-              <option value="flow">flow</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="button-group">
-          <button type="submit">Generate</button>
-          <button type="button" onClick={onRedraw}>Redraw</button>
-        </div>
-      </form>
+      </div>
     </div>
   )
 }

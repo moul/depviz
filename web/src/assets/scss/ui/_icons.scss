@@ -1,0 +1,61 @@
+.icon {
+  width: 1em;
+  height: 1em;
+  font-size: 1em;
+  vertical-align: -0.2em;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+.icon-filled {
+  fill: currentColor;
+}
+
+.icon-thin {
+  stroke-width: 1.5;
+}
+
+.icon-md {
+  font-size: 1.5rem;
+}
+
+.icon-lg {
+  font-size: 2rem;
+}
+
+.icon-xl {
+  font-size: 4rem;
+}
+
+
+.icons-list {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 0;
+  margin: 0 -2px -1px 0;
+  list-style: none;
+
+  > li {
+    flex: 1 0 4rem;
+  }
+}
+
+.icons-list-wrap {
+  overflow: hidden;
+}
+
+.icons-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 4rem;
+  text-align: center;
+  border-right: 1px solid $border-color;
+  border-bottom: 1px solid $border-color;
+
+  i {
+    font-size: 1.25rem;
+  }
+}

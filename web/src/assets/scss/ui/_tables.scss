@@ -1,0 +1,55 @@
+.table {
+  color: inherit;
+
+  thead {
+    th {
+      background: $min-black;
+      border-width: $table-border-width;
+      @include subheader;
+      padding-top: .5rem;
+      padding-bottom: .5rem;
+
+      @media print {
+        background: transparent;
+      }
+    }
+  }
+
+  th {
+    color: $text-muted;
+  }
+}
+
+.table-nowrap {
+  th,
+  td {
+    white-space: nowrap;
+  }
+}
+
+
+.table-md {
+  th,
+  td {
+    padding: .5rem;
+  }
+}
+
+.table-vcenter {
+  td,
+  th {
+    vertical-align: middle;
+  }
+}
+
+.table-center {
+  td,
+  th {
+    text-align: center;
+  }
+}
+
+.td-truncate {
+  max-width: 1px;
+  width: 100%;
+}

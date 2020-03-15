@@ -1,0 +1,25 @@
+.jqvmap-zoomin,
+.jqvmap-zoomout {
+  height: auto;
+  width: auto;
+  left: .5rem;
+  border: 1px solid $border-color;
+  background: $white;
+  color: $body-color;
+}
+
+.jqvmap-zoomin {
+  top: .5rem;
+}
+
+.jqvmap-zoomout {
+  top: 2rem;
+}
+
+.jqvmap-label {
+  font-family: inherit;
+  font-size: $h6-font-size;
+  line-height: 1;
+  padding: .25rem;
+  background: $dark;
+}
