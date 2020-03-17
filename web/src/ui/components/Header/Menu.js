@@ -7,7 +7,7 @@ import { fetchDepviz } from '../../../api/depviz'
 
 import './styles.scss'
 
-const Menu = ({ showAuth = false, handleShowToken }) => {
+const Menu = ({ authToken, showAuth = false, handleShowToken }) => {
   const {
     updateApiData, updateLayout,
   } = useStore()
