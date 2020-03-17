@@ -14,7 +14,7 @@ import './assets/scss/tabler.scss'
 
 import './App.scss'
 
-const showDebug = process.env.NODE_ENV === 'development'
+const showDebug = true // process.env.NODE_ENV === 'development'
 
 const App = () => {
   const {
@@ -98,8 +98,7 @@ const App = () => {
           <div className="modal-header">
             <h5 className="modal-title">Enter auth token</h5>
             <button type="button" className="close" data-dismiss="modal" aria-label="Close" onClick={handleClose}>
-              <i className="fe fe-x" />
-              x
+              <i className="fe fe-x-circle" />
             </button>
           </div>
           <div className="modal-body">
