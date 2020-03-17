@@ -18,9 +18,9 @@ const Menu = ({ authToken, showAuth = false, handleShowToken }) => {
   const urlData = {
     targets: searchParams.getAll('targets').join(',') || '',
     withClosed: searchParams.get('withClosed') || '',
-    withIsolated: searchParams.get('withIsolated') || '',
-    withPrs: searchParams.get('withPrs') || '',
-    withExternalDeps: searchParams.get('withoutExternal-deps') || '',
+    withoutIsolated: searchParams.get('withoutIsolated') || '',
+    withoutPrs: searchParams.get('withoutPrs') || '',
+    withoutExternalDeps: searchParams.get('withoutExternalDeps') || '',
     layout: searchParams.get('layout') || '',
   }
 
@@ -33,14 +33,14 @@ const Menu = ({ authToken, showAuth = false, handleShowToken }) => {
     if (formValues.withClosed) {
       urlData.withClosed = formValues.withClosed
     }
-    if (formValues.withIsolated) {
-      urlData.withIsolated = formValues.withIsolated
+    if (formValues.withoutIsolated) {
+      urlData.withoutIsolated = formValues.withoutIsolated
     }
-    if (formValues.withPrs) {
-      urlData.withPrs = formValues.withPrs
+    if (formValues.withoutPrs) {
+      urlData.withoutPrs = formValues.withoutPrs
     }
-    if (formValues.withExternalDeps) {
-      urlData.withExternalDeps = formValues.withExternalDeps
+    if (formValues.withoutExternalDeps) {
+      urlData.withoutExternalDeps = formValues.withoutExternalDeps
     }
     if (formValues.layout) {
       urlData.layout = formValues.layout
@@ -74,27 +74,39 @@ const Menu = ({ authToken, showAuth = false, handleShowToken }) => {
     updateBrowserHistory(url)
   }
 
-  const onSubmit = (data) => {
+  const onSubmit = () => {
+    const data = getValues()
     makeAPICall(data)
   }
 
-  const onLayoutChange = (data) => {
+  const handleLayoutChange = () => {
+    const data = getValues()
     updateLayout(data.layout)
     updateBrowserHistory(generateUrl(data))
+  }
+
+  const handleCheckboxChange = (e) => {
+    const data = getValues()
+    // makeAPICall(data)
+    updateBrowserHistory(generateUrl(data))
+  }
+
+  const handleRedraw = () => {
+
   }
 
   return (
     <div className="header d-lg-flex p-3">
       <div className="container">
         <form onSubmit={handleSubmit(onSubmit)} className="row align-items-center">
-          <div className="col-lg-5 order-lg-first">
+          <div className="col-lg-6 order-lg-first">
             <div className="form-group repo-and-token">
               <label htmlFor="targets" className="form-label">
                 <div className="input-group">
                   <input ref={register} type="text" name="targets" id="targets" placeholder="Repository" className="form-control" />
                   <div className="input-group-append">
                     <button type="submit" className="btn btn-primary ml-auto">Generate</button>
-                    {/* <button type="button" onClick={onRedraw} className="btn btn-primary ml-auto">Redraw</button> */}
+                    <button type="button" onClick={handleRedraw} className="btn btn-secondary ml-auto">Redraw</button>
                   </div>
                 </div>
               </label>
@@ -108,25 +120,25 @@ const Menu = ({ authToken, showAuth = false, handleShowToken }) => {
             <div className="form-group">
 
               <label htmlFor="withClosed" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={() => onSubmit(getValues())} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={handleCheckboxChange} className="custom-control-input" />
                 <span className="custom-control-label">Closed</span>
               </label>
 
 
-              <label htmlFor="withIsolated" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} defaultChecked type="checkbox" name="withIsolated" id="withIsolated" onChange={() => onSubmit(getValues())} className="custom-control-input" />
+              <label htmlFor="withoutIsolated" className="custom-control custom-checkbox custom-control-inline">
+                <input ref={register} defaultChecked type="checkbox" name="withoutIsolated" id="withoutIsolated" onChange={handleCheckboxChange} className="custom-control-input" />
                 <span className="custom-control-label">Isolated</span>
               </label>
 
 
-              <label htmlFor="withPrs" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} defaultChecked type="checkbox" name="withPrs" id="withPrs" onChange={() => onSubmit(getValues())} className="custom-control-input" />
+              <label htmlFor="withoutPrs" className="custom-control custom-checkbox custom-control-inline">
+                <input ref={register} defaultChecked type="checkbox" name="withoutPrs" id="withoutPrs" onChange={handleCheckboxChange} className="custom-control-input" />
                 <span className="custom-control-label">PRs</span>
               </label>
 
 
-              <label htmlFor="withExternalDeps" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} defaultChecked type="checkbox" name="withExternalDeps" id="withExternalDeps" onChange={() => onSubmit(getValues())} className="custom-control-input" />
+              <label htmlFor="withoutExternalDeps" className="custom-control custom-checkbox custom-control-inline">
+                <input ref={register} defaultChecked type="checkbox" name="withoutExternalDeps" id="withoutExternalDeps" onChange={handleCheckboxChange} className="custom-control-input" />
                 <span className="custom-control-label">Ext. Deps</span>
               </label>
             </div>
@@ -134,7 +146,7 @@ const Menu = ({ authToken, showAuth = false, handleShowToken }) => {
             <div className="form-group layout-select">
               <label htmlFor="layout">
                 <span className="custom-control">Layout:</span>
-                <select ref={register} name="layout" id="layout" onChange={() => onLayoutChange(getValues())} className="form-control custom-select selectized">
+                <select ref={register} name="layout" id="layout" onChange={handleLayoutChange} className="form-control custom-select selectized">
                   <option value="circle">circle</option>
                   <option value="cose">cose</option>
                   <option value="breadthfirst">breadthfirst</option>

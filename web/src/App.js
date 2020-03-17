@@ -46,7 +46,7 @@ const App = () => {
 
   const handleChange = (e) => {
     e.preventDefault()
-    const token = event.target.value
+    const token = event.target.value || ''
     store.setItem('auth_token', token)
     setAuthToken(token)
     // setShowAuthModal(!token)
