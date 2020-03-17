@@ -49,7 +49,7 @@ const App = () => {
     const token = event.target.value
     store.setItem('auth_token', token)
     setAuthToken(token)
-    setShowAuthModal(!token)
+    // setShowAuthModal(!token)
   }
 
   const handleClose = (e) => {
@@ -99,6 +99,7 @@ const App = () => {
             <h5 className="modal-title">Enter auth token</h5>
             <button type="button" className="close" data-dismiss="modal" aria-label="Close" onClick={handleClose}>
               <i className="fe fe-x" />
+              x
             </button>
           </div>
           <div className="modal-body">
