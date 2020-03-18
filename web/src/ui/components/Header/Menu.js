@@ -9,7 +9,7 @@ import './styles.scss'
 
 const Menu = ({ authToken, showAuth = false, handleShowToken }) => {
   const {
-    updateApiData, updateLayout,
+    updateApiData, updateLayout, layout,
   } = useStore()
   const {
     register, getValues, setValue, handleSubmit,
@@ -92,7 +92,8 @@ const Menu = ({ authToken, showAuth = false, handleShowToken }) => {
   }
 
   const handleRedraw = () => {
-
+    const cyLayout = window.cy.layout(layout)
+    cyLayout.run()
   }
 
   return (

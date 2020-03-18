@@ -6,6 +6,8 @@ import nodeHtmlLabel from 'cytoscape-node-html-label'
 import Card from './cardTemplate'
 import './card.scss'
 
+import './styles.scss'
+
 const CytoscapeRenderer = ({ nodes, edges, layout }) => {
   const [cyMounted, setCyMount] = useState(false)
 
@@ -33,7 +35,8 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
           shape: 'rectangle',
           'background-color': 'white',
         },
-      }, {
+      },
+      {
         selector: 'node:parent',
         style: {
           'background-color': 'lightblue',
@@ -41,7 +44,28 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
           label: 'data(local_id)',
           padding: 50,
         },
-      }],
+      },
+      {
+        selector: 'edge',
+        style: {
+          width: 3,
+          'curve-style': 'straight',
+        },
+      },
+      {
+        selector: 'edge[arrow]',
+        style: {
+          'target-arrow-shape': 'data(arrow)',
+          'arrow-scale': 5,
+        },
+      },
+      {
+        selector: 'edge.hollow',
+        style: {
+          'target-arrow-fill': 'hollow',
+        },
+      },
+      ],
       layout,
     }
 
@@ -51,12 +75,14 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
     })
 
     const cy = cytoscape(config)
+    window.cy = cy
 
-    cy.on('tap', 'node', function () {
+    cy.on('tap', 'node', (evt) => {
+      const node = evt.target
       try { // your browser may block popups
-        window.open(this.data('id'))
+        window.open(node.id())
       } catch (e) { // fall back on url change
-        window.location.href = this.data('id')
+        window.location.href = node.id()
       }
     })
 
@@ -93,6 +119,7 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
         }
         edge.group = 'edges'
         edge.data.id = edge.data.relation + edge.data.source + edge.data.target
+        edge.data.arrow = 'triangle'
         if (edge.data.id in edgeMap) {
           console.warn('duplicate edge', edge)
         } else {
@@ -101,6 +128,8 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
         }
       })
     })
+    const cyLayout = cy.layout(layout)
+    cyLayout.run()
   }, [layout.name])
 
   return (

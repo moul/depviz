@@ -1,9 +1,8 @@
-const Card = (data) => {
-  return (
-    `
-      <div class="card ${data.card_classes}">
+const Card = (data) => (
+  `
+      <div class="cy-card ${data.card_classes}">
       <div class="b-left">
-        <div class="icon icon-issue">
+        <div class="cy-icon icon-issue">
           <svg width="26px" height="26px" viewBox="0 0 26 26" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
           <defs>
         <path d="M13,0 C5.79090909,0 0,5.79090909 0,13 C0,20.2090909 5.79090909,26 13,26 C20.2090909,26 26,20.2090909 26,13 C26,5.79090909 20.2090909,0 13,0 Z M13,23.6363636 C7.09090909,23.6363636 2.36363636,18.9090909 2.36363636,13 C2.36363636,7.09090909 7.09090909,2.36363636 13,2.36363636 C18.9090909,2.36363636 23.6363636,7.09090909 23.6363636,13 C23.6363636,18.9090909 18.9090909,23.6363636 13,23.6363636 Z M14.1818182,13 L14.1818182,17.7272727 C14.1818182,18.4363636 13.7090909,18.9090909 13,18.9090909 C12.2909091,18.9090909 11.8181818,18.4363636 11.8181818,17.7272727 L11.8181818,13 C11.8181818,12.2909091 12.2909091,11.8181818 13,11.8181818 C13.7090909,11.8181818 14.1818182,12.2909091 14.1818182,13 Z M13.8272727,7.44545455 C14.0636364,7.68181818 14.1818182,7.91818182 14.1818182,8.27272727 C14.1818182,8.62727273 14.0636364,8.86363636 13.8272727,9.1 C13.5909091,9.33636364 13.3545455,9.45454545 13,9.45454545 C12.8818182,9.45454545 12.8818182,9.45454545 12.7636364,9.45454545 C12.6454545,9.45454545 12.6454545,9.45454545 12.5272727,9.33636364 C12.4090909,9.33636364 12.4090909,9.21818182 12.2909091,9.21818182 C12.1727273,9.21818182 12.1727273,9.1 12.1727273,9.1 C11.9363636,8.86363636 11.8181818,8.62727273 11.8181818,8.27272727 C11.8181818,7.91818182 11.9363636,7.68181818 12.1727273,7.44545455 C12.1727273,7.44545455 12.2909091,7.32727273 12.2909091,7.32727273 C12.4090909,7.32727273 12.4090909,7.20909091 12.5272727,7.20909091 C12.6454545,7.20909091 12.6454545,7.20909091 12.7636364,7.09090909 C13.1181818,7.09090909 13.5909091,7.20909091 13.8272727,7.44545455 Z" id="path-issue-3"></path>
@@ -20,7 +19,7 @@ const Card = (data) => {
       </g>
           </svg>
         </div>
-        <div class="icon icon-pr">
+        <div class="cy-icon icon-pr">
           <svg width="28px" height="26px" viewBox="0 0 28 26" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
       <defs>
         <path d="M23.75,15.625 L23.75,8 C23.75,5.875 22.125,4.25 20,4.25 L15.25,4.25 C14.5,4.25 14,4.75 14,5.5 C14,6.25 14.5,6.75 15.25,6.75 L20,6.75 C20.75,6.75 21.25,7.25 21.25,8 L21.25,15.625 C19.125,16.125 17.5,18.125 17.5,20.5 C17.5,23.25 19.75,25.5 22.5,25.5 C25.25,25.5 27.5,23.25 27.5,20.5 C27.5,18.125 25.875,16.25 23.75,15.625 Z M22.5,23 C21.125,23 20,21.875 20,20.5 C20,19.125 21.125,18 22.5,18 C23.875,18 25,19.125 25,20.5 C25,21.875 23.875,23 22.5,23 Z M5.5,0.5 C2.75,0.5 0.5,2.75 0.5,5.5 C0.5,7.875 2.125,9.75 4.25,10.375 L4.25,24.25 C4.25,25 4.75,25.5 5.5,25.5 C6.25,25.5 6.75,25 6.75,24.25 L6.75,10.375 C8.875,9.875 10.5,7.875 10.5,5.5 C10.5,2.75 8.25,0.5 5.5,0.5 Z M5.5,8 C4.125,8 3,6.875 3,5.5 C3,4.125 4.125,3 5.5,3 C6.875,3 8,4.125 8,5.5 C8,6.875 6.875,8 5.5,8 Z" id="path-pr-5"></path>
@@ -47,7 +46,7 @@ const Card = (data) => {
         <div class="b-body-top">
           <div class="id">${data.local_id}</div>
           <div class="icons">
-      <div class="icon icon-comments">
+      <div class="cy-icon icon-comments">
         <svg width="28px" height="25px" viewBox="0 0 28 25" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
           <defs>
             <rect x="0" y="0" width="478" height="255" rx="15"></rect>
@@ -69,7 +68,7 @@ const Card = (data) => {
           </g>
         </svg>
       </div>
-      <div class="icon icon-github">
+      <div class="cy-icon icon-github">
         <svg width="26px" height="25px" viewBox="0 0 26 25" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
           <defs>
             <rect x="0" y="0" width="478" height="255" rx="15"></rect>
@@ -95,7 +94,7 @@ const Card = (data) => {
           </g>
         </svg>
       </div>
-      <div class="icon avatar">
+      <div class="cy-icon avatar">
       </div>
           </div>
         </div>
@@ -113,8 +112,8 @@ const Card = (data) => {
             -->
       </div>
       <div class="b-right">
-        <span class="circle ${data.nb_parents > 0 ? "red" : "green"}">${data.nb_parents}</span>
-        <span class="circle ${data.nb_children > 0 ? "red" : "green"}">${data.nb_children}</span>
+        <span class="circle ${data.nb_parents > 0 ? 'red' : 'green'}">${data.nb_parents}</span>
+        <span class="circle ${data.nb_children > 0 ? 'red' : 'green'}">${data.nb_children}</span>
         <span class="circle grey">${data.nb_related}</span>
       </div>
       <!--
@@ -132,7 +131,6 @@ const Card = (data) => {
           -->
       </div>
     `
-  )
-}
+)
 
-  export default Card;
+export default Card
