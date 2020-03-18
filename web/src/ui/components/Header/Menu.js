@@ -7,42 +7,37 @@ import { fetchDepviz } from '../../../api/depviz'
 
 import './styles.scss'
 
-const Menu = ({ authToken, showAuth = false, handleShowToken }) => {
+const Menu = ({
+  authToken, showAuth = false, handleShowToken, urlParams = {},
+}) => {
   const {
     updateApiData, updateLayout, layout,
   } = useStore()
   const {
     register, getValues, setValue, handleSubmit,
   } = useForm()
-  const searchParams = new URLSearchParams(window.location.search)
-  const urlData = {
-    targets: searchParams.getAll('targets').join(',') || '',
-    withClosed: searchParams.get('withClosed') || '',
-    withoutIsolated: searchParams.get('withoutIsolated') || '',
-    withoutPrs: searchParams.get('withoutPrs') || '',
-    withoutExternalDeps: searchParams.get('withoutExternalDeps') || '',
-    layout: searchParams.get('layout') || '',
-  }
+
+  const urlData = urlParams
 
   useEffect(() => {
     const formValues = getValues()
-    if (formValues.targets) {
+    if (formValues.targets && !urlParams.targets) {
       urlData.targets = formValues.targets.legnth > 1 ? formValues.targets.join(',') : formValues.targets
       setValue('targets', urlData.targets)
     }
-    if (formValues.withClosed) {
+    if (formValues.withClosed && !urlParams.withClosed) {
       urlData.withClosed = formValues.withClosed
     }
-    if (formValues.withoutIsolated) {
+    if (formValues.withoutIsolated && !urlParams.withoutIsolated) {
       urlData.withoutIsolated = formValues.withoutIsolated
     }
-    if (formValues.withoutPrs) {
+    if (formValues.withoutPrs && !urlParams.withoutPrs) {
       urlData.withoutPrs = formValues.withoutPrs
     }
-    if (formValues.withoutExternalDeps) {
+    if (formValues.withoutExternalDeps && !urlParams.withoutExternalDeps) {
       urlData.withoutExternalDeps = formValues.withoutExternalDeps
     }
-    if (formValues.layout) {
+    if (formValues.layout && !urlParams.layout) {
       urlData.layout = formValues.layout
     }
 
@@ -53,7 +48,7 @@ const Menu = ({ authToken, showAuth = false, handleShowToken }) => {
     }
 
     forEachObjIndexed(setFormValue, urlData)
-
+    updateLayout(urlData.layout)
     if (urlData.targets) {
       makeAPICall(urlData)
     }

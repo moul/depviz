@@ -155,8 +155,9 @@ const VisualizerWrapper = () => {
   if (tasks && layout) {
     if (layout.name === 'gantt' || layout.name === 'flow') {
       rendererBlock = <MermaidRenderer nodes={nodes} edges={edges} layout={layout} />
+    } else {
+      rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
     }
-    rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
   }
   return (
     <div className="viz-wrapper card">

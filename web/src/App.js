@@ -8,6 +8,7 @@ import HomePage from './ui/pages/HomePage/HomePage'
 import Menu from './ui/components/Header/Menu'
 import Modal from './ui/components/Modal/Modal'
 import store from './utils/store'
+import computeLayoutConfig from './utils/computeLayoutConfig'
 
 // Import Tabler styles
 import './assets/scss/tabler.scss'
@@ -23,6 +24,15 @@ const App = () => {
 
   const [showAuthModal, setShowAuthModal] = useState(!store.getItem('auth_token'))
   const [authToken, setAuthToken] = useState(store.getItem('auth_token') || '')
+  const searchParams = new URLSearchParams(window.location.search)
+  const urlData = {
+    targets: searchParams.getAll('targets').join(',') || '',
+    withClosed: searchParams.get('withClosed') || '',
+    withoutIsolated: searchParams.get('withoutIsolated') || '',
+    withoutPrs: searchParams.get('withoutPrs') || '',
+    withoutExternalDeps: searchParams.get('withoutExternalDeps') || '',
+    layout: searchParams.get('layout') || '',
+  }
 
   useEffect(() => {
     if (showDebug) {
@@ -56,11 +66,13 @@ const App = () => {
     e.preventDefault()
     setShowAuthModal(false)
   }
+
+
   return (
-    <StoreProvider>
+    <StoreProvider context={{ layout: computeLayoutConfig(urlData.layout) }}>
       <div className="page">
         <div className="flex-fill">
-          <Menu authToken={authToken} handleShowToken={() => setShowAuthModal(true)} />
+          <Menu authToken={authToken} handleShowToken={() => setShowAuthModal(true)} urlParams={urlData} />
           <Router>
             <Switch>
               <Route exact path="/" component={HomePage} />

@@ -32,6 +32,9 @@ const MermaidRenderer = ({ nodes, layout }) => {
     const ganttTasks = []
     nodes.forEach((node) => {
       const item = node.data
+      if (!item.local_id) {
+        return
+      }
       let ganttStr = `${item.title}   `
       // item state
       let status = ''
@@ -81,6 +84,9 @@ const MermaidRenderer = ({ nodes, layout }) => {
     const flowTasks = []
     nodes.forEach((node) => {
       const item = node.data
+      if (!item.local_id) {
+        return
+      }
       const issId = `issue_${item.local_id.replace(repName, '').replace('/', '_')}`
       let flowStr = `${issId}("${issId}")`
       if (item.is_depending_on) {
