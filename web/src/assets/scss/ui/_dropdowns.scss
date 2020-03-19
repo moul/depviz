@@ -75,7 +75,7 @@
     border: 1px solid;
     border-color: inherit;
     z-index: -1;
-    clip: rect(0px, 9px, 9px, 0px);
+    /* clip: rect(0px, 9px, 9px, 0px); */
   }
   &.dropdown-menu-right {
     &:before {
