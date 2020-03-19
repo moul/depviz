@@ -49,20 +49,52 @@ const MermaidRenderer = ({ nodes, layout }) => {
         default:
           break
       }
-      ganttStr += `:${status}, issue_${item.local_id.replace(repName, '').replace('/', '_')}`
+
+      if (!item.is_depending_on) {
+        ganttStr += `:${status}, issue${item.local_id.replace(`${repName}#`, '').replace('/', '_')}`
+      } else {
+        ganttStr += `:issue${item.local_id.replace(`${repName}#`, '').replace('/', '_')}`
+      }
+
       if (item.is_depending_on) {
-        ganttStr += ', after '
+        ganttStr += ', after'
         for (let i = 0; i < item.is_depending_on.length; i++) {
           const urlArr = item.is_depending_on[i].split('/')
           const issId = urlArr[urlArr.length - 1]
-          ganttStr += `issue_${issId.replace('/', '_')} `
+          const issIdStr = `issue${issId.replace('/', '_')}`
+          // Check missing nodes
+          let nodeInStack = false
+          for (let j = 0; j < ganttTasks.length; j++) {
+            const ganttItem = ganttTasks[j]
+            if (ganttItem.includes(issIdStr)) {
+              nodeInStack = true
+              break
+            }
+          }
+
+          if (!nodeInStack || ganttTasks.length === 0) {
+            // Add missing node first
+            ganttTasks.push(`Missing node issue${issId.replace('/', '_')}   :done, issue${issId.replace('/', '_')}, 2019-08-06, 7d`)
+            ganttStr += ` issue${issId.replace('/', '_')}`
+          } else {
+            ganttStr += ` issue${issId.replace('/', '_')}`
+          }
         }
       }
-      const dateStr = item.created_at.split('T')[0]
-      ganttStr += `, ${dateStr}, 7d`
+
+      if (!item.is_depending_on) {
+        const dateStr = item.created_at.split('T')[0]
+        ganttStr += `, ${dateStr}, 7d`
+      } else {
+        ganttStr += ', 7d'
+      }
       ganttTasks.push(ganttStr)
     })
-    ganttTemplate += `${ganttTasks.join('\n\t')}`
+
+    // Remove uplicates
+    const noDupsGanttTasks = [...new Set(ganttTasks)]
+
+    ganttTemplate += `${noDupsGanttTasks.join('\n\t')}`
 
     const ganttStr = ganttTemplate.toString()
     return ganttStr
@@ -87,18 +119,18 @@ const MermaidRenderer = ({ nodes, layout }) => {
       if (!item.local_id) {
         return
       }
-      const issId = `issue_${item.local_id.replace(repName, '').replace('/', '_')}`
+      const issId = `issue${item.local_id.replace(repName, '').replace('/', '_')}`
       let flowStr = `${issId}("${issId}")`
       if (item.is_depending_on) {
         flowStr += ' --> '
         for (let i = 0; i < item.is_depending_on.length - 1; i++) {
           const urlArr = item.is_depending_on[i].split('/')
           const issId = urlArr[urlArr.length - 1]
-          flowStr += `issue_${issId.replace('/', '_')}&`
+          flowStr += `issue${issId.replace('/', '_')}&`
         }
         const urlArr = item.is_depending_on[item.is_depending_on.length - 1].split('/')
         const issId = urlArr[urlArr.length - 1]
-        flowStr += `issue_${issId.replace('/', '_')}(issue_#${issId})`
+        flowStr += `issue${issId.replace('/', '_')}(issue${issId})`
       }
       flowTasks.push(flowStr)
     })

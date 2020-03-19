@@ -1,163 +1,45 @@
-<h1 align="center">
-  <img src="https://raw.githubusercontent.com/moul/depviz/master/assets/depviz.svg?sanitize=true" alt="Depviz" title="Depviz" height="200px">
-  <br>
-</h1>
 
-<h3 align="center">👓 Issue dependency visualizer, a.k.a. "auto-roadmap".</h3>
+# Get Started
 
-[![CircleCI](https://circleci.com/gh/moul/depviz.svg?style=shield)](https://circleci.com/gh/moul/depviz)
-[![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/moul.io/depviz/v3)
-[![License](https://img.shields.io/badge/license-Apache--2.0%20%2F%20MIT-%2397ca00.svg)](https://github.com/moul/depviz/blob/master/COPYRIGHT)
-[![GitHub release](https://img.shields.io/github/release/moul/depviz.svg)](https://github.com/moul/depviz/releases)
-[![Go Report Card](https://goreportcard.com/badge/moul.io/depviz)](https://goreportcard.com/report/moul.io/depviz)
-[![CodeFactor](https://www.codefactor.io/repository/github/moul/depviz/badge)](https://www.codefactor.io/repository/github/moul/depviz)
-[![Docker Metrics](https://images.microbadger.com/badges/image/moul/depviz.svg)](https://microbadger.com/images/moul/depviz)
-[![GolangCI](https://golangci.com/badges/github.com/moul/depviz.svg)](https://golangci.com/r/github.com/moul/depviz)
-[![Made by Manfred Touron](https://img.shields.io/badge/made%20by-Manfred%20Touron-blue.svg?style=flat)](https://manfred.life/)
+Make sure you have Node.js 8+.
 
-<!-- [![codecov](https://codecov.io/gh/moul/depviz/branch/master/graph/badge.svg)](https://codecov.io/gh/moul/depviz) -->
+1. **Run the install script**
 
-## Introduction
-dependency visualizer (auto roadmap)
+    `npm install`
 
-`depviz` aggregates **tasks** from multiple projects and generates visual representations (graphs) of the dependencies.
+2. **Run develop to see it in dev mode**
 
-_inspired by this discussion: [jbenet/random-ideas#37](https://github.com/jbenet/random-ideas/issues/37)_
+    `npm start`
 
-## Philosophy
+    Note: The -s flag is optional. It enables silent mode which suppresses unnecessary messages during the build.
 
-The ultimate goal of this tool is to allow the tech and the non-tech to collaborate seamlessly.
+3. **Run build script to generate final files in /dist folder**
 
-Oftentimes, there are “non-technical project managers” that love tools like Jira and try to define everything, including the delay required.
-Developers, however, mostly hate Jira-like tools and prefer to focus on small tasks with a simple interface, like Trello, github issues, gitlab issues.
+    `npm run build`
 
-The idea of depviz is to:
+    Note: Generates the /dist folder with all the assets to final publish
 
-* link those different tools (aggregate the different sources and find the relationships: find that this exact “Jira user story” belongs to those 5 technical issues on github
-* create various visual ways of displaying this information. Then, we can easily have a copmany that has some non-technical project manager only focusing on user stories and their priorities, and devs that focus on tasks and estimate the tasks by themselves (everyone doing what they are good at)
-* in general, help everyone have the overall vision more clear
+4. **Run local server with final files in /dist folder**
 
-## Demo
+    `npm run open:dist`
 
-https://depviz-demo.moul.io/
+    Note: Init a server with the latest build on localhost
 
-_Limited to the following repos: [moul/depviz](https://github.com/moul/depviz), [moul/depviz-test](https://github.com/moul/depviz-test), [moul-bot/depviz-test](https://github.com/moul-bot/depviz-test)._
-
-## Supported providers
-
-*Depviz* aggregates the entities of multiple providers into 3 generic ones.
 
 ---
 
-Supported providers:
+## Technologies
 
-* GitHub
-  * Task: Issue, Pull Request, Milestone
-  * Owner: TODO
-  * Topic: TODO
-* GitLab: *(planned)*
-* Jira *(planned)*
-* Trello *(planned)*
+| **Tech** | **Description** |**Learn More**|
+|----------|-------|---|
+|  [React](https://facebook.github.io/react/)  |   Fast, composable client-side components.    | [Pluralsight Course](https://www.pluralsight.com/courses/react-flux-building-applications)  |
+|  [React Router](https://github.com/reactjs/react-router) | A complete routing library for React | |
+|  [Babel](http://babeljs.io) |  Compiles ES6 to ES5. Enjoy the new version of JavaScript today.     | [ES6 REPL](https://babeljs.io/repl/), [ES6 vs ES5](http://es6-features.org), [ES6 Katas](http://es6katas.org), [Pluralsight course](https://www.pluralsight.com/courses/javascript-fundamentals-es6)    |
+| [Webpack](https://webpack.js.org) | Bundles npm packages and our JS into a single file. Includes hot reloading via [react-transform-hmr](https://www.npmjs.com/package/react-transform-hmr). | [Quick Webpack How-to](https://github.com/petehunt/webpack-howto) [Pluralsight Course](https://www.pluralsight.com/courses/webpack-fundamentals)|
+| [Browsersync](https://www.browsersync.io/) | Lightweight development HTTP server that supports synchronized testing and debugging on multiple devices. | [Intro vid](https://www.youtube.com/watch?time_continue=1&v=heNWfzc7ufQ)|
+| [Jest](https://facebook.github.io/jest/) | Automated tests with built-in expect assertions and [Enzyme](https://github.com/airbnb/enzyme) for DOM testing without a browser using Node. | [Pluralsight Course](https://www.pluralsight.com/courses/testing-javascript) |
+| [ESLint](http://eslint.org/)| Lint JS. Reports syntax and style issues. Using [eslint-plugin-react](https://github.com/yannickcr/eslint-plugin-react) for additional React specific linting rules. | |
+| [Editor Config](http://editorconfig.org) | Enforce consistent editor settings (spaces vs tabs, etc). | [IDE Plugins](http://editorconfig.org/#download) |
+| [npm Scripts](https://docs.npmjs.com/misc/scripts)| Glues all this together in a handy automated build. | [Pluralsight course](https://www.pluralsight.com/courses/npm-build-tool-introduction), [Why not Gulp?](https://medium.com/@housecor/why-i-left-gulp-and-grunt-for-npm-scripts-3d6853dd22b8#.vtaziro8n)  |
 
-TODO: detailed mapping table
-
-## Under the hood
-
-### Depviz entities
-
-There are 3 entities:
-
-* A `Task` that have a real life cycle: opened->closed
-* An `Owner` which only contains things
-* A `Topic` which allows categorizing/tagging other things
-
-**Examples**:
-
-* a `Milestone` is a `Depviz Task`, because even if it contains other tasks, it also has a clearly defined lifecycle: to be closed when every children tasks are finished.
-* a `Repository` is a `Depviz Owner` because even if you can archive a repository, it's not the normal lifecycle, and will most of the time be unrelated with the amount of tasks done
-
-A `Task` can be considered as something directly actionnable, or indirectly/automatically closable based on a business rule.
-
-**More info here: [./api/dvmodel.proto](./api/dvmodel.proto)**
-
-#### Task
-
-should have:
-
-* a unique `ID`: canonical URL
-* a `LocalID`: human-readable identifier
-* a `Title`: _not necessarily unique_
-* a `Kind`: `Issue`, `Pull Request`, `Milestone`, `Epic`, `Story`, `Card`
-* a `State`: `opened`, `in progress`, or `closed`
-* an `Owner`: _see below_
-* a `Driver`: `GitHub`, `GitLab`, `Jira`, `Trello`
-
-may have:
-
-* other relationships: `Author`, `Milestone`, `Assignees`, `Reviewers`, `Label`, `Dependencies`, `Dependents`, `Related`, `Parts`, `Parents`
-* other metadata: `Description`
-* other states: `Locked`
-* timestamps: `Created`, `Updated`, `Due`, `Completed`
-* metrics: `NumDownvotes`, `NumUpvotes`, `NumComments`
-
-#### Owner
-
-should have:
-
-* a unique `ID`: canonical URL
-* a `LocalID`: human-readable identifier
-* a `Title`: _not necessarily unique_
-* a `Kind`: `User`, `Organization`, `Team`, `Repo`, `Provider`
-* a `Driver`: `GitHub`, `GitLab`, `Jira`, `Trello`
-
-may have:
-
-* an `Owner`
-* other states: `Fork`
-* other metadata: `Homepage`, `Description`, `Avatar`, `Fullname`, `Shortname`
-* timestamps: `Created`, `Updated`
-
-#### Topic
-
-should have:
-
-* a unique `ID`: canonical URL
-* a `LocalID`: human-readable identifier
-* a `Title`: _not necessarily unique_
-* a `Kind`: `Label`
-* a `Driver`: `GitHub`, `GitLab`, `Jira`, `Trello`
-
-may have:
-
-* an `Owner`: _see above_
-* other metadata: `Color`, `Description`
-
-## Install
-
-### Download a release
-
-https://github.com/moul/depviz/releases
-
-### Install With Golang
-
-```
-go get moul.io/depviz/cmd/depviz/v3
-```
-
-### Using brew
-
-```console
-$ brew install moul/moul/depviz
-```
-
-## Usage
-
-TODO
-
-## License
-
-© 2018-2019 [Manfred Touron](https://manfred.life)
-
-Licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0) ([`LICENSE-APACHE`](LICENSE-APACHE)) or the [MIT license](https://opensource.org/licenses/MIT) ([`LICENSE-MIT`](LICENSE-MIT)), at your option. See the [`COPYRIGHT`](COPYRIGHT) file for more details.
-
-`SPDX-License-Identifier: (Apache-2.0 OR MIT)`
+---
