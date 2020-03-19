@@ -1,11 +1,14 @@
 import React, { useEffect } from 'react'
+import Stats from 'stats.js'
 import { useStore } from '../../hooks/useStore'
 import CytoscapeRenderer from './renderers/Cytoscape'
 import MermaidRenderer from './renderers/Mermaid'
 
+const showDebug = true // process.env.NODE_ENV === 'development'
+
 const VisualizerWrapper = () => {
   const {
-    apiData, layout, setDebugInfo,
+    apiData, layout,
   } = useStore()
   const { tasks } = apiData || {}
 
@@ -13,6 +16,26 @@ const VisualizerWrapper = () => {
 
   const nodes = []
   const edges = []
+
+  useEffect(() => {
+    if (showDebug) {
+      const stats = new Stats()
+      stats.showPanel(0) // 0: fps, 1: ms, 2: mb, 3+: custom
+      stats.dom.id = 'debug-info'
+      document.body.appendChild(stats.dom)
+
+      const animate = () => {
+        stats.begin()
+        // monitored code goes here
+
+        stats.end()
+
+        requestAnimationFrame(animate)
+      }
+
+      requestAnimationFrame(animate)
+    }
+  })
 
   if (tasks) {
     tasks.forEach((task) => {
@@ -143,9 +166,9 @@ const VisualizerWrapper = () => {
   }
 
 
-  useEffect(() => {
+  /* useEffect(() => {
     setDebugInfo({ nodes: nodes.length, edges: edges.length })
-  }, [tasks, layout])
+  }, [tasks, layout]) */
 
   let rendererBlock = (
     <div>
@@ -159,9 +182,27 @@ const VisualizerWrapper = () => {
       rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
     }
   }
+
+  const debugInfo = { nodes: nodes.length, edges: edges.length }
   return (
-    <div className="viz-wrapper card">
-      {rendererBlock}
+    <div>
+      <div className="viz-wrapper card">
+        {rendererBlock}
+      </div>
+      {showDebug && (
+      <div className="debug-info">
+        <div>
+          nodes:
+          {' '}
+          {debugInfo.nodes}
+        </div>
+        <div>
+          edges:
+          {' '}
+          {debugInfo.edges}
+        </div>
+      </div>
+      )}
     </div>
   )
 }

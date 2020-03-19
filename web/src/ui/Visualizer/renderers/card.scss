@@ -27,11 +27,6 @@
         width: auto;
     }
 
-    .b-body-top {
-        margin-bottom: 15px;
-        position: relative;
-    }
-
     .b-body-middle {
         margin-bottom: 15px;
     }
@@ -67,6 +62,8 @@
     }
 
     .b-body-top {
+      margin-bottom: 15px;
+      position: relative;
         .icons {
             position: absolute;
             top: 0;

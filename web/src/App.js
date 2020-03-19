@@ -1,9 +1,8 @@
 /* eslint-disable import/no-named-as-default */
 import { Route, Switch, BrowserRouter as Router } from 'react-router-dom'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { hot } from 'react-hot-loader'
-import Stats from 'stats.js'
-import { StoreProvider, useStore } from './hooks/useStore'
+import { StoreProvider } from './hooks/useStore'
 import HomePage from './ui/pages/HomePage/HomePage'
 import Menu from './ui/components/Header/Menu'
 import Modal from './ui/components/Modal/Modal'
@@ -15,13 +14,7 @@ import './assets/scss/tabler.scss'
 
 import './App.scss'
 
-const showDebug = true // process.env.NODE_ENV === 'development'
-
 const App = () => {
-  const {
-    debugInfo,
-  } = useStore()
-
   const [showAuthModal, setShowAuthModal] = useState(!store.getItem('auth_token'))
   const [authToken, setAuthToken] = useState(store.getItem('auth_token') || '')
   const searchParams = new URLSearchParams(window.location.search)
@@ -33,26 +26,6 @@ const App = () => {
     withoutExternalDeps: searchParams.get('withoutExternalDeps') || '',
     layout: searchParams.get('layout') || '',
   }
-
-  useEffect(() => {
-    if (showDebug) {
-      const stats = new Stats()
-      stats.showPanel(0) // 0: fps, 1: ms, 2: mb, 3+: custom
-      stats.dom.id = 'debug-info'
-      document.body.appendChild(stats.dom)
-
-      const animate = () => {
-        stats.begin()
-        // monitored code goes here
-
-        stats.end()
-
-        requestAnimationFrame(animate)
-      }
-
-      requestAnimationFrame(animate)
-    }
-  })
 
   const handleChange = (e) => {
     e.preventDefault()
@@ -88,20 +61,6 @@ const App = () => {
           </div>
         </div>
       </footer> */}
-        {showDebug && (
-        <div className="debug-info">
-          <div>
-            nodes:
-            {' '}
-            {debugInfo.nodes}
-          </div>
-          <div>
-            edges:
-            {' '}
-            {debugInfo.edges}
-          </div>
-        </div>
-        )}
         <Modal
           showModal={showAuthModal}
           id="auth-modal"

@@ -463,12 +463,13 @@
 }
 
 .debug-info {
-  position: absolute;
+  position: fixed;
   bottom: 0.5rem;
   right: 6rem;
   background-color: #edf2fa;
   padding: 0.2rem 1rem;
   border-radius: 0.2rem;
+  font-size: 0.87rem;
   &>div {
     margin: 0;
   }
