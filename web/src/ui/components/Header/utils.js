@@ -6,7 +6,7 @@ export const generateUrl = (data) => {
   // construct url
   let url = '?'
   Object.keys(data).map((key, index) => {
-    if (data[key] && data[key] !== undefined) {
+    if (data[key] !== undefined) {
       if (key === 'targets') {
         url += `${data[key].split(',').map((target) => `targets=${target.trim()}`).join('&')}`
       } else {

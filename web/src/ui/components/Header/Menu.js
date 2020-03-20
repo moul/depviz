@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { forEachObjIndexed } from 'ramda'
+// import { forEachObjIndexed } from 'ramda'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
 import { fetchDepviz } from '../../../api/depviz'
@@ -17,37 +17,15 @@ const Menu = ({
     register, getValues, setValue, handleSubmit,
   } = useForm()
 
-  const urlData = urlParams
+  let urlData = urlParams
 
   useEffect(() => {
-    const formValues = getValues()
-    if (formValues.targets && !urlParams.targets) {
-      urlData.targets = formValues.targets.legnth > 1 ? formValues.targets.join(',') : formValues.targets
-      setValue('targets', urlData.targets)
-    }
-    if (formValues.withClosed && !urlParams.withClosed) {
-      urlData.withClosed = formValues.withClosed
-    }
-    if (formValues.withoutIsolated && !urlParams.withoutIsolated) {
-      urlData.withoutIsolated = formValues.withoutIsolated
-    }
-    if (formValues.withoutPrs && !urlParams.withoutPrs) {
-      urlData.withoutPrs = formValues.withoutPrs
-    }
-    if (formValues.withoutExternalDeps && !urlParams.withoutExternalDeps) {
-      urlData.withoutExternalDeps = formValues.withoutExternalDeps
-    }
-    if (formValues.layout && !urlParams.layout) {
-      urlData.layout = formValues.layout
-    }
-
-    const setFormValue = (value, key) => {
-      if (value) {
-        setValue(key, value)
+    Object.keys(urlData).map((key, index) => {
+      if (urlData[key]) {
+        setValue(key, urlData[key])
       }
-    }
-
-    forEachObjIndexed(setFormValue, urlData)
+    })
+    // forEachObjIndexed(setFormValue, urlData)
     updateLayout(urlData.layout)
     if (urlData.targets) {
       makeAPICall(urlData)
@@ -56,17 +34,9 @@ const Menu = ({
 
 
   const makeAPICall = async (data) => {
-    const {
-      layout,
-      targets,
-    } = data
-
-    // construct url
-    const url = generateUrl(data)
-
-    const response = await fetchDepviz(`/graph${url}`)
-    updateApiData(response.data, layout, targets)
-    updateBrowserHistory(url)
+    const response = await fetchDepviz(`/graph${generateUrl(data)}`)
+    updateApiData(response.data, data.layout, data.targets)
+    // updateBrowserHistory(url)
   }
 
   const onSubmit = () => {
@@ -83,7 +53,16 @@ const Menu = ({
   const handleCheckboxChange = (e) => {
     const data = getValues()
     // makeAPICall(data)
-    updateBrowserHistory(generateUrl(data))
+    urlData = {
+      ...urlData,
+      ...data,
+    }
+    urlData.withoutIsolated = !urlData.withoutIsolated
+    urlData.withoutPrs = !urlData.withoutPrs
+    urlData.withoutExternalDeps = !urlData.withoutExternalDeps
+
+    makeAPICall(urlData)
+    updateBrowserHistory(generateUrl(urlData))
   }
 
   const handleRedraw = () => {
@@ -122,19 +101,19 @@ const Menu = ({
 
 
               <label htmlFor="withoutIsolated" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} defaultChecked type="checkbox" name="withoutIsolated" id="withoutIsolated" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withoutIsolated" id="withoutIsolated" onChange={handleCheckboxChange} className="custom-control-input" />
                 <span className="custom-control-label">Isolated</span>
               </label>
 
 
               <label htmlFor="withoutPrs" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} defaultChecked type="checkbox" name="withoutPrs" id="withoutPrs" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withoutPrs" id="withoutPrs" onChange={handleCheckboxChange} className="custom-control-input" />
                 <span className="custom-control-label">PRs</span>
               </label>
 
 
               <label htmlFor="withoutExternalDeps" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} defaultChecked type="checkbox" name="withoutExternalDeps" id="withoutExternalDeps" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withoutExternalDeps" id="withoutExternalDeps" onChange={handleCheckboxChange} className="custom-control-input" />
                 <span className="custom-control-label">Ext. Deps</span>
               </label>
             </div>

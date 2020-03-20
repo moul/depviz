@@ -4,6 +4,8 @@ import { useStore } from '../../hooks/useStore'
 import CytoscapeRenderer from './renderers/Cytoscape'
 import MermaidRenderer from './renderers/Mermaid'
 
+import ErrorBoundary from '../components/ErrorBoundary/ErrorBoundary'
+
 const showDebug = true // process.env.NODE_ENV === 'development'
 
 const VisualizerWrapper = () => {
@@ -187,7 +189,9 @@ const VisualizerWrapper = () => {
   return (
     <div>
       <div className="viz-wrapper card">
-        {rendererBlock}
+        <ErrorBoundary>
+          {rendererBlock}
+        </ErrorBoundary>
       </div>
       {showDebug && (
       <div className="debug-info">

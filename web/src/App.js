@@ -20,10 +20,10 @@ const App = () => {
   const searchParams = new URLSearchParams(window.location.search)
   const urlData = {
     targets: searchParams.getAll('targets').join(',') || '',
-    withClosed: searchParams.get('withClosed') || '',
-    withoutIsolated: searchParams.get('withoutIsolated') || '',
-    withoutPrs: searchParams.get('withoutPrs') || '',
-    withoutExternalDeps: searchParams.get('withoutExternalDeps') || '',
+    withClosed: searchParams.get('withClosed') === 'true',
+    withoutIsolated: searchParams.get('withoutIsolated') === 'false',
+    withoutPrs: searchParams.get('withoutPrs') === 'false',
+    withoutExternalDeps: searchParams.get('withoutExternalDeps') === 'false',
     layout: searchParams.get('layout') || '',
   }
 

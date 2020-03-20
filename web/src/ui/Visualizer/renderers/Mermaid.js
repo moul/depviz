@@ -111,7 +111,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
         TD - same as TB
   */
   const renderFlowTemplate = (orientation = 'TB') => {
-    let flowTemplate = `graph ${orientation}`
+    let flowTemplate = `graph ${orientation}\n\r`
 
     const flowTasks = []
     nodes.forEach((node) => {
@@ -119,14 +119,31 @@ const MermaidRenderer = ({ nodes, layout }) => {
       if (!item.local_id) {
         return
       }
-      const issId = `issue${item.local_id.replace(repName, '').replace('/', '_')}`
+      const issId = `issue${item.local_id.replace(`${repName}#`, '').replace('/', '_')}`
       let flowStr = `${issId}("${issId}")`
       if (item.is_depending_on) {
         flowStr += ' --> '
         for (let i = 0; i < item.is_depending_on.length - 1; i++) {
           const urlArr = item.is_depending_on[i].split('/')
           const issId = urlArr[urlArr.length - 1]
-          flowStr += `issue${issId.replace('/', '_')}&`
+          const issIdStr = `issue${issId.replace('/', '_')}&`
+          // Check missing nodes
+          let nodeInStack = false
+          for (let j = 0; j < flowTasks.length; j++) {
+            const flowItem = flowTasks[j]
+            if (flowItem.includes(issIdStr)) {
+              nodeInStack = true
+              break
+            }
+          }
+
+          if (!nodeInStack || flowTasks.length === 0) {
+            // Add missing node first
+            flowTasks.push(`issue${issId.replace('/', '_')}(missing issue${issId})\n\rstyle issue${issId.replace('/', '_')} fill:#ddd`)
+            flowStr += `issue${issId.replace('/', '_')}&`
+          } else {
+            flowStr += `issue${issId.replace('/', '_')}&`
+          }
         }
         const urlArr = item.is_depending_on[item.is_depending_on.length - 1].split('/')
         const issId = urlArr[urlArr.length - 1]
@@ -134,7 +151,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
       }
       flowTasks.push(flowStr)
     })
-    flowTemplate += `\t${flowTasks.join('\n\t\t')}`
+    flowTemplate += `\t${flowTasks.join('\n\t')}`
 
 
     /* const ganttTemplate = `graph TD
