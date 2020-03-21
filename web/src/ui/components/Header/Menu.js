@@ -66,8 +66,10 @@ const Menu = ({
   }
 
   const handleRedraw = () => {
-    const cyLayout = window.cy.layout(layout)
-    cyLayout.run()
+    if (window.cy) {
+      const cyLayout = window.cy.layout(layout)
+      cyLayout.run()
+    }
   }
 
   return (

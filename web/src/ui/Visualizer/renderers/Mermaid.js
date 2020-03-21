@@ -5,6 +5,7 @@ import { useStore } from '../../../hooks/useStore'
 const MermaidRenderer = ({ nodes, layout }) => {
   const { repName } = useStore()
   const [mermaidGraph, setMermaidGraph] = useState('Loading diagram...')
+  const [mermaidOrientation, setMermaidOrientation] = useState('TB')
 
   useEffect(() => {
     /* mermaid.initialize({
@@ -20,7 +21,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
     } else if (layout.name === 'flow') {
       mermaidAPI.render('diagram', renderFlowTemplate(), (html) => setMermaidGraph(html))
     }
-  }, [layout.name])
+  }, [layout.name, nodes.length, mermaidOrientation])
 
   const renderGanttTemplate = () => {
     let ganttTemplate = `gantt
@@ -110,8 +111,8 @@ const MermaidRenderer = ({ nodes, layout }) => {
         LR - left right
         TD - same as TB
   */
-  const renderFlowTemplate = (orientation = 'TB') => {
-    let flowTemplate = `graph ${orientation}\n\r`
+  const renderFlowTemplate = () => {
+    let flowTemplate = `graph ${mermaidOrientation}\n\r`
 
     const flowTasks = []
     nodes.forEach((node) => {
@@ -166,7 +167,29 @@ const MermaidRenderer = ({ nodes, layout }) => {
     return flowStr
   }
 
-  return <div className="mermaid-wrapper" dangerouslySetInnerHTML={{ __html: mermaidGraph }} />
+  const handleMermaidOrientation = (orientation) => () => {
+    setMermaidOrientation(orientation)
+  }
+
+  return (
+    <div className="mermaid-wrapper">
+      {layout.name === 'flow' && (
+      <div className="selectgroup mermaid-actions">
+        <div>
+          Flow direction:
+          <div>
+            <button onClick={handleMermaidOrientation('TB')} className={mermaidOrientation === 'TB' ? 'btn btn-primary ml-auto' : 'btn btn-secondary ml-auto'}>TB</button>
+            <button onClick={handleMermaidOrientation('BT')} className={mermaidOrientation === 'BT' ? 'btn btn-primary ml-auto' : 'btn btn-secondary ml-auto'}>BT</button>
+            <button onClick={handleMermaidOrientation('RL')} className={mermaidOrientation === 'RL' ? 'btn btn-primary ml-auto' : 'btn btn-secondary ml-auto'}>RL</button>
+            <button onClick={handleMermaidOrientation('LR')} className={mermaidOrientation === 'LR' ? 'btn btn-primary ml-auto' : 'btn btn-secondary ml-auto'}>LR</button>
+          </div>
+        </div>
+      </div>
+      )}
+      <br />
+      <div className="mermaid-graph" dangerouslySetInnerHTML={{ __html: mermaidGraph }} />
+    </div>
+  )
 }
 
 export default MermaidRenderer

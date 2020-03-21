@@ -1,5 +1,8 @@
-@import '../../../assets/scss/_variables.scss';
-@import '../../../assets/scss/_mixins.scss';
+/* Tabler styls */
+@import '~tabler/scss/_variables.scss';
+@import '~tabler/scss/_mixins.scss';
+/* Custom styles */
+@import '../../../assets/_variables.scss';
 
 .modal-content {
   .close {

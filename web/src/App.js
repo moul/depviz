@@ -2,6 +2,7 @@
 import { Route, Switch, BrowserRouter as Router } from 'react-router-dom'
 import React, { useState } from 'react'
 import { hot } from 'react-hot-loader'
+import { XCircle } from 'react-feather'
 import { StoreProvider } from './hooks/useStore'
 import HomePage from './ui/pages/HomePage/HomePage'
 import Menu from './ui/components/Header/Menu'
@@ -10,7 +11,7 @@ import store from './utils/store'
 import computeLayoutConfig from './utils/computeLayoutConfig'
 
 // Import Tabler styles
-import './assets/scss/tabler.scss'
+import 'tabler/scss/tabler.scss'
 
 import './App.scss'
 
@@ -69,7 +70,7 @@ const App = () => {
           <div className="modal-header">
             <h5 className="modal-title">Enter auth token</h5>
             <button type="button" className="close" data-dismiss="modal" aria-label="Close" onClick={handleClose}>
-              <i className="fe fe-x-circle" />
+              <XCircle />
             </button>
           </div>
           <div className="modal-body">
