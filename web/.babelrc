@@ -1,0 +1,63 @@
+{
+  "env": {
+    "development": {
+      "presets": [
+        "@babel/react",
+        ["@babel/env", {
+          "corejs": 3,
+          "targets": {
+            "node": "current",
+            "browsers": ["last 2 versions"]
+          },
+          "useBuiltIns": "usage"
+        }]
+      ],
+      "plugins": [
+        "@babel/plugin-transform-runtime",
+        "@babel/plugin-syntax-dynamic-import",
+        ["transform-react-remove-prop-types",{ "removeImport": true }],
+        "@babel/plugin-proposal-class-properties",
+        "react-hot-loader/babel"
+      ]
+    },
+    "production": {
+      "presets": [
+        "@babel/react",
+        ["@babel/env", {
+          "corejs": 3,
+          "targets": {
+            "node": "current",
+            "browsers": ["last 2 versions"]
+          },
+          "useBuiltIns": "usage"
+        }]
+      ],
+      "plugins": [
+        "@babel/plugin-transform-runtime",
+        "@babel/plugin-syntax-dynamic-import",
+        ["transform-react-remove-prop-types",{ "removeImport": true }],
+        "@babel/plugin-proposal-class-properties",
+        "@babel/plugin-transform-react-constant-elements",
+      ]
+    },
+    "test": {
+      "presets": [
+        "@babel/react",
+        ["@babel/env", {
+          "corejs": 3,
+          "targets": {
+            "node": "current",
+            "browsers": ["last 2 versions"]
+          },
+          "useBuiltIns": "usage"
+        }]
+      ],
+      "plugins": [
+        "@babel/plugin-transform-runtime",
+        "@babel/plugin-syntax-dynamic-import",
+        ["transform-react-remove-prop-types",{ "removeImport": true }],
+        "@babel/plugin-proposal-class-properties"
+      ]
+    }
+  }
+}

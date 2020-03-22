@@ -1,14 +1,13 @@
-export const computeLayoutConfig = (layout) => {
-  let layoutConfig;
-
+const computeLayoutConfig = (layout) => {
+  let layoutConfig = {}
   switch (layout) {
-    case "circle":
+    case 'circle':
       layoutConfig = {
         name: 'circle',
         avoidOverlap: true,
       }
-      break;
-    case "cose":
+      break
+    case 'cose':
       layoutConfig = {
         name: 'cose',
         animate: false,
@@ -20,29 +19,29 @@ export const computeLayoutConfig = (layout) => {
         numIter: 2000,
         coolingFactor: 0.2,
       }
-      break;
-    case "breadthfirst":
+      break
+    case 'breadthfirst':
       layoutConfig = {
         name: 'breadthfirst',
       }
-      break;
-    case "concentric":
+      break
+    case 'concentric':
       layoutConfig = {
         name: 'concentric',
       }
-      break;
-    case "grid":
+      break
+    case 'grid':
       layoutConfig = {
         name: 'grid',
         condense: true,
       }
-      break;
-    case "random":
+      break
+    case 'random':
       layoutConfig = {
         name: 'random',
       }
-      break;
-    case "cola":
+      break
+    case 'cola':
       layoutConfig = {
         name: 'cola',
         animate: false,
@@ -50,20 +49,32 @@ export const computeLayoutConfig = (layout) => {
         padding: 30,
         maxSimulationTime: 100,
       }
-      break;
-    case "elk":
+      break
+    case 'elk':
       layoutConfig = {
         name: 'elk',
         elk: {
-          'zoomToFit': true,
-          'algorithm': 'mrtree',
-          'separateConnectedComponents': false
+          zoomToFit: true,
+          algorithm: 'mrtree',
+          separateConnectedComponents: false,
         },
       }
-      break;
+      break
+    case 'gantt':
+      layoutConfig = {
+        name: 'gantt',
+      }
+      break
+    case 'flow':
+      layoutConfig = {
+        name: 'flow',
+      }
+      break
     default:
-      break;
+      break
   }
 
-  return layoutConfig;
+  return layoutConfig
 }
+
+export default computeLayoutConfig

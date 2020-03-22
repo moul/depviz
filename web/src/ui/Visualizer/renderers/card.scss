@@ -1,0 +1,186 @@
+/* Cards */
+.cy-card {
+    display: block;
+    position: relative;
+    width: 500px;
+    height: 255px;
+    color: #383B62;
+    background-color: #FFF;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px 2px rgba(56,59,98,0.15);
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 600;
+
+    .b-left {
+        width: 46px;
+        height: 100%;
+        float: left;
+        border-radius: 15px 0 0 15px;
+
+        .cy-icon {
+            margin: 25px 10px;
+        }
+    }
+
+    .b-body {
+        padding: 22px 22px 22px 65px;
+        width: auto;
+    }
+
+    .b-body-middle {
+        margin-bottom: 15px;
+    }
+
+    .b-body-bottom {
+        margin-bottom: 10px;
+    }
+
+    .b-right {
+        position: absolute;
+        bottom: 25px;
+        right: -16px;
+    }
+
+    .id {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.8;
+    }
+
+    .title {
+        font-size: 18px;
+        line-height: 25px;
+        height: 105px;
+        width: 405px;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 4;
+        -webkit-box-orient: vertical;
+        -moz-box-orient: vertical;
+        -ms-box-orient: vertical;
+        -o-box-orient: vertical;
+    }
+
+    .b-body-top {
+      margin-bottom: 15px;
+      position: relative;
+        .icons {
+            position: absolute;
+            top: 0;
+            right: 0;
+
+            .cy-icon {
+                display: inline-block;
+                margin-left: 10px;
+
+                &.avatar {
+                    background-color: #DFE0EB;
+                    border-radius: 4px;
+                    height: 26px;
+                    width: 26px;
+                }
+            }
+        }
+    }
+
+    .b-progress {
+        position: absolute;
+        bottom: 15px;
+    }
+
+    .b-progress-left {
+        width: 46px;
+        color: #FFF;
+        text-align: center;
+        position: absolute;
+        bottom: -5px;
+    }
+
+    .b-progress-right {
+        width: 410px;
+        margin-left: 65px;
+    }
+
+    .bar {
+        height: 10px;
+        border-radius: 15px;
+    }
+
+    .bar-bg {
+        background-color: #CEF6EF;
+    }
+
+    .bar-progress {
+        background-color: #20D6B5;
+    }
+
+    &.in-progress .b-left {
+        background-color: #FFAE3A;
+    }
+
+    &.open .b-left {
+        background-color: #20D6B5;
+    }
+
+    &.closed .b-left {
+        background-color: #DFE0EB;
+    }
+
+    &.issue .b-left .icon-pr {
+        display: none;
+    }
+
+    &.pr .b-left .icon-issue {
+        display: none;
+    }
+
+    .tag {
+        display: inline-block;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 15px;
+        letter-spacing: 0.2px;
+        text-transform: uppercase;
+        margin-right: 5px;
+
+        &.red {
+            color: #F74868;
+            background-color: #FEE4E9;
+        }
+
+        &.yellow {
+            color: #FFAE3A;
+            background-color: #FFF0D4;
+        }
+
+        &.blue {
+            color: #3F49EA;
+            background-color: #E2E4FC;
+        }
+    }
+
+    .circle {
+        font-weight: 700;
+        font-size: 16px;
+        color: #FFFFFF;
+        text-align: center;
+        height: 32px;
+        width: 32px;
+        display: block;
+        border-radius: 50%;
+        margin: 10px 0;
+        line-height: 32px;
+
+        &.green {
+            background-color: #20D6B5;
+        }
+
+        &.red {
+            background-color: #F74868;
+        }
+
+        &.grey {
+            background-color: #DFE0EB;
+        }
+    }
+}
