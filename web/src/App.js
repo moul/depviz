@@ -16,7 +16,7 @@ import 'tabler/scss/tabler.scss'
 import './App.scss'
 
 const App = () => {
-  const [showAuthModal, setShowAuthModal] = useState(!store.getItem('auth_token'))
+  const [showAuthModal, setShowAuthModal] = useState(false) // !store.getItem('auth_token'))
   const [authToken, setAuthToken] = useState(store.getItem('auth_token') || '')
   const searchParams = new URLSearchParams(window.location.search)
   const urlData = {

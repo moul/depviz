@@ -25,7 +25,7 @@ const storageFactory = (storage) => {
     if (isSupported()) {
       return storage.getItem(name)
     }
-    if (inMemoryStorage.hasOwnProperty(name)) {
+    if (Object.prototype.hasOwnProperty.call(inMemoryStorage, name)) {
       return inMemoryStorage[name]
     }
     return null

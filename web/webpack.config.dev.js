@@ -1,3 +1,4 @@
+/* eslint-disable global-require */
 import webpack from 'webpack'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
 import path from 'path'
@@ -14,7 +15,7 @@ export default {
   devtool: 'cheap-module-eval-source-map', // more info:https://webpack.js.org/guides/development/#using-source-maps and https://webpack.js.org/configuration/devtool/
   entry: [
     // must be first entry to properly set public path
-    './src/webpack-public-path',
+    './webpack-public-path',
     'react-hot-loader/patch',
     'webpack-hot-middleware/client?reload=true',
     path.resolve(__dirname, 'src/index.js'), // Defining path seems necessary for this to work consistently on Windows machines.
@@ -40,6 +41,7 @@ export default {
         collapseWhitespace: true,
       },
       inject: true,
+      scriptLoading: 'defer',
     }),
   ],
   module: {
