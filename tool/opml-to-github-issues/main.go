@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/gilliek/go-opml/opml"
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v30/github"
 	"golang.org/x/oauth2"
 )
 
