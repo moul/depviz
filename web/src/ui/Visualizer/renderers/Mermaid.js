@@ -59,13 +59,13 @@ const MermaidRenderer = ({ nodes, layout }) => {
 
       if (item.is_depending_on) {
         ganttStr += ', after'
-        for (let i = 0; i < item.is_depending_on.length; i++) {
+        for (let i = 0; i < item.is_depending_on.length; i += 1) {
           const urlArr = item.is_depending_on[i].split('/')
           const issId = urlArr[urlArr.length - 1]
           const issIdStr = `issue${issId.replace('/', '_')}`
           // Check missing nodes
           let nodeInStack = false
-          for (let j = 0; j < ganttTasks.length; j++) {
+          for (let j = 0; j < ganttTasks.length; j += 1) {
             const ganttItem = ganttTasks[j]
             if (ganttItem.includes(issIdStr)) {
               nodeInStack = true
@@ -124,13 +124,13 @@ const MermaidRenderer = ({ nodes, layout }) => {
       let flowStr = `${issId}("${issId}")`
       if (item.is_depending_on) {
         flowStr += ' --> '
-        for (let i = 0; i < item.is_depending_on.length - 1; i++) {
+        for (let i = 0; i < item.is_depending_on.length - 1; i += 1) {
           const urlArr = item.is_depending_on[i].split('/')
           const issId = urlArr[urlArr.length - 1]
           const issIdStr = `issue${issId.replace('/', '_')}&`
           // Check missing nodes
           let nodeInStack = false
-          for (let j = 0; j < flowTasks.length; j++) {
+          for (let j = 0; j < flowTasks.length; j += 1) {
             const flowItem = flowTasks[j]
             if (flowItem.includes(issIdStr)) {
               nodeInStack = true

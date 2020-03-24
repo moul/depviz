@@ -5,7 +5,7 @@ export const updateBrowserHistory = (url) => {
 export const generateUrl = (data) => {
   // construct url
   let url = '?'
-  Object.keys(data).map((key, index) => {
+  Object.keys(data).map((key) => {
     if (data[key] !== undefined) {
       if (key === 'targets') {
         url += `${data[key].split(',').map((target) => `targets=${target.trim()}`).join('&')}`

@@ -16,7 +16,7 @@ class ErrorBoundary extends React.Component {
       this.setState({
         showError: true,
         errMessage: error.toString(),
-        errStack: info.componentStack.split('\n').map((i) => <p>{i}</p>),
+        errStack: info.componentStack.split('\n').map((i) => <p key={i}>{i}</p>),
       })
     }
     console.log('error: ', error)
@@ -25,6 +25,7 @@ class ErrorBoundary extends React.Component {
 
   render() {
     const { showError, errMessage, errStack } = this.state
+    const { children } = this.props
     if (showError) {
       return (
         <div className="error-stack">
@@ -37,7 +38,7 @@ class ErrorBoundary extends React.Component {
         </div>
       )
     }
-    return this.props.children
+    return children
   }
 }
 

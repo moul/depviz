@@ -1,5 +1,5 @@
-import { baseApi } from './index'
+import baseApi from './index'
 
-export function fetchDepviz(url, params) {
-  return baseApi.get(`${url}`, params)
-}
+const fetchDepviz = (url, params) => baseApi.get(`${url}`, params)
+
+export default fetchDepviz

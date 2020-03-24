@@ -3,7 +3,9 @@ import React from 'react'
 import './styles.scss'
 
 const Modal = ({
-  id, size, title = 'Modal title', children,
+  id,
+  size,
+  children,
   handleClose,
   showModal,
 }) => (

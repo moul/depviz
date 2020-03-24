@@ -3,12 +3,12 @@ import { useForm } from 'react-hook-form'
 // import { forEachObjIndexed } from 'ramda'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
-import { fetchDepviz } from '../../../api/depviz'
+import fetchDepviz from '../../../api/depviz'
 
 import './styles.scss'
 
 const Menu = ({
-  authToken, showAuth = false, handleShowToken, urlParams = {},
+  authToken, handleShowToken, urlParams = {},
 }) => {
   const {
     updateApiData, updateLayout, layout,
@@ -20,7 +20,7 @@ const Menu = ({
   let urlData = urlParams
 
   useEffect(() => {
-    Object.keys(urlData).map((key, index) => {
+    Object.keys(urlData).map((key) => {
       if (urlData[key]) {
         setValue(key, urlData[key])
       }
@@ -50,7 +50,7 @@ const Menu = ({
     updateBrowserHistory(generateUrl(data))
   }
 
-  const handleCheckboxChange = (e) => {
+  const handleCheckboxChange = () => {
     const data = getValues()
     // makeAPICall(data)
     urlData = {
@@ -87,9 +87,9 @@ const Menu = ({
                   </div>
                 </div>
               </label>
-              <a onClick={handleShowToken} className="btn">
+              <button onClick={handleShowToken} className="btn">
                 {authToken ? 'Change token' : '+ Add token'}
-              </a>
+              </button>
             </div>
 
           </div>
@@ -123,7 +123,7 @@ const Menu = ({
             <div className="form-group layout-select">
               <label htmlFor="layout">
                 <span className="custom-control">Layout:</span>
-                <select ref={register} name="layout" id="layout" onChange={handleLayoutChange} className="form-control custom-select selectized">
+                <select ref={register} name="layout" id="layout" onBlur={handleLayoutChange} className="form-control custom-select selectized">
                   <option value="circle">circle</option>
                   <option value="cose">cose</option>
                   <option value="breadthfirst">breadthfirst</option>
