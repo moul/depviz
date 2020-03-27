@@ -122,14 +122,14 @@ const MermaidRenderer = ({ nodes, layout }) => {
     let flowTemplate = `graph ${mermaidOrientation}\n\r`
 
     const flowTasks = []
-    const flowClickNode = (e) => {
+    /* const flowClickNode = (e) => {
       const node = e.target
       try { // your browser may block popups
         window.open(node.id())
       } catch (e) { // fall back on url change
         window.location.href = node.id()
       }
-    }
+    } */
     nodes.forEach((node) => {
       const item = node.data
       if (!item.local_id) {
