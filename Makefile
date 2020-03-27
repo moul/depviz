@@ -4,6 +4,9 @@ GOBINS =	./cmd/depviz
 #GOBINS += ./tools/sed-i-github-issues
 DOCKER_IMAGE ?=	moul/depviz
 
+# tmp fix for go>=1.14 and bolt: see https://github.com/etcd-io/bbolt/issues/187
+GO_TEST_OPTS ?= -test.timeout=60s -gcflags=all=-d=checkptr=0
+
 PRE_INSTALL_STEPS += generate
 PRE_TEST_STEPS += generate
 PRE_BUILD_STEPS += generate

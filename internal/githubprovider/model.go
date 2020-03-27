@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cayleygraph/quad"
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v30/github"
 	"go.uber.org/zap"
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/depviz/v3/internal/dvparser"
@@ -106,7 +106,7 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 
 	// labels
 	for _, label := range input.Labels {
-		label, err := fromLabel(batch, &label)
+		label, err := fromLabel(batch, label)
 		if err != nil {
 			return fmt.Errorf("from label: %w", err)
 		}

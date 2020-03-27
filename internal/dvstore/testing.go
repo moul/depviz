@@ -18,6 +18,7 @@ import (
 	_ "github.com/cayleygraph/quad/nquads"  // required by cayley
 	_ "github.com/cayleygraph/quad/pquads"  // required by cayley
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const GoldenFormat = "pquads"
@@ -64,19 +65,13 @@ func TestingStore(t *testing.T) (*cayley.Handle, func()) {
 	t.Helper()
 
 	dir, err := ioutil.TempDir("", "depviz")
-	if !assert.NoError(t, err) {
-		t.Fatal("create temp dir")
-	}
+	require.NoError(t, err)
 
 	err = graph.InitQuadStore("bolt", dir, nil)
-	if !assert.NoError(t, err) {
-		t.Fatal("init quadstore")
-	}
+	require.NoError(t, err)
 
 	store, err := cayley.NewGraph("bolt", dir, nil)
-	if !assert.NoError(t, err) {
-		t.Fatal("init cayley")
-	}
+	require.NoError(t, err)
 
 	closeFunc := func() {
 		if store != nil {
