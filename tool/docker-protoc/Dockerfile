@@ -1,6 +1,6 @@
 FROM    moul/protoc-gen-gotemplate:latest as pgg
 
-FROM    golang:1.13-alpine as builder
+FROM golang:1.14-alpine as builder
 RUN     apk --no-cache add make git go rsync libc-dev openssh docker
 RUN     go get -u \
           github.com/gogo/protobuf/protoc-gen-gogofaster \
@@ -8,7 +8,7 @@ RUN     go get -u \
           github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger \
           github.com/simplealpine/json2yaml
 
-FROM    golang:1.13-alpine
+FROM golang:1.14-alpine
 RUN     apk --no-cache add git make protobuf gcc libc-dev npm perl-utils \
  &&     mkdir -p /.cache/go-build \
  &&     chmod -R 777 /.cache \
