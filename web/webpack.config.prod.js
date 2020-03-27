@@ -1,3 +1,4 @@
+/* eslint-disable global-require */
 // For info about this file refer to webpack and webpack-hot-middleware documentation
 // For info on how we're generating bundles with hashed filenames for cache busting: https://medium.com/@okonetchnikov/long-term-caching-of-static-assets-with-webpack-1ecb139adb95#.w99i89nsz
 // import webpack from 'webpack';
@@ -49,6 +50,7 @@ export default {
         minifyURLs: true,
       },
       inject: true,
+      scriptLoading: 'defer',
     }),
 
   ],

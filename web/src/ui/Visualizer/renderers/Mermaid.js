@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react'
-import { mermaidAPI } from 'mermaid'
+import mermaid, { mermaidAPI } from 'mermaid'
 import { useStore } from '../../../hooks/useStore'
+
+import './styles.scss'
 
 const MermaidRenderer = ({ nodes, layout }) => {
   const { repName } = useStore()
   const [mermaidGraph, setMermaidGraph] = useState('Loading diagram...')
   const [mermaidOrientation, setMermaidOrientation] = useState('TB')
+  const [graphInfo, setGraphInfo] = useState('')
 
   useEffect(() => {
-    /* mermaid.initialize({
+    mermaid.initialize({
       securityLevel: 'loose',
-       startOnLoad: true,
-       flowchart: {
-          useMaxWidth: false,
-          htmlLabels: true
-      }
-    }) */
+      startOnLoad: true,
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'cardinal',
+      },
+    })
+  })
+
+  useEffect(() => {
     if (layout.name === 'gantt') {
       mermaidAPI.render('gantt', renderGanttTemplate(), (html) => setMermaidGraph(html))
     } else if (layout.name === 'flow') {
@@ -59,13 +66,13 @@ const MermaidRenderer = ({ nodes, layout }) => {
 
       if (item.is_depending_on) {
         ganttStr += ', after'
-        for (let i = 0; i < item.is_depending_on.length; i++) {
+        for (let i = 0; i < item.is_depending_on.length; i += 1) {
           const urlArr = item.is_depending_on[i].split('/')
           const issId = urlArr[urlArr.length - 1]
           const issIdStr = `issue${issId.replace('/', '_')}`
           // Check missing nodes
           let nodeInStack = false
-          for (let j = 0; j < ganttTasks.length; j++) {
+          for (let j = 0; j < ganttTasks.length; j += 1) {
             const ganttItem = ganttTasks[j]
             if (ganttItem.includes(issIdStr)) {
               nodeInStack = true
@@ -115,22 +122,30 @@ const MermaidRenderer = ({ nodes, layout }) => {
     let flowTemplate = `graph ${mermaidOrientation}\n\r`
 
     const flowTasks = []
+    /* const flowClickNode = (e) => {
+      const node = e.target
+      try { // your browser may block popups
+        window.open(node.id())
+      } catch (e) { // fall back on url change
+        window.location.href = node.id()
+      }
+    } */
     nodes.forEach((node) => {
       const item = node.data
       if (!item.local_id) {
         return
       }
       const issId = `issue${item.local_id.replace(`${repName}#`, '').replace('/', '_')}`
-      let flowStr = `${issId}("${issId}")`
+      let flowStr = `${issId}("${issId}"):::cy-card`
       if (item.is_depending_on) {
         flowStr += ' --> '
-        for (let i = 0; i < item.is_depending_on.length - 1; i++) {
+        for (let i = 0; i < item.is_depending_on.length - 1; i += 1) {
           const urlArr = item.is_depending_on[i].split('/')
           const issId = urlArr[urlArr.length - 1]
           const issIdStr = `issue${issId.replace('/', '_')}&`
           // Check missing nodes
           let nodeInStack = false
-          for (let j = 0; j < flowTasks.length; j++) {
+          for (let j = 0; j < flowTasks.length; j += 1) {
             const flowItem = flowTasks[j]
             if (flowItem.includes(issIdStr)) {
               nodeInStack = true
@@ -140,7 +155,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
 
           if (!nodeInStack || flowTasks.length === 0) {
             // Add missing node first
-            flowTasks.push(`issue${issId.replace('/', '_')}(missing issue${issId})\n\rstyle issue${issId.replace('/', '_')} fill:#ddd`)
+            flowTasks.push(`issue${issId.replace('/', '_')}(missing issue${issId}):::closed\n\rstyle issue${issId.replace('/', '_')} fill:#ddd`)
             flowStr += `issue${issId.replace('/', '_')}&`
           } else {
             flowStr += `issue${issId.replace('/', '_')}&`
@@ -149,6 +164,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
         const urlArr = item.is_depending_on[item.is_depending_on.length - 1].split('/')
         const issId = urlArr[urlArr.length - 1]
         flowStr += `issue${issId.replace('/', '_')}(issue${issId})`
+        flowStr += `\n\r\tclick issue${issId.replace('/', '_')} flowClickNode "Open link"`
       }
       flowTasks.push(flowStr)
     })
@@ -164,6 +180,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
     ` */
 
     const flowStr = flowTemplate.toString()
+    setGraphInfo(flowStr)
     return flowStr
   }
 
@@ -187,7 +204,13 @@ const MermaidRenderer = ({ nodes, layout }) => {
       </div>
       )}
       <br />
-      <div className="mermaid-graph" dangerouslySetInnerHTML={{ __html: mermaidGraph }} />
+      <div className="mermaid-graph-wrapper">
+        <div className="mermaid-graph" dangerouslySetInnerHTML={{ __html: mermaidGraph }} />
+      </div>
+      <div className="mermaid-graph-info">
+        <h3>Graph layout (for debug)</h3>
+        {graphInfo.split('\n').map((node, index) => <p key={index} dangerouslySetInnerHTML={{ __html: node.replace(/\\t/gi, '&nbsp;').replace(/\s/gi, '&nbsp;') }} />)}
+      </div>
     </div>
   )
 }

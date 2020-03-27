@@ -70,8 +70,9 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
     }
 
     nodes.forEach((node) => {
-      node.group = 'nodes'
-      config.elements.push(node)
+      const newNode = node
+      newNode.group = 'nodes'
+      config.elements.push(newNode)
     })
 
     const cy = cytoscape(config)
@@ -105,26 +106,27 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
     const edgeMap = {}
     cy.batch(() => {
       edges.forEach((edge) => {
+        const newEdge = edge
         let isOk = true
-        if (cy.getElementById(edge.data.source).empty()) {
-          console.warn('missing node', edge.data.source)
+        if (cy.getElementById(newEdge.data.source).empty()) {
+          console.warn('missing node', newEdge.data.source)
           isOk = false
         }
-        if (cy.getElementById(edge.data.target).empty()) {
-          console.warn('missing node', edge.data.target)
+        if (cy.getElementById(newEdge.data.target).empty()) {
+          console.warn('missing node', newEdge.data.target)
           isOk = false
         }
         if (!isOk) {
           return
         }
-        edge.group = 'edges'
-        edge.data.id = edge.data.relation + edge.data.source + edge.data.target
-        edge.data.arrow = 'triangle'
-        if (edge.data.id in edgeMap) {
-          console.warn('duplicate edge', edge)
+        newEdge.group = 'edges'
+        newEdge.data.id = newEdge.data.relation + newEdge.data.source + newEdge.data.target
+        newEdge.data.arrow = 'triangle'
+        if (newEdge.data.id in edgeMap) {
+          console.warn('duplicate edge', newEdge)
         } else {
-          edgeMap[edge.data.id] = edge
-          cy.add(edge)
+          edgeMap[newEdge.data.id] = newEdge
+          cy.add(newEdge)
         }
       })
     })
