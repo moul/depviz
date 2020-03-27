@@ -17,8 +17,7 @@ import (
 	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
 	"github.com/cayleygraph/cayley/schema"
 	"github.com/oklog/run"
-	"github.com/peterbourgon/ff"
-	"github.com/peterbourgon/ff/ffcli"
+	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"moul.io/depviz/v3/internal/dvcore"
@@ -88,26 +87,23 @@ func main() {
 	}()
 
 	root := &ffcli.Command{
-		Usage:    "depviz [global flags] <subcommand> [flags] [args...]",
-		FlagSet:  globalFlags,
-		Options:  []ff.Option{ff.WithEnvVarNoPrefix()},
-		LongHelp: "More info here: https://moul.io/depviz",
+		ShortUsage: "depviz [global flags] <subcommand> [flags] [args...]",
+		FlagSet:    globalFlags,
+		LongHelp:   "More info here: https://moul.io/depviz",
 		Subcommands: []*ffcli.Command{
 			{
-				Name:      "airtable",
-				ShortHelp: "manage airtable sync",
-				Usage:     "airtable [flags] <subcommand>",
-				FlagSet:   airtableFlags,
-				Options:   []ff.Option{ff.WithEnvVarNoPrefix()},
+				Name:       "airtable",
+				ShortHelp:  "manage airtable sync",
+				ShortUsage: "airtable [flags] <subcommand>",
+				FlagSet:    airtableFlags,
 				Subcommands: []*ffcli.Command{
 					{Name: "info", Exec: execAirtableInfo, ShortHelp: "get metrics"},
 					{Name: "sync", Exec: execAirtableSync, ShortHelp: "sync store with Airtable"},
 				},
-				Exec: func([]string) error { return flag.ErrHelp },
+				Exec: func(context.Context, []string) error { return flag.ErrHelp },
 			}, {
 				Name:      "store",
 				ShortHelp: "manage the data store",
-				Options:   []ff.Option{ff.WithEnvVarNoPrefix()},
 				Subcommands: []*ffcli.Command{
 					{Name: "dump-quads", Exec: execStoreDumpQuads},
 					{Name: "dump-json", Exec: execStoreDumpJSON},
@@ -115,26 +111,24 @@ func main() {
 					// restore-quads
 					// restore-json
 				},
-				Exec: func([]string) error { return flag.ErrHelp },
+				Exec: func(context.Context, []string) error { return flag.ErrHelp },
 			}, {
-				Name:      "run",
-				ShortHelp: "sync target urls and draw a graph",
-				Usage:     "run [flags] [url...]",
-				Exec:      execRun,
-				FlagSet:   runFlags,
-				Options:   []ff.Option{ff.WithEnvVarNoPrefix()},
+				Name:       "run",
+				ShortHelp:  "sync target urls and draw a graph",
+				ShortUsage: "run [flags] [url...]",
+				Exec:       execRun,
+				FlagSet:    runFlags,
 			}, {
 				Name:      "server",
 				ShortHelp: "start a depviz server with depviz API",
 				FlagSet:   serverFlags,
-				Options:   []ff.Option{ff.WithEnvVarNoPrefix()},
 				Exec:      execServer,
 			},
 		},
-		Exec: func([]string) error { return flag.ErrHelp },
+		Exec: func(context.Context, []string) error { return flag.ErrHelp },
 	}
 
-	if err := root.Run(os.Args[1:]); err != nil {
+	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return
 		}
@@ -169,7 +163,7 @@ func globalPreRun() error {
 	return nil
 }
 
-func execAirtableSync(args []string) error {
+func execAirtableSync(ctx context.Context, args []string) error {
 	if err := globalPreRun(); err != nil {
 		return err
 	}
@@ -190,7 +184,7 @@ func execAirtableSync(args []string) error {
 	return dvcore.AirtableSync(store, opts)
 }
 
-func execAirtableInfo(args []string) error {
+func execAirtableInfo(ctx context.Context, args []string) error {
 	if err := globalPreRun(); err != nil {
 		return err
 	}
@@ -206,7 +200,7 @@ func execAirtableInfo(args []string) error {
 	return dvcore.AirtableInfo(opts)
 }
 
-func execStoreDumpQuads(args []string) error {
+func execStoreDumpQuads(ctx context.Context, args []string) error {
 	if err := globalPreRun(); err != nil {
 		return err
 	}
@@ -219,7 +213,7 @@ func execStoreDumpQuads(args []string) error {
 	return dvcore.StoreDumpQuads(store)
 }
 
-func execStoreDumpJSON(args []string) error {
+func execStoreDumpJSON(ctx context.Context, args []string) error {
 	if err := globalPreRun(); err != nil {
 		return err
 	}
@@ -229,7 +223,6 @@ func execStoreDumpJSON(args []string) error {
 		return fmt.Errorf("init store: %w", err)
 	}
 
-	ctx := context.Background()
 	batch, err := dvcore.GetStoreDump(ctx, store, schemaConfig)
 	if err != nil {
 		return fmt.Errorf("get store dump: %w", err)
@@ -239,7 +232,7 @@ func execStoreDumpJSON(args []string) error {
 	return nil
 }
 
-func execStoreInfo(args []string) error {
+func execStoreInfo(ctx context.Context, args []string) error {
 	if err := globalPreRun(); err != nil {
 		return err
 	}
@@ -252,7 +245,7 @@ func execStoreInfo(args []string) error {
 	return dvcore.StoreInfo(store)
 }
 
-func execRun(args []string) error {
+func execRun(ctx context.Context, args []string) error {
 	if err := globalPreRun(); err != nil {
 		return err
 	}
@@ -281,13 +274,12 @@ func execRun(args []string) error {
 	return dvcore.Run(store, args, opts)
 }
 
-func execServer(args []string) error {
+func execServer(ctx context.Context, args []string) error {
 	if err := globalPreRun(); err != nil {
 		return err
 	}
 
 	var (
-		ctx = context.Background()
 		g   run.Group
 		svc dvserver.Service
 	)

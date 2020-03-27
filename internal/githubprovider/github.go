@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v30/github"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"moul.io/depviz/v3/internal/dvmodel"

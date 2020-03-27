@@ -37,6 +37,13 @@ The idea of depviz is to:
 * create various visual ways of displaying this information. Then, we can easily have a copmany that has some non-technical project manager only focusing on user stories and their priorities, and devs that focus on tasks and estimate the tasks by themselves (everyone doing what they are good at)
 * in general, help everyone have the overall vision more clear
 
+## Target
+
+* Graphs are “fun” but not very useful yet, a good dependency tool would be like graphviz. The current depviz version makes the graph in something that is more “weight-based”, because nodes will be groupes to make the graph fit the screen. Graphviz is not focused on making things beautiful, but focused on being 100% clear on the dependency. We need a good graph driver that supports this kind of graph.
+* Having options for multiple layouts/graphs.
+* Implementing the [PERT method](https://en.wikipedia.org/wiki/Program_evaluation_and_review_technique) and adding more fields in depviz: due date, difficulty, etc, in order to create graphs for “finding the shortest path”, for example.
+* Improving the UI to improve collaboration (sharing a URL, etc).
+
 ## Demo
 
 https://depviz-demo.moul.io/
