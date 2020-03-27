@@ -5,6 +5,20 @@
   width: 100%;
   height: 80vh;
   margin-top: 1rem;
-  overflow: hidden;
-  overflow-x: auto;
+}
+
+/* mermaid styles */
+.mermaid-wrapper {
+  .mermaid-graph-wrapper {
+    overflow: hidden;
+    overflow-x: auto;
+  }
+  .mermaid-graph-info {
+    background-color: #d0d3f7;
+    padding: 1rem;
+    margin-top: 4rem;
+    p {
+      margin: 0;
+    }
+  }
 }
