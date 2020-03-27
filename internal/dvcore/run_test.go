@@ -23,7 +23,6 @@ func TestPullAndSave(t *testing.T) {
 		t.Skip("missing GITHUB_TOKEN")
 	}
 	schema := dvstore.Schema()
-	gitlabToken := ""
 	logger := testutil.Logger(t)
 
 	tests := []struct {
@@ -54,13 +53,13 @@ func TestPullAndSave(t *testing.T) {
 	for _, test := range tests {
 		store, close := dvstore.TestingStore(t)
 		defer close()
-		changed, err := PullAndSave(test.targets, store, schema, githubToken, gitlabToken, false, logger)
+		changed, err := PullAndSave(test.targets, store, schema, githubToken, false, logger)
 		assert.NoError(t, err, test.name)
 		assert.True(t, changed, test.name)
-		changed, err = PullAndSave(test.targets, store, schema, githubToken, gitlabToken, false, logger)
+		changed, err = PullAndSave(test.targets, store, schema, githubToken, false, logger)
 		assert.NoError(t, err, test.name)
 		assert.False(t, changed, test.name)
-		changed, err = PullAndSave(test.targets, store, schema, githubToken, gitlabToken, true, logger)
+		changed, err = PullAndSave(test.targets, store, schema, githubToken, true, logger)
 		assert.NoError(t, err, test.name)
 		assert.True(t, changed, test.name)
 

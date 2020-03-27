@@ -59,11 +59,7 @@ func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out 
 		)
 
 		if len(issues) > 0 {
-			batch, err := fromIssues(issues, opts.Logger)
-			if err != nil {
-				opts.Logger.Error("parse issues", zap.Error(err))
-				return
-			}
+			batch := fromIssues(issues, opts.Logger)
 			out <- batch
 		}
 
