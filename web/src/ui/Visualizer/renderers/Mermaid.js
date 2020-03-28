@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import mermaid, { mermaidAPI } from 'mermaid'
+import { mermaidAPI } from 'mermaid'
 import { useStore } from '../../../hooks/useStore'
+import MermaidCard from './MermaidCard'
 
 import './styles.scss'
 
@@ -11,12 +12,11 @@ const MermaidRenderer = ({ nodes, layout }) => {
   const [graphInfo, setGraphInfo] = useState('')
 
   useEffect(() => {
-    mermaid.initialize({
+    mermaidAPI.initialize({
       securityLevel: 'loose',
-      startOnLoad: true,
       flowchart: {
         useMaxWidth: true,
-        htmlLabels: true,
+        nodeLabelRenderer: MermaidCard,
         curve: 'cardinal',
       },
     })
@@ -38,6 +38,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
     section Github Issues
     `
     const ganttTasks = []
+    const ganttClickTasks = []
     nodes.forEach((node) => {
       const item = node.data
       if (!item.local_id) {
@@ -58,10 +59,12 @@ const MermaidRenderer = ({ nodes, layout }) => {
           break
       }
 
+      const issueId = `issue${item.local_id.replace(`${repName}#`, '').replace(/\//gi, '_').replace(/#/gi, '_')}`
+
       if (!item.is_depending_on) {
-        ganttStr += `:${status}, issue${item.local_id.replace(`${repName}#`, '').replace('/', '_')}`
+        ganttStr += `:${status}, ${issueId}`
       } else {
-        ganttStr += `:issue${item.local_id.replace(`${repName}#`, '').replace('/', '_')}`
+        ganttStr += `:${issueId}`
       }
 
       if (item.is_depending_on) {
@@ -69,7 +72,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
         for (let i = 0; i < item.is_depending_on.length; i += 1) {
           const urlArr = item.is_depending_on[i].split('/')
           const issId = urlArr[urlArr.length - 1]
-          const issIdStr = `issue${issId.replace('/', '_')}`
+          const issIdStr = `issue${issId.replace(/\//gi, '_')}`
           // Check missing nodes
           let nodeInStack = false
           for (let j = 0; j < ganttTasks.length; j += 1) {
@@ -82,10 +85,10 @@ const MermaidRenderer = ({ nodes, layout }) => {
 
           if (!nodeInStack || ganttTasks.length === 0) {
             // Add missing node first
-            ganttTasks.push(`Missing node issue${issId.replace('/', '_')}   :done, issue${issId.replace('/', '_')}, 2019-08-06, 7d`)
-            ganttStr += ` issue${issId.replace('/', '_')}`
+            ganttTasks.push(`Missing node issue${issId.replace(/\//gi, '_')}   :done, issue${issId.replace('/', '_')}, 2019-08-06, 7d`)
+            ganttStr += ` issue${issId.replace(/\//gi, '_')}`
           } else {
-            ganttStr += ` issue${issId.replace('/', '_')}`
+            ganttStr += ` issue${issId.replace(/\//gi, '_')}`
           }
         }
       }
@@ -97,14 +100,18 @@ const MermaidRenderer = ({ nodes, layout }) => {
         ganttStr += ', 7d'
       }
       ganttTasks.push(ganttStr)
+      ganttClickTasks.push(`\n\r\tclick ${issueId} href "${item.id}"`)
     })
 
     // Remove uplicates
     const noDupsGanttTasks = [...new Set(ganttTasks)]
 
     ganttTemplate += `${noDupsGanttTasks.join('\n\t')}`
+    // Add click links
+    ganttTemplate += `\n\r\t%% Click events${ganttClickTasks.join('\t')}`
 
     const ganttStr = ganttTemplate.toString()
+    setGraphInfo(ganttStr)
     return ganttStr
   }
 
@@ -122,7 +129,8 @@ const MermaidRenderer = ({ nodes, layout }) => {
     let flowTemplate = `graph ${mermaidOrientation}\n\r`
 
     const flowTasks = []
-    /* const flowClickNode = (e) => {
+    const flowClickEvents = []
+    /* const callback = (e) => {
       const node = e.target
       try { // your browser may block popups
         window.open(node.id())
@@ -135,14 +143,14 @@ const MermaidRenderer = ({ nodes, layout }) => {
       if (!item.local_id) {
         return
       }
-      const issId = `issue${item.local_id.replace(`${repName}#`, '').replace('/', '_')}`
-      let flowStr = `${issId}("${issId}"):::cy-card`
+      const issueId = `issue${item.local_id.replace(`${repName}#`, '').replace(/\//gi, '_').replace(/#/gi, '_')}`
+      let flowStr = `${issueId}("${issueId}"):::cy-card`
       if (item.is_depending_on) {
         flowStr += ' --> '
         for (let i = 0; i < item.is_depending_on.length - 1; i += 1) {
           const urlArr = item.is_depending_on[i].split('/')
           const issId = urlArr[urlArr.length - 1]
-          const issIdStr = `issue${issId.replace('/', '_')}&`
+          const issIdStr = `issue${issId.replace(/\//gi, '_')}&`
           // Check missing nodes
           let nodeInStack = false
           for (let j = 0; j < flowTasks.length; j += 1) {
@@ -155,29 +163,22 @@ const MermaidRenderer = ({ nodes, layout }) => {
 
           if (!nodeInStack || flowTasks.length === 0) {
             // Add missing node first
-            flowTasks.push(`issue${issId.replace('/', '_')}(missing issue${issId}):::closed\n\rstyle issue${issId.replace('/', '_')} fill:#ddd`)
-            flowStr += `issue${issId.replace('/', '_')}&`
+            flowTasks.push(`issue${issId.replace(/\//gi, '_')}(missing issue${issId}):::closed\n\rstyle issue${issId.replace('/', '_')} fill:#ddd`)
+            flowStr += `issue${issId.replace(/\//gi, '_')}&`
           } else {
-            flowStr += `issue${issId.replace('/', '_')}&`
+            flowStr += `issue${issId.replace(/\//gi, '_')}&`
           }
         }
         const urlArr = item.is_depending_on[item.is_depending_on.length - 1].split('/')
         const issId = urlArr[urlArr.length - 1]
         flowStr += `issue${issId.replace('/', '_')}(issue${issId})`
-        flowStr += `\n\r\tclick issue${issId.replace('/', '_')} flowClickNode "Open link"`
       }
       flowTasks.push(flowStr)
+      flowClickEvents.push(`click ${issueId.replace(/\//gi, '_')} "${item.id}" "Open ${issueId.replace(/\//gi, '_')} link"`)
     })
     flowTemplate += `\t${flowTasks.join('\n\t')}`
-
-
-    /* const ganttTemplate = `graph TD
-    issue_1(Issue 1)
-    issue_2(Issue 2)
-    issue_3(Issue 3)
-    issue_4(Issue 4)
-    issue_5(Depends on #4) --> issue_1
-    ` */
+    // Add click links
+    flowTemplate += `\n\r\t%% Click events\n\r\t${flowClickEvents.join('\n\r\t')}`
 
     const flowStr = flowTemplate.toString()
     setGraphInfo(flowStr)

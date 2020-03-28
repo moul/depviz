@@ -3,7 +3,7 @@ import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
 import elk from 'cytoscape-elk/src'
 import nodeHtmlLabel from 'cytoscape-node-html-label'
-import Card from './cardTemplate'
+import CytoscapeCard from './CytoscapeCard'
 import './card.scss'
 
 import './styles.scss'
@@ -97,7 +97,7 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
           valignBox: 'center',
           cssClass: '',
           tpl(data) {
-            return Card(data)
+            return CytoscapeCard(data)
           },
         },
       ],

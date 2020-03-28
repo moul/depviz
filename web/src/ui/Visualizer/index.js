@@ -167,11 +167,6 @@ const VisualizerWrapper = () => {
     })
   }
 
-
-  /* useEffect(() => {
-    setDebugInfo({ nodes: nodes.length, edges: edges.length })
-  }, [tasks, layout]) */
-
   let rendererBlock = (
     <div>
       Tasks not found or Repository url is empty
