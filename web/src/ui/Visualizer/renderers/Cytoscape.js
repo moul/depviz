@@ -103,24 +103,70 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
       ],
     )
 
-    const edgeMap = {}
     cy.batch(() => {
+      const edgeMap = {}
       edges.forEach((edge) => {
         const newEdge = edge
-        let isOk = true
+        // let isOk = true
         if (cy.getElementById(newEdge.data.source).empty()) {
           console.warn('missing node', newEdge.data.source)
-          isOk = false
+          // isOk = false
+          const newNode = {}
+          newNode.group = 'nodes'
+          newNode.classes = 'Issue'
+          newNode.data = {
+            id: newEdge.data.source,
+            created_at: new Date(),
+            updated_at: new Date(),
+            local_id: newEdge.data.source.replace('https://github.com/', '').replace('/issues/', '#'),
+            kind: 'Issue',
+            title: 'Ghost issue',
+            driver: 'GitHub',
+            state: 'Missing',
+            card_classes: 'ghost issue',
+            bgcolor: 'grey',
+            is_issue: true,
+            progress: 0.5,
+            nb_parents: 0,
+            nb_children: 0,
+            nb_related: 0,
+            parent: undefined,
+          }
+          // config.elements.push(newNode)
+          cy.add(newNode)
         }
         if (cy.getElementById(newEdge.data.target).empty()) {
           console.warn('missing node', newEdge.data.target)
-          isOk = false
+          // isOk = false
+          const newNode = {}
+          newNode.group = 'nodes'
+          newNode.classes = 'Issue'
+          newNode.data = {
+            id: newEdge.data.target,
+            created_at: new Date(),
+            updated_at: new Date(),
+            local_id: newEdge.data.target.replace('https://github.com/', '').replace('/issues/', '#'),
+            kind: 'Issue',
+            title: 'Ghost issue',
+            driver: 'GitHub',
+            state: 'Missing',
+            card_classes: 'ghost issue',
+            bgcolor: 'grey',
+            is_issue: true,
+            progress: 0.5,
+            nb_parents: 0,
+            nb_children: 0,
+            nb_related: 0,
+            parent: undefined,
+          }
+          cy.add(newNode)
+          // config.elements.push(newNode)
         }
-        if (!isOk) {
-          return
-        }
+        // if (!isOk) {
+        //   return
+        // }
         newEdge.group = 'edges'
-        newEdge.data.id = newEdge.data.relation + newEdge.data.source + newEdge.data.target
+        newEdge.data.id = `edge_${newEdge.data.relation}_${newEdge.data.source}_${newEdge.data.target}`
         newEdge.data.arrow = 'triangle'
         if (newEdge.data.id in edgeMap) {
           console.warn('duplicate edge', newEdge)
@@ -130,6 +176,7 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
         }
       })
     })
+
     const cyLayout = cy.layout(layout)
     cyLayout.run()
   }, [layout.name, nodes.length, edges.length])

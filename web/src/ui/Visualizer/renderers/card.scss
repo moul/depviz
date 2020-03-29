@@ -11,6 +11,9 @@
   box-shadow: 0 4px 12px 2px rgba(56, 59, 98, 0.15);
   font-family: 'Open Sans', sans-serif;
   font-weight: 600;
+  &.ghost {
+    background-color: #DFE0EB;
+  }
   .b-left {
     width: 46px;
     height: 100%;
