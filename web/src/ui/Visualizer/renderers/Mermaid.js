@@ -14,9 +14,10 @@ const MermaidRenderer = ({ nodes, layout }) => {
   useEffect(() => {
     mermaidAPI.initialize({
       securityLevel: 'loose',
+      maxTextSize: 1000000, // TODO: optimize node label rendering
       flowchart: {
         useMaxWidth: true,
-        nodeLabelRenderer: MermaidCard,
+        htmlLabels: true,
         curve: 'cardinal',
       },
     })
@@ -44,7 +45,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
       if (!item.local_id) {
         return
       }
-      let ganttStr = `${item.title}   `
+
       // item state
       let status = ''
       switch (item.state) {
@@ -60,7 +61,8 @@ const MermaidRenderer = ({ nodes, layout }) => {
       }
 
       const issueId = `issue${item.local_id.replace(`${repName}#`, '').replace(/\//gi, '_').replace(/#/gi, '_')}`
-
+      // const cardTpl = MermaidCard(item)
+      let ganttStr = `${issueId} [${item.title}]   `
       if (!item.is_depending_on) {
         ganttStr += `:${status}, ${issueId}`
       } else {
@@ -144,7 +146,8 @@ const MermaidRenderer = ({ nodes, layout }) => {
         return
       }
       const issueId = `issue${item.local_id.replace(`${repName}#`, '').replace(/\//gi, '_').replace(/#/gi, '_')}`
-      let flowStr = `${issueId}("${issueId}"):::cy-card`
+      const cardTpl = MermaidCard(item)
+      let flowStr = `${issueId}("${cardTpl}")`
       if (item.is_depending_on) {
         flowStr += ' --> '
         for (let i = 0; i < item.is_depending_on.length - 1; i += 1) {
@@ -163,7 +166,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
 
           if (!nodeInStack || flowTasks.length === 0) {
             // Add missing node first
-            flowTasks.push(`issue${issId.replace(/\//gi, '_')}(missing issue${issId}):::closed\n\rstyle issue${issId.replace('/', '_')} fill:#ddd`)
+            flowTasks.push(`issue${issId.replace(/\//gi, '_')}("${cardTpl}")`)
             flowStr += `issue${issId.replace(/\//gi, '_')}&`
           } else {
             flowStr += `issue${issId.replace(/\//gi, '_')}&`
@@ -171,7 +174,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
         }
         const urlArr = item.is_depending_on[item.is_depending_on.length - 1].split('/')
         const issId = urlArr[urlArr.length - 1]
-        flowStr += `issue${issId.replace('/', '_')}(issue${issId})`
+        flowStr += `issue${issId.replace('/', '_')}("${cardTpl}")`
       }
       flowTasks.push(flowStr)
       flowClickEvents.push(`click ${issueId.replace(/\//gi, '_')} "${item.id}" "Open ${issueId.replace(/\//gi, '_')} link"`)
