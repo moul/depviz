@@ -8,6 +8,9 @@
 }
 
 /* mermaid styles */
+div.mermaid {
+  font-family: "Source Sans Pro", -apple-system, blinkmacsystemfont, segoe ui, helvetica, arial, sans-serif, apple color emoji, segoe ui emoji, segoe ui symbol;
+}
 .mermaid-wrapper {
   .mermaid-graph-wrapper {
     overflow: hidden;
@@ -19,6 +22,37 @@
     margin-top: 4rem;
     p {
       margin: 0;
+    }
+  }
+  .mermaid-graph {
+    #diagram {
+      .node {
+        .label {
+          text-align: left;
+        }
+        a {
+          & > rect, & > circle, & > ellipse, & > polygon, & > path {
+            fill: transparent;
+            stroke: transparent;
+            stroke-width: 0;
+          }
+        }
+        & > rect, & > circle, & > ellipse, & > polygon, & > path {
+          fill: transparent;
+          stroke: transparent;
+          stroke-width: 0;
+        }
+        .cy-card {
+          rect, circle, ellipse, polygon, path {
+            fill: #DFE0EB;
+            stroke: transparent;
+            stroke-width: 0;
+          }
+          .b-left .cy-icon path {
+            fill: white;
+          }
+        }
+      }
     }
   }
 }

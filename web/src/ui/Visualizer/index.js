@@ -24,23 +24,29 @@ const VisualizerWrapper = () => {
       const stats = new Stats()
       stats.showPanel(0) // 0: fps, 1: ms, 2: mb, 3+: custom
       stats.dom.id = 'debug-info'
+      // Remove old stats
+      const debugInfoBlock = document.getElementById('debug-info')
+      if (debugInfoBlock) {
+        document.body.removeChild(debugInfoBlock)
+      }
+      // Add new one
       document.body.appendChild(stats.dom)
 
       const animate = () => {
         stats.begin()
         // monitored code goes here
-
         stats.end()
-
         requestAnimationFrame(animate)
       }
-
       requestAnimationFrame(animate)
     }
   })
 
   if (tasks) {
     tasks.forEach((task) => {
+      if (!task.kind && !task.state) {
+        return
+      }
       const node = {
         data: task,
         classes: task.kind,
@@ -85,6 +91,9 @@ const VisualizerWrapper = () => {
         default:
           console.warn('unsupported task.kind', task)
           node.data.bgcolor = 'grey'
+          node.data.is_issue = true
+          node.data.progress = 0
+          node.data.card_classes += ' ghost'
       }
       // common
       node.data.nb_parents = 0
@@ -167,25 +176,27 @@ const VisualizerWrapper = () => {
     })
   }
 
-
-  /* useEffect(() => {
-    setDebugInfo({ nodes: nodes.length, edges: edges.length })
-  }, [tasks, layout]) */
-
   let rendererBlock = (
     <div>
       Tasks not found or Repository url is empty
     </div>
   )
+
+  const debugInfo = { }
   if (tasks && layout) {
     if (layout.name === 'gantt' || layout.name === 'flow') {
+      debugInfo.nodes = nodes.length
+      if (layout.name === 'flow') {
+        debugInfo.edges = edges.length
+      }
       rendererBlock = <MermaidRenderer nodes={nodes} edges={edges} layout={layout} />
     } else {
+      debugInfo.nodes = nodes.length
+      debugInfo.edges = edges.length
       rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
     }
   }
 
-  const debugInfo = { nodes: nodes.length, edges: edges.length }
   return (
     <div>
       <div className="viz-wrapper card">
@@ -200,11 +211,13 @@ const VisualizerWrapper = () => {
           {' '}
           {debugInfo.nodes}
         </div>
+        {debugInfo.edges && (
         <div>
           edges:
           {' '}
           {debugInfo.edges}
         </div>
+        )}
       </div>
       )}
     </div>
