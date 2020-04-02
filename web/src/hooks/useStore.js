@@ -41,7 +41,13 @@ function createContextValue(state, setState) {
         ...state,
         forceRedraw: false,
         layout: computeLayoutConfig(layout),
-        isLoadingGraph: true,
+        isLoadingGraph: false,
+      })
+    },
+    updateLoadingGraph: (isLoading = false) => {
+      setState({
+        ...state,
+        isLoadingGraph: isLoading,
       })
     },
     updateGraph: (forceRedraw = true) => {

@@ -10,7 +10,7 @@ const showDebug = true // process.env.NODE_ENV === 'development'
 
 const VisualizerWrapper = () => {
   const {
-    apiData, layout, repName,
+    apiData, layout, repName, isLoadingGraph,
   } = useStore()
   const { tasks } = apiData || {}
 
@@ -176,11 +176,7 @@ const VisualizerWrapper = () => {
     })
   }
 
-  let rendererBlock = (
-    <div>
-      Tasks not found or Repository url is empty
-    </div>
-  )
+  let rendererBlock = null
 
   const debugInfo = { }
   if (tasks && layout) {
@@ -196,9 +192,22 @@ const VisualizerWrapper = () => {
       console.log('layout: ', layout)
       rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
     }
+  } else {
+    rendererBlock = (
+      <div>
+        Tasks not found or Repository url is empty
+      </div>
+    )
   }
 
-  if (debugInfo && debugInfo.nodes < 1) {
+  console.log('is update layouts')
+  if (isLoadingGraph) {
+    rendererBlock = (
+      <div className="error empty">
+        Wait a moment. Loading a new graph...
+      </div>
+    )
+  } else if (debugInfo && debugInfo.nodes < 1) {
     rendererBlock = (
       <div className="error empty">
         Rendering issue for link

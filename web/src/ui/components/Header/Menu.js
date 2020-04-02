@@ -11,7 +11,7 @@ const Menu = ({
   authToken, handleShowToken, urlParams = {},
 }) => {
   const {
-    updateApiData, updateLayout, layout,
+    updateApiData, updateLayout, updateLoadingGraph, layout,
   } = useStore()
   const {
     register, getValues, setValue, handleSubmit,
@@ -29,6 +29,7 @@ const Menu = ({
     // forEachObjIndexed(setFormValue, urlData)
     updateLayout(urlData.layout)
     if (urlData.targets) {
+      updateLoadingGraph(true)
       urlData.withoutIsolated = !urlData.withoutIsolated
       urlData.withoutPrs = !urlData.withoutPrs
       urlData.withoutExternalDeps = !urlData.withoutExternalDeps
@@ -44,6 +45,7 @@ const Menu = ({
   }
 
   const handleURLData = (fetchApi = false) => {
+    updateLoadingGraph(true)
     const data = getValues()
     const newUrlData = {
       ...urlData,
@@ -132,7 +134,7 @@ const Menu = ({
             <div className="form-group layout-select">
               <label htmlFor="layout">
                 <span className="custom-control">Layout:</span>
-                <select ref={register} name="layout" id="layout" onBlur={handleLayoutChange} className="form-control custom-select selectized">
+                <select ref={register} name="layout" id="layout" onChange={handleLayoutChange} className="form-control custom-select selectized">
                   <option value="circle">circle</option>
                   <option value="cose">cose</option>
                   <option value="breadthfirst">breadthfirst</option>

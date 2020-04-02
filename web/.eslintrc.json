@@ -47,6 +47,7 @@
         ]
       }
     ],
+    "jsx-a11y/no-onchange": 0, 
     "semi": ["error", "never"],
     "max-len": 0,
     "no-alert": 0,
