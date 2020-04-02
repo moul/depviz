@@ -6,7 +6,7 @@ import GraphCard from './GraphCard'
 import './styles.scss'
 
 const MermaidRenderer = ({ nodes, layout }) => {
-  const { repName, forceRedraw } = useStore()
+  const { repName } = useStore()
   const [mermaidGraph, setMermaidGraph] = useState('Loading diagram...')
   const [mermaidOrientation, setMermaidOrientation] = useState('TB')
   const [graphInfo, setGraphInfo] = useState('')
@@ -146,7 +146,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
         return
       }
       const issueId = `issue${item.local_id.replace(`${repName}#`, '').replace(/\//gi, '_').replace(/#/gi, '_')}`
-      const cardTpl = GraphCard(item)
+      const cardTpl = GraphCard(item, 'mermaid')
       let flowStr = `${issueId}("${cardTpl}")`
       if (item.is_depending_on) {
         flowStr += ' --> '
@@ -183,6 +183,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
     // Add click links
     flowTemplate += `\n\r\t%% Click events\n\r\t${flowClickEvents.join('\n\r\t')}`
 
+    console.log('flowTemplate: ', flowTemplate)
     const flowStr = flowTemplate.toString()
     setGraphInfo(flowStr)
     return flowStr
