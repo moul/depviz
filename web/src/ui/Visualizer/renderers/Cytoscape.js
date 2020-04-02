@@ -39,6 +39,7 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
           width: '410px',
           height: '200px',
           shape: 'rectangle',
+          padding: 10,
           'background-color': 'white',
         },
       },
@@ -62,7 +63,7 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
         selector: 'edge[arrow]',
         style: {
           'target-arrow-shape': 'data(arrow)',
-          'arrow-scale': 5,
+          'arrow-scale': 3,
         },
       },
       {
