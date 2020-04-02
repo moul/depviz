@@ -107,7 +107,7 @@ const GraphCard = (data, type) => {
       </div>
       <div class='b-body-middle'>
         <div class='title'>
-          ${data.title}
+          ${data.title.replace(/"/gi, '\'')}
         </div>
       </div>
       <!--
@@ -139,6 +139,7 @@ const GraphCard = (data, type) => {
 
   if (type === 'mermaid') {
     cardTemplate = cardTemplate.replace(/(\r\n|\n|\r)/gm, '').replace(/> *</g, '><')
+    // .replace(/"/gi, '\"').replace(/'/gi, '\'')
     // cardTemplate = cardTemplate.replace(/'/gm, '\\'')
   }
   return cardTemplate
