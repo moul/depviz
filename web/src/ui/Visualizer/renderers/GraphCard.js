@@ -1,7 +1,13 @@
-const MermaidCard = (data) => {
+import './card.scss'
+
+const GraphCard = (data, type) => {
   // console.log('data: ', data)
+  let cardClasses = data.card_classes
+  if (type === 'mermaid') {
+    cardClasses = data.state ? data.state.toLowerCase() : ''
+  }
   let cardTemplate = (
-    `<div class='cy-card issue ${data.state ? data.state.toLowerCase() : ''}'>
+    `<div class='cy-card issue ${cardClasses}'>
     <div class='b-left'>
       <div class='cy-icon icon-issue'>
         <svg width='26px' height='26px' viewBox='0 0 26 26' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>
@@ -130,9 +136,12 @@ const MermaidCard = (data) => {
       </div>
       -->
     </div>`)
-  cardTemplate = cardTemplate.replace(/(\r\n|\n|\r)/gm, '').replace(/> *</g, '><')
-  // cardTemplate = cardTemplate.replace(/'/gm, '\\'')
+
+  if (type === 'mermaid') {
+    cardTemplate = cardTemplate.replace(/(\r\n|\n|\r)/gm, '').replace(/> *</g, '><')
+    // cardTemplate = cardTemplate.replace(/'/gm, '\\'')
+  }
   return cardTemplate
 }
 
-export default MermaidCard
+export default GraphCard

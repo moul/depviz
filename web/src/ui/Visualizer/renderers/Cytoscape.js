@@ -3,17 +3,25 @@ import cytoscape from 'cytoscape'
 import cola from 'cytoscape-cola'
 import elk from 'cytoscape-elk/src'
 import nodeHtmlLabel from 'cytoscape-node-html-label'
-import CytoscapeCard from './CytoscapeCard'
-import './card.scss'
+import { useStore } from '../../../hooks/useStore'
+import GraphCard from './GraphCard'
 
 import './styles.scss'
 
 const CytoscapeRenderer = ({ nodes, edges, layout }) => {
+  const { forceRedraw } = useStore()
   const [cyMounted, setCyMount] = useState(false)
 
   useEffect(() => {
     if (!cyMounted) {
-      nodeHtmlLabel(cytoscape)
+      // Register nodeHtmlLabel extension (if not exists already)
+      if (window.cy) {
+        if (!window.cy.nodeHtmlLabel) {
+          console.log('register nodeHtmlLabel')
+          nodeHtmlLabel(cytoscape)
+        }
+      }
+      // Register Cola and Elk extensions
       cytoscape.use(cola)
       cytoscape.use(elk)
 
@@ -28,10 +36,8 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
       style: [{
         selector: 'node.Issue, node.MergeRequest',
         style: {
-          'overlay-padding': '5px',
-          'overlay-opacity': 0,
-          width: '510px',
-          height: '260px',
+          width: '410px',
+          height: '200px',
           shape: 'rectangle',
           'background-color': 'white',
         },
@@ -97,7 +103,7 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
           valignBox: 'center',
           cssClass: '',
           tpl(data) {
-            return CytoscapeCard(data)
+            return GraphCard(data)
           },
         },
       ],
@@ -179,8 +185,9 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
 
     const cyLayout = cy.layout(layout)
     cyLayout.run()
-  }, [layout.name, nodes.length, edges.length])
+  }, [layout.name, nodes.length, edges.length, forceRedraw])
 
+  console.log('Cytoscape rendering')
   return (
     <div id="cy" />
   )

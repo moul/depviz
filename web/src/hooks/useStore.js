@@ -6,11 +6,13 @@ import computeLayoutConfig from '../utils/computeLayoutConfig'
 
 const DEFAULT_STATE = {
   apiData: {},
+  isLoadingGraph: false,
   layout: {
     name: 'circle',
     avoidOverlap: true,
   },
   repName: 'moul/depviz-test',
+  forceRedraw: false,
   debugInfo: {
     fps: 0,
     nodes: 0,
@@ -27,11 +29,23 @@ function createContextValue(state, setState) {
     ...state,
     updateApiData: (data, layout, repName) => {
       setState({
-        ...state, apiData: data, layout: computeLayoutConfig(layout), repName,
+        ...state,
+        forceRedraw: false,
+        apiData: data,
+        layout: computeLayoutConfig(layout),
+        repName,
       })
     },
     updateLayout: (layout) => {
-      setState({ ...state, layout: computeLayoutConfig(layout) })
+      setState({
+        ...state,
+        forceRedraw: false,
+        layout: computeLayoutConfig(layout),
+        isLoadingGraph: true,
+      })
+    },
+    updateGraph: (forceRedraw = true) => {
+      setState({ ...state, forceRedraw })
     },
     setDebugInfo: (info) => {
       setState({ ...state, debugInfo: { ...state.debugInfo, ...info } })

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { mermaidAPI } from 'mermaid'
 import { useStore } from '../../../hooks/useStore'
-import MermaidCard from './MermaidCard'
+import GraphCard from './GraphCard'
 
 import './styles.scss'
 
 const MermaidRenderer = ({ nodes, layout }) => {
-  const { repName } = useStore()
+  const { repName, forceRedraw } = useStore()
   const [mermaidGraph, setMermaidGraph] = useState('Loading diagram...')
   const [mermaidOrientation, setMermaidOrientation] = useState('TB')
   const [graphInfo, setGraphInfo] = useState('')
@@ -61,7 +61,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
       }
 
       const issueId = `issue${item.local_id.replace(`${repName}#`, '').replace(/\//gi, '_').replace(/#/gi, '_')}`
-      // const cardTpl = MermaidCard(item)
+      // const cardTpl = GraphCard(item)
       let ganttStr = `${issueId} [${item.title}]   `
       if (!item.is_depending_on) {
         ganttStr += `:${status}, ${issueId}`
@@ -146,7 +146,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
         return
       }
       const issueId = `issue${item.local_id.replace(`${repName}#`, '').replace(/\//gi, '_').replace(/#/gi, '_')}`
-      const cardTpl = MermaidCard(item)
+      const cardTpl = GraphCard(item)
       let flowStr = `${issueId}("${cardTpl}")`
       if (item.is_depending_on) {
         flowStr += ' --> '

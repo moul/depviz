@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 // import { forEachObjIndexed } from 'ramda'
 import { useStore } from '../../../hooks/useStore'
@@ -17,8 +17,9 @@ const Menu = ({
     register, getValues, setValue, handleSubmit,
   } = useForm()
 
-  let urlData = urlParams
+  const [urlData, setURLData] = useState(urlParams)
 
+  // Initialize form data and make API call (only once)
   useEffect(() => {
     Object.keys(urlData).map((key) => {
       if (urlData[key]) {
@@ -28,6 +29,9 @@ const Menu = ({
     // forEachObjIndexed(setFormValue, urlData)
     updateLayout(urlData.layout)
     if (urlData.targets) {
+      urlData.withoutIsolated = !urlData.withoutIsolated
+      urlData.withoutPrs = !urlData.withoutPrs
+      urlData.withoutExternalDeps = !urlData.withoutExternalDeps
       makeAPICall(urlData)
     }
   }, [])
@@ -39,30 +43,35 @@ const Menu = ({
     // updateBrowserHistory(url)
   }
 
-  const onSubmit = () => {
+  const handleURLData = (fetchApi = false) => {
     const data = getValues()
-    makeAPICall(data)
+    const newUrlData = {
+      ...urlData,
+      ...data,
+    }
+    newUrlData.withoutIsolated = !data.withoutIsolated
+    newUrlData.withoutPrs = !data.withoutPrs
+    newUrlData.withoutExternalDeps = !data.withoutExternalDeps
+    updateBrowserHistory(generateUrl(newUrlData))
+    setURLData(newUrlData)
+    if (fetchApi) {
+      makeAPICall(newUrlData)
+    }
+  }
+
+  const onSubmit = () => {
+    handleURLData(true)
   }
 
   const handleLayoutChange = () => {
     const data = getValues()
+    handleURLData(true)
     updateLayout(data.layout)
-    updateBrowserHistory(generateUrl(data))
   }
 
   const handleCheckboxChange = () => {
-    const data = getValues()
-    // makeAPICall(data)
-    urlData = {
-      ...urlData,
-      ...data,
-    }
-    urlData.withoutIsolated = !urlData.withoutIsolated
-    urlData.withoutPrs = !urlData.withoutPrs
-    urlData.withoutExternalDeps = !urlData.withoutExternalDeps
-
-    makeAPICall(urlData)
-    updateBrowserHistory(generateUrl(urlData))
+    handleURLData(true)
+    handleRedraw()
   }
 
   const handleRedraw = () => {
