@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { mermaidAPI } from 'mermaid'
 import { useStore } from '../../../hooks/useStore'
-import MermaidCard from './MermaidCard'
+import GraphCard from './GraphCard'
 
 import './styles.scss'
 
@@ -61,7 +61,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
       }
 
       const issueId = `issue${item.local_id.replace(`${repName}#`, '').replace(/\//gi, '_').replace(/#/gi, '_')}`
-      // const cardTpl = MermaidCard(item)
+      // const cardTpl = GraphCard(item)
       let ganttStr = `${issueId} [${item.title}]   `
       if (!item.is_depending_on) {
         ganttStr += `:${status}, ${issueId}`
@@ -146,7 +146,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
         return
       }
       const issueId = `issue${item.local_id.replace(`${repName}#`, '').replace(/\//gi, '_').replace(/#/gi, '_')}`
-      const cardTpl = MermaidCard(item)
+      const cardTpl = GraphCard(item, 'mermaid')
       let flowStr = `${issueId}("${cardTpl}")`
       if (item.is_depending_on) {
         flowStr += ' --> '
@@ -183,6 +183,7 @@ const MermaidRenderer = ({ nodes, layout }) => {
     // Add click links
     flowTemplate += `\n\r\t%% Click events\n\r\t${flowClickEvents.join('\n\r\t')}`
 
+    console.log('flowTemplate: ', flowTemplate)
     const flowStr = flowTemplate.toString()
     setGraphInfo(flowStr)
     return flowStr

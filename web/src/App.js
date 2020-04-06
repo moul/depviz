@@ -15,12 +15,18 @@ import 'tabler/scss/tabler.scss'
 
 import './App.scss'
 
+const defaultTargets = process.env.DEFAULT_TARGETS
+
 const App = () => {
   const [showAuthModal, setShowAuthModal] = useState(false) // !store.getItem('auth_token'))
   const [authToken, setAuthToken] = useState(store.getItem('auth_token') || '')
   const searchParams = new URLSearchParams(window.location.search)
+  let targets = ''
+  if (defaultTargets) {
+    targets = defaultTargets
+  }
   const urlData = {
-    targets: searchParams.getAll('targets').join(',') || '',
+    targets: targets || searchParams.getAll('targets').join(','),
     withClosed: searchParams.get('withClosed') === 'true',
     withoutIsolated: searchParams.get('withoutIsolated') === 'false',
     withoutPrs: searchParams.get('withoutPrs') === 'false',

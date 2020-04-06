@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 // import { forEachObjIndexed } from 'ramda'
 import { useStore } from '../../../hooks/useStore'
@@ -11,14 +11,15 @@ const Menu = ({
   authToken, handleShowToken, urlParams = {},
 }) => {
   const {
-    updateApiData, updateLayout, layout,
+    updateApiData, updateLayout, updateLoadingGraph, layout,
   } = useStore()
   const {
     register, getValues, setValue, handleSubmit,
   } = useForm()
 
-  let urlData = urlParams
+  const [urlData, setURLData] = useState(urlParams)
 
+  // Initialize form data and make API call (only once)
   useEffect(() => {
     Object.keys(urlData).map((key) => {
       if (urlData[key]) {
@@ -28,6 +29,10 @@ const Menu = ({
     // forEachObjIndexed(setFormValue, urlData)
     updateLayout(urlData.layout)
     if (urlData.targets) {
+      updateLoadingGraph(true)
+      urlData.withoutIsolated = !urlData.withoutIsolated
+      urlData.withoutPrs = !urlData.withoutPrs
+      urlData.withoutExternalDeps = !urlData.withoutExternalDeps
       makeAPICall(urlData)
     }
   }, [])
@@ -39,30 +44,36 @@ const Menu = ({
     // updateBrowserHistory(url)
   }
 
-  const onSubmit = () => {
+  const handleURLData = (fetchApi = false) => {
+    updateLoadingGraph(true)
     const data = getValues()
-    makeAPICall(data)
+    const newUrlData = {
+      ...urlData,
+      ...data,
+    }
+    newUrlData.withoutIsolated = !data.withoutIsolated
+    newUrlData.withoutPrs = !data.withoutPrs
+    newUrlData.withoutExternalDeps = !data.withoutExternalDeps
+    updateBrowserHistory(generateUrl(newUrlData))
+    setURLData(newUrlData)
+    if (fetchApi) {
+      makeAPICall(newUrlData)
+    }
+  }
+
+  const onSubmit = () => {
+    handleURLData(true)
   }
 
   const handleLayoutChange = () => {
     const data = getValues()
+    handleURLData(true)
     updateLayout(data.layout)
-    updateBrowserHistory(generateUrl(data))
   }
 
   const handleCheckboxChange = () => {
-    const data = getValues()
-    // makeAPICall(data)
-    urlData = {
-      ...urlData,
-      ...data,
-    }
-    urlData.withoutIsolated = !urlData.withoutIsolated
-    urlData.withoutPrs = !urlData.withoutPrs
-    urlData.withoutExternalDeps = !urlData.withoutExternalDeps
-
-    makeAPICall(urlData)
-    updateBrowserHistory(generateUrl(urlData))
+    handleURLData(true)
+    handleRedraw()
   }
 
   const handleRedraw = () => {
@@ -123,7 +134,7 @@ const Menu = ({
             <div className="form-group layout-select">
               <label htmlFor="layout">
                 <span className="custom-control">Layout:</span>
-                <select ref={register} name="layout" id="layout" onBlur={handleLayoutChange} className="form-control custom-select selectized">
+                <select ref={register} name="layout" id="layout" onChange={handleLayoutChange} className="form-control custom-select selectized">
                   <option value="circle">circle</option>
                   <option value="cose">cose</option>
                   <option value="breadthfirst">breadthfirst</option>

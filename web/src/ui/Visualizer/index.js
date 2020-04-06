@@ -10,7 +10,7 @@ const showDebug = true // process.env.NODE_ENV === 'development'
 
 const VisualizerWrapper = () => {
   const {
-    apiData, layout,
+    apiData, layout, repName, isLoadingGraph,
   } = useStore()
   const { tasks } = apiData || {}
 
@@ -176,11 +176,7 @@ const VisualizerWrapper = () => {
     })
   }
 
-  let rendererBlock = (
-    <div>
-      Tasks not found or Repository url is empty
-    </div>
-  )
+  let rendererBlock = null
 
   const debugInfo = { }
   if (tasks && layout) {
@@ -193,8 +189,35 @@ const VisualizerWrapper = () => {
     } else {
       debugInfo.nodes = nodes.length
       debugInfo.edges = edges.length
+      console.log('layout: ', layout)
       rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
     }
+  } else {
+    rendererBlock = (
+      <div>
+        Tasks not found or Repository url is empty
+      </div>
+    )
+  }
+
+  console.log('is update layouts')
+  if (isLoadingGraph) {
+    rendererBlock = (
+      <div className="error empty">
+        Wait a moment. Loading a new graph...
+      </div>
+    )
+  } else if (debugInfo && debugInfo.nodes < 1) {
+    rendererBlock = (
+      <div className="error empty">
+        Rendering issue for link
+        {' '}
+        <b>{repName}</b>
+        Nodes =
+        {' '}
+        {debugInfo.nodes || 0}
+      </div>
+    )
   }
 
   return (
@@ -209,15 +232,13 @@ const VisualizerWrapper = () => {
         <div>
           nodes:
           {' '}
-          {debugInfo.nodes}
+          {debugInfo.nodes || 0}
         </div>
-        {debugInfo.edges && (
         <div>
           edges:
           {' '}
-          {debugInfo.edges}
+          {debugInfo.edges || 0}
         </div>
-        )}
       </div>
       )}
     </div>

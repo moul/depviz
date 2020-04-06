@@ -71,6 +71,11 @@ const computeLayoutConfig = (layout) => {
       }
       break
     default:
+      // Set default layout to avoid graph rendering issues
+      layoutConfig = {
+        name: 'circle',
+        avoidOverlap: true,
+      }
       break
   }
 
