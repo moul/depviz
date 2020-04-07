@@ -52,7 +52,6 @@ var (
 	serverShutdownTimeout    = serverFlags.Duration("shutdowm-timeout", 6*time.Second, "shutdown timeout")
 	serverCORSAllowedOrigins = serverFlags.String("cors-allowed-origins", "*", "allowed CORS origins")
 	serverGitHubToken        = serverFlags.String("github-token", "", "GitHub token")
-	serverGitLabToken        = serverFlags.String("gitlab-token", "", "GitLab token")
 	serverNoAutoUpdate       = serverFlags.Bool("no-auto-update", false, "don't auto-update projects in background")
 	serverGodmode            = serverFlags.Bool("godmode", false, "enable dangerous API calls")
 	serverWithPprof          = serverFlags.Bool("with-pprof", false, "enable pprof endpoints")
@@ -67,7 +66,6 @@ var (
 	runNoGraph          = runFlags.Bool("no-graph", false, "don't generate graph (pull only)")
 	runResync           = runFlags.Bool("resync", false, "resync already synced content")
 	runGitHubToken      = runFlags.String("github-token", "", "GitHub token")
-	runGitLabToken      = runFlags.String("gitlab-token", "", "GitLab token")
 	runNoPert           = runFlags.Bool("no-pert", false, "disable PERT computing")
 	runFormat           = runFlags.String("format", "dot", "output format")
 	runVertical         = runFlags.Bool("vertical", false, "vertical mode")
@@ -265,7 +263,6 @@ func execRun(ctx context.Context, args []string) error {
 		Format:           *runFormat,
 		Resync:           *runResync,
 		GitHubToken:      *runGitHubToken,
-		GitLabToken:      *runGitLabToken,
 		ShowClosed:       *runShowClosed,
 		HideIsolated:     *runHideIsolated,
 		HidePRs:          *runHidePRs,
@@ -309,7 +306,6 @@ func execServer(ctx context.Context, args []string) error {
 			Realm:              *serverRealm,
 			Godmode:            *serverGodmode,
 			GitHubToken:        *serverGitHubToken,
-			GitLabToken:        *serverGitLabToken,
 			NoAutoUpdate:       *serverNoAutoUpdate,
 			AutoUpdateTargets:  targets,
 			AutoUpdateInterval: *serverAutoUpdateInterval,

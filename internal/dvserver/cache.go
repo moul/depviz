@@ -41,6 +41,7 @@ func cacheMiddleware(next http.Handler, c *cache.Cache, logger *zap.Logger) http
 				rec := httptest.NewRecorder()
 				next.ServeHTTP(rec, r)
 				result := rec.Result()
+				defer result.Body.Close()
 
 				statusCode := result.StatusCode
 				value := rec.Body.Bytes()
@@ -79,12 +80,12 @@ type cached struct {
 	Header http.Header
 }
 
-func sortURLParams(URL *url.URL) {
-	params := URL.Query()
+func sortURLParams(u *url.URL) {
+	params := u.Query()
 	for _, param := range params {
 		sort.Slice(param, func(i, j int) bool {
 			return param[i] < param[j]
 		})
 	}
-	URL.RawQuery = params.Encode()
+	u.RawQuery = params.Encode()
 }

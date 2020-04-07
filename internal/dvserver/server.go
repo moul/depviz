@@ -44,7 +44,6 @@ type Opts struct {
 	Auth               string
 	Realm              string
 	GitHubToken        string
-	GitLabToken        string
 	NoAutoUpdate       bool
 	AutoUpdateTargets  []multipmuri.Entity
 	AutoUpdateInterval time.Duration
@@ -184,7 +183,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 		// API
 		r.Route("/api", func(r chi.Router) {
 			if opts.Auth != "" {
-				r.Use(basicAuth(opts.Auth, opts.Realm))
+				r.Use(basicAuth(opts.Auth))
 			}
 			r.Mount("/", http.StripPrefix("/api", handler))
 		})
@@ -254,7 +253,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 
 func (s *service) autoUpdate(targets []multipmuri.Entity) {
 	s.opts.Logger.Debug("pull and save", zap.Any("targets", targets))
-	changed, err := dvcore.PullAndSave(targets, s.h, s.schema, s.opts.GitHubToken, s.opts.GitLabToken, false, s.opts.Logger)
+	changed, err := dvcore.PullAndSave(targets, s.h, s.schema, s.opts.GitHubToken, false, s.opts.Logger)
 	if err != nil {
 		s.opts.Logger.Warn("pull and save", zap.Error(err))
 	}

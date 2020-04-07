@@ -12,7 +12,7 @@ import (
 	"moul.io/multipmuri/pmbodyparser"
 )
 
-func fromIssues(issues []*github.Issue, logger *zap.Logger) (dvmodel.Batch, error) {
+func fromIssues(issues []*github.Issue, logger *zap.Logger) dvmodel.Batch {
 	batch := dvmodel.Batch{}
 	for _, issue := range issues {
 		err := fromIssue(&batch, issue)
@@ -21,7 +21,7 @@ func fromIssues(issues []*github.Issue, logger *zap.Logger) (dvmodel.Batch, erro
 			continue
 		}
 	}
-	return batch, nil
+	return batch
 }
 
 func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
@@ -115,7 +115,7 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 
 	// parse body
 	relationships, errs := pmbodyparser.RelParseString(entity, issue.Description)
-	if errs != nil && len(errs) > 0 {
+	if len(errs) > 0 {
 		for _, err := range errs {
 			return fmt.Errorf("pmbodyparser error: %w", err)
 		}

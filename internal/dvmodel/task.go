@@ -10,9 +10,7 @@ func (t *Task) AllDeps() []quad.IRI {
 		return nil
 	}
 	allDeps := make([]quad.IRI, len(t.IsDependingOn)+len(t.IsBlocking))
-	for i, dep := range t.IsDependingOn {
-		allDeps[i] = dep
-	}
+	copy(allDeps, t.IsDependingOn)
 	n := len(t.IsDependingOn)
 	for i, dep := range t.IsBlocking {
 		allDeps[n+i] = dep

@@ -21,20 +21,23 @@ import (
 )
 
 type RunOpts struct {
-	// global
+	/// global
+
 	NoPull  bool
 	NoGraph bool
 	Logger  *zap.Logger
 	Schema  *schema.Config
 
-	// pull
+	/// pull
+
 	GitHubToken string
-	GitLabToken string
-	// TrelloToken
-	// JiraToken
+	// GitLabToken string
+	// TrelloToken string
+	// JiraToken string
 	Resync bool
 
-	// graph
+	/// graph
+
 	Format           string
 	Vertical         bool
 	NoPert           bool
@@ -58,7 +61,7 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	}
 
 	if !opts.NoPull {
-		_, err := PullAndSave(targets, h, opts.Schema, opts.GitHubToken, opts.GitLabToken, opts.Resync, opts.Logger)
+		_, err := PullAndSave(targets, h, opts.Schema, opts.GitHubToken, opts.Resync, opts.Logger)
 		if err != nil {
 			return fmt.Errorf("pull: %w", err)
 		}
@@ -79,10 +82,7 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 		}
 
 		// graph
-		pertConfig, err := graphmanPertConfig(tasks, opts)
-		if err != nil {
-			return fmt.Errorf("graph: %w", err)
-		}
+		pertConfig := graphmanPertConfig(tasks, opts)
 
 		switch opts.Format {
 		case "json":
@@ -152,13 +152,10 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	return nil
 }
 
-func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.Config, githubToken string, gitlabToken string, resync bool, logger *zap.Logger) (bool, error) {
-	batches, err := pullBatches(targets, h, githubToken, gitlabToken, resync, logger)
-	if err != nil {
-		return false, fmt.Errorf("pull batches: %w", err)
-	}
+func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.Config, githubToken string, resync bool, logger *zap.Logger) (bool, error) {
+	batches := pullBatches(targets, h, githubToken, resync, logger)
 	if len(batches) > 0 {
-		err = saveBatches(h, schema, batches)
+		err := saveBatches(h, schema, batches)
 		if err != nil {
 			return false, fmt.Errorf("save batches: %w", err)
 		}
@@ -167,7 +164,7 @@ func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.C
 	return false, nil
 }
 
-func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken string, gitlabToken string, resync bool, logger *zap.Logger) ([]dvmodel.Batch, error) {
+func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken string, resync bool, logger *zap.Logger) []dvmodel.Batch {
 	// FIXME: handle the special '@me' target
 	var (
 		wg      sync.WaitGroup
@@ -193,7 +190,6 @@ func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken stri
 					since, err := dvstore.LastUpdatedIssueInRepo(ctx, h, repo)
 					if err != nil {
 						logger.Warn("failed to get last updated issue", zap.Error(err))
-
 					}
 					if !since.IsZero() && since.Unix() > 0 {
 						ghOpts.Since = &since
@@ -202,8 +198,6 @@ func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken stri
 
 				githubprovider.FetchRepo(ctx, repo, githubToken, out, ghOpts)
 			}(target)
-		//case multipmuri.GitLabProvider:
-		//go gitlab.Pull(target, &wg, gitlabToken, db, out)
 		default:
 			// FIXME: clean context-based exit
 			panic(fmt.Sprintf("unsupported provider: %v", provider))
@@ -218,7 +212,7 @@ func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken stri
 		batches = append(batches, batch)
 	}
 
-	return batches, nil
+	return batches
 }
 
 func saveBatches(h *cayley.Handle, schema *schema.Config, batches []dvmodel.Batch) error {
@@ -270,7 +264,7 @@ func saveBatches(h *cayley.Handle, schema *schema.Config, batches []dvmodel.Batc
 	return nil
 }
 
-func graphmanPertConfig(tasks []dvmodel.Task, opts RunOpts) (*graphman.PertConfig, error) {
+func graphmanPertConfig(tasks []dvmodel.Task, opts RunOpts) *graphman.PertConfig {
 	opts.Logger.Debug("graphTargets", zap.Int("tasks", len(tasks)), zap.Any("opts", opts))
 
 	// initialize graph config
@@ -319,5 +313,5 @@ func graphmanPertConfig(tasks []dvmodel.Task, opts RunOpts) (*graphman.PertConfi
 	}
 	// FIXME: if len(unique(repos)) > 1 -> add PertState for each repo with DependsOn
 
-	return &config, nil
+	return &config
 }
