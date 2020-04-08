@@ -200,14 +200,7 @@ const VisualizerWrapper = () => {
     )
   }
 
-  console.log('is update layouts')
-  if (isLoadingGraph) {
-    rendererBlock = (
-      <div className="error empty">
-        Wait a moment. Loading a new graph...
-      </div>
-    )
-  } else if (debugInfo && debugInfo.nodes < 1) {
+  if (debugInfo && debugInfo.nodes < 1) {
     rendererBlock = (
       <div className="error empty">
         Rendering issue for link
@@ -226,6 +219,13 @@ const VisualizerWrapper = () => {
         <ErrorBoundary>
           {rendererBlock}
         </ErrorBoundary>
+        {isLoadingGraph && (
+          <div className="overlay-wrapper">
+            <div className="error empty">
+              Wait a moment. Loading a new graph...
+            </div>
+          </div>
+        )}
       </div>
       {showDebug && (
       <div className="debug-info">

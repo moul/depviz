@@ -11,6 +11,16 @@
 div.mermaid {
   font-family: "Source Sans Pro", -apple-system, blinkmacsystemfont, segoe ui, helvetica, arial, sans-serif, apple color emoji, segoe ui emoji, segoe ui symbol;
 }
+.overlay-wrapper {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(82, 82, 82, 0.5);
+  color: #fff;
+  font-size: 1.35rem;
+}
 .mermaid-wrapper {
   .mermaid-graph-wrapper {
     overflow: hidden;

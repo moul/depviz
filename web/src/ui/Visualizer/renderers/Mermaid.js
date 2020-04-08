@@ -5,6 +5,8 @@ import GraphCard from './GraphCard'
 
 import './styles.scss'
 
+const isDev = process.env.NODE_ENV !== 'development'
+
 const MermaidRenderer = ({ nodes, layout }) => {
   const { repName } = useStore()
   const [mermaidGraph, setMermaidGraph] = useState('Loading diagram...')
@@ -212,10 +214,12 @@ const MermaidRenderer = ({ nodes, layout }) => {
       <div className="mermaid-graph-wrapper">
         <div className="mermaid-graph" dangerouslySetInnerHTML={{ __html: mermaidGraph }} />
       </div>
+      {isDev && (
       <div className="mermaid-graph-info">
         <h3>Graph layout (for debug)</h3>
         {graphInfo.split('\n').map((node, index) => <p key={index} dangerouslySetInnerHTML={{ __html: node.replace(/\\t/gi, '&nbsp;').replace(/\s/gi, '&nbsp;') }} />)}
       </div>
+      )}
     </div>
   )
 }
