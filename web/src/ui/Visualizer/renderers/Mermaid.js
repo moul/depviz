@@ -5,7 +5,7 @@ import GraphCard from './GraphCard'
 
 import './styles.scss'
 
-const isDev = process.env.NODE_ENV !== 'development'
+const isDev = process.env.NODE_ENV === 'development'
 
 const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
   const { repName } = useStore()
@@ -13,23 +13,65 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
   const [mermaidOrientation, setMermaidOrientation] = useState('TB')
   const [graphInfo, setGraphInfo] = useState('')
 
+  const clickOnCardEvent = (dataStr) => {
+    console.log('clickOnCardEvent fired!')
+    const nodeData = JSON.parse(dataStr)
+    console.log('data: ', nodeData)
+    // target holds a reference to the originator
+    // of the event (core or element)
+    const evtTarget = event.target
+
+    if (evtTarget === null) {
+      console.log('tap on background')
+      // cy.edges().removeClass('active')
+      handleInfoBox(null, false)
+    } else {
+      console.log('tap on some element')
+      evtTarget.addClass('active')
+      const nodeData = evtTarget.data()
+      if (!nodeData.card_classes.includes('active')) {
+        evtTarget.data('card_classes', `${nodeData.card_classes} active`)
+      }
+      handleInfoBox(nodeData)
+    }
+  }
+
   useEffect(() => {
+    window.clickOnCardEvent = clickOnCardEvent
     mermaidAPI.initialize({
+      theme: 'forest',
       securityLevel: 'loose',
       maxTextSize: 1000000, // TODO: optimize node label rendering
       flowchart: {
         useMaxWidth: true,
-        htmlLabels: true,
         curve: 'cardinal',
       },
     })
   })
 
   useEffect(() => {
+    const tempElem = document.querySelector('[id="temp-graph"]')
     if (layout.name === 'gantt') {
-      mermaidAPI.render('gantt', renderGanttTemplate(), (html) => setMermaidGraph(html))
+      mermaidAPI.render(
+        'gantt',
+        renderGanttTemplate(),
+        (svgHtml, bindFunctions) => {
+          // console.log('svgHtml: ', svgHtml)
+          setMermaidGraph(svgHtml)
+          bindFunctions(tempElem)
+        },
+        tempElem,
+      )
     } else if (layout.name === 'flow') {
-      mermaidAPI.render('diagram', renderFlowTemplate(), (html) => setMermaidGraph(html))
+      mermaidAPI.render(
+        'diagram',
+        renderFlowTemplate(),
+        (svgHtml, bindFunctions) => {
+          setMermaidGraph(svgHtml)
+          bindFunctions(tempElem)
+        },
+        tempElem,
+      )
     }
   }, [layout.name, nodes.length, mermaidOrientation])
 
@@ -104,7 +146,7 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
         ganttStr += ', 7d'
       }
       ganttTasks.push(ganttStr)
-      ganttClickTasks.push(`\n\r\tclick ${issueId} href "${item.id}"`)
+      ganttClickTasks.push(`\n\r\tclick ${issueId} call clickOnCardEvent("data: ${JSON.stringify(item)}}")`)
     })
 
     // Remove uplicates
@@ -134,14 +176,6 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
 
     const flowTasks = []
     const flowClickEvents = []
-    /* const callback = (e) => {
-      const node = e.target
-      try { // your browser may block popups
-        window.open(node.id())
-      } catch (e) { // fall back on url change
-        window.location.href = node.id()
-      }
-    } */
     nodes.forEach((node) => {
       const item = node.data
       if (!item.local_id) {
@@ -179,13 +213,12 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
         flowStr += `issue${issId.replace('/', '_')}("${cardTpl}")`
       }
       flowTasks.push(flowStr)
-      flowClickEvents.push(`click ${issueId.replace(/\//gi, '_')} "${item.id}" "Open ${issueId.replace(/\//gi, '_')} link"`)
+      flowClickEvents.push(`click ${issueId.replace(/\//gi, '_')} clickOnCardEvent`)
     })
     flowTemplate += `\t${flowTasks.join('\n\t')}`
     // Add click links
     flowTemplate += `\n\r\t%% Click events\n\r\t${flowClickEvents.join('\n\r\t')}`
 
-    console.log('flowTemplate: ', flowTemplate)
     const flowStr = flowTemplate.toString()
     setGraphInfo(flowStr)
     return flowStr
@@ -213,6 +246,7 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
       <br />
       <div className="mermaid-graph-wrapper">
         <div className="mermaid-graph" dangerouslySetInnerHTML={{ __html: mermaidGraph }} />
+        <div id="temp-graph" />
       </div>
       {isDev && (
       <div className="mermaid-graph-info">
