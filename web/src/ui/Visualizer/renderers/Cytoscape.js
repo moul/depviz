@@ -8,7 +8,9 @@ import GraphCard from './GraphCard'
 
 import './styles.scss'
 
-const CytoscapeRenderer = ({ nodes, edges, layout }) => {
+const CytoscapeRenderer = ({
+  nodes, edges, layout, handleInfoBox,
+}) => {
   const { forceRedraw } = useStore()
   const [cyMounted, setCyMount] = useState(false)
 
@@ -41,6 +43,12 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
           shape: 'rectangle',
           padding: 10,
           'background-color': 'white',
+        },
+      },
+      {
+        selector: 'node.Issue.active, node.MergeRequest.active',
+        style: {
+          border: '3px solid #0043ff',
         },
       },
       {
@@ -85,12 +93,36 @@ const CytoscapeRenderer = ({ nodes, edges, layout }) => {
     const cy = cytoscape(config)
     window.cy = cy
 
-    cy.on('tap', 'node', (evt) => {
+    /* cy.on('tap', 'node', (evt) => {
       const node = evt.target
-      try { // your browser may block popups
-        window.open(node.id())
-      } catch (e) { // fall back on url change
-        window.location.href = node.id()
+      const nodeData = node.data()
+      if (node === cy || node.group() === 'edges') {
+        cy.edges().removeClass('active')
+      } else {
+        // cy.edges().removeClass('active')
+        // node.addClass('active')
+      }
+      node.data('card_classes', `${nodeData.card_classes} active`)
+      handleInfoBox(nodeData, true)
+    }) */
+
+    cy.on('tap', (event) => {
+      // target holds a reference to the originator
+      // of the event (core or element)
+      const evtTarget = event.target
+
+      if (evtTarget === cy) {
+        console.log('tap on background')
+        cy.edges().removeClass('active')
+        handleInfoBox(null, false)
+      } else {
+        console.log('tap on some element')
+        evtTarget.addClass('active')
+        const nodeData = evtTarget.data()
+        if (!nodeData.card_classes.includes('active')) {
+          evtTarget.data('card_classes', `${nodeData.card_classes} active`)
+        }
+        handleInfoBox(nodeData)
       }
     })
 

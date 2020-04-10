@@ -5,6 +5,7 @@
   position: relative;
   width: 95%;
   height: 220px;
+  cursor: pointer;
   color: #383B62;
   background-color: #FFF;
   border-radius: 15px;
@@ -13,6 +14,10 @@
   font-weight: 600;
   &.ghost {
     background-color: #DFE0EB;
+  }
+  &.active {
+    border: 3px solid #0043ff;
+    border-radius: 18px;
   }
   .b-left {
     width: 46px;

@@ -7,7 +7,7 @@ import './styles.scss'
 
 const isDev = process.env.NODE_ENV !== 'development'
 
-const MermaidRenderer = ({ nodes, layout }) => {
+const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
   const { repName } = useStore()
   const [mermaidGraph, setMermaidGraph] = useState('Loading diagram...')
   const [mermaidOrientation, setMermaidOrientation] = useState('TB')

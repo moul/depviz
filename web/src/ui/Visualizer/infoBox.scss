@@ -1,0 +1,38 @@
+/* Info box */
+
+.info-box {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  width: 320px;
+  height: 160px;
+  color: #383B62;
+  background-color: #d8e1fb;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px 2px rgba(56, 59, 98, 0.15);
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 600;
+  .info-box-wrapper {
+    position: relative;
+    height: 100%;
+    padding-bottom: 2rem;
+    padding: 1rem;
+    .info-box-title {
+      line-height: 1.1;
+    }
+    .info-box-body {
+      font-weight: 400;
+      margin-top: 0.5rem;
+    }
+  }
+  .info-box-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    button {
+      font-size: 0.8rem;
+    }
+  }
+}

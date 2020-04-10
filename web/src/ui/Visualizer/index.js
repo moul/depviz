@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import Stats from 'stats.js'
 import { useStore } from '../../hooks/useStore'
 import CytoscapeRenderer from './renderers/Cytoscape'
 import MermaidRenderer from './renderers/Mermaid'
+import InfoBox from './InfoBox'
 
 import ErrorBoundary from '../components/ErrorBoundary/ErrorBoundary'
 
@@ -12,6 +13,9 @@ const VisualizerWrapper = () => {
   const {
     apiData, layout, repName, isLoadingGraph,
   } = useStore()
+  const [showInfoBox, setShowInfoBox] = useState(false)
+  const [infoBoxData, setInfoBoxData] = useState(null)
+
   const { tasks } = apiData || {}
 
   console.log('tasks: ', tasks)
@@ -41,6 +45,13 @@ const VisualizerWrapper = () => {
       requestAnimationFrame(animate)
     }
   })
+
+  const handleInfoBox = (data, toShow = true) => {
+    if (data) {
+      setInfoBoxData(data)
+    }
+    setShowInfoBox(toShow)
+  }
 
   if (tasks) {
     tasks.forEach((task) => {
@@ -185,12 +196,12 @@ const VisualizerWrapper = () => {
       if (layout.name === 'flow') {
         debugInfo.edges = edges.length
       }
-      rendererBlock = <MermaidRenderer nodes={nodes} edges={edges} layout={layout} />
+      rendererBlock = <MermaidRenderer nodes={nodes} edges={edges} layout={layout} handleInfoBox={handleInfoBox} />
     } else {
       debugInfo.nodes = nodes.length
       debugInfo.edges = edges.length
       console.log('layout: ', layout)
-      rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} />
+      rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} handleInfoBox={handleInfoBox} />
     }
   } else {
     rendererBlock = (
@@ -226,6 +237,7 @@ const VisualizerWrapper = () => {
             </div>
           </div>
         )}
+        {showInfoBox && <InfoBox data={infoBoxData} />}
       </div>
       {showDebug && (
       <div className="debug-info">
