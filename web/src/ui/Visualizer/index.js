@@ -191,7 +191,7 @@ const VisualizerWrapper = () => {
 
   const debugInfo = { }
   if (tasks && layout) {
-    if (layout.name === 'gantt' || layout.name === 'flow') {
+    if (layout.name === 'gantt' || layout.name === 'flow' || layout.name === 'timeline') {
       debugInfo.nodes = nodes.length
       if (layout.name === 'flow') {
         debugInfo.edges = edges.length

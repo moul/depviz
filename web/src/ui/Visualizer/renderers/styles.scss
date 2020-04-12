@@ -26,6 +26,10 @@ div.mermaid {
     overflow: hidden;
     overflow-x: auto;
   }
+  .mermaid-actions {
+    text-align: right;
+    padding: 0.15rem 1rem;
+  }
   .mermaid-graph-info {
     background-color: #d0d3f7;
     padding: 1rem;
@@ -35,6 +39,16 @@ div.mermaid {
     }
   }
   .mermaid-graph {
+    #gantt {
+      .task {
+        stroke: none;
+      }
+      .task.clickable {
+        &.active {
+          stroke: #534fbc;
+        }
+      }
+    }
     #diagram {
       .node {
         .label {

@@ -17,7 +17,7 @@ const InfoBox = ({ data }) => {
           {data.id}
         </div>
         <div className="info-box-body">
-          {data.title.replace(/"/gi, '\'')}
+          {data.title ? data.title.replace(/"/gi, '\'') : 'No title'}
         </div>
         <div className="info-box-actions">
           <button onClick={openWebLink} className="btn btn-primary ml-auto">View on GitHub</button>

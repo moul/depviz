@@ -15,14 +15,14 @@
   .info-box-wrapper {
     position: relative;
     height: 100%;
-    padding-bottom: 2rem;
-    padding: 1rem;
+    padding: 1rem 1rem 2rem 1rem;
     .info-box-title {
       line-height: 1.1;
     }
     .info-box-body {
       font-weight: 400;
       margin-top: 0.5rem;
+      line-height: 1;
     }
   }
   .info-box-actions {
