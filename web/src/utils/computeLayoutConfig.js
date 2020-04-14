@@ -70,6 +70,11 @@ const computeLayoutConfig = (layout) => {
         name: 'flow',
       }
       break
+    case 'timeline':
+      layoutConfig = {
+        name: 'timeline',
+      }
+      break
     default:
       // Set default layout to avoid graph rendering issues
       layoutConfig = {

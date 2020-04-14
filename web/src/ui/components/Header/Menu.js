@@ -145,6 +145,7 @@ const Menu = ({
                   <option value="elk">elk</option>
                   <option value="gantt">gantt</option>
                   <option value="flow">flow</option>
+                  <option value="timeline">timeline</option>
                 </select>
               </label>
             </div>

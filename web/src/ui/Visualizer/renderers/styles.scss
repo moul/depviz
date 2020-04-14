@@ -11,10 +11,24 @@
 div.mermaid {
   font-family: "Source Sans Pro", -apple-system, blinkmacsystemfont, segoe ui, helvetica, arial, sans-serif, apple color emoji, segoe ui emoji, segoe ui symbol;
 }
+.overlay-wrapper {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(82, 82, 82, 0.5);
+  color: #fff;
+  font-size: 1.35rem;
+}
 .mermaid-wrapper {
   .mermaid-graph-wrapper {
     overflow: hidden;
     overflow-x: auto;
+  }
+  .mermaid-actions {
+    text-align: right;
+    padding: 0.15rem 1rem;
   }
   .mermaid-graph-info {
     background-color: #d0d3f7;
@@ -25,6 +39,16 @@ div.mermaid {
     }
   }
   .mermaid-graph {
+    #gantt {
+      .task {
+        stroke: none;
+      }
+      .task.clickable {
+        &.active {
+          stroke: #534fbc;
+        }
+      }
+    }
     #diagram {
       .node {
         .label {
