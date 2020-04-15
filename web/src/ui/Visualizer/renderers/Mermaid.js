@@ -78,10 +78,7 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
             if (issueId === params) {
               const item = nodes[i].data
               nodeData = {
-                id: item.id,
-                title: item.title,
-                description: item.description,
-                card_classes: item.card_classes,
+                ...item,
                 issueId,
               }
             }
@@ -238,10 +235,7 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
       }
       ganttTasks.push(ganttStr)
       const issData = {
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        card_classes: item.card_classes,
+        ...item,
         issueId,
       }
       ganttClickTasks.push(`\n\r\tclick ${issueId} call clickOnCardEvent("{"data": ${JSON.stringify(issData)}}")`)
@@ -318,7 +312,6 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
     flowTemplate += `\n\r\t%% Click events\n\r\t${flowClickEvents.join('\n\r\t')}`
 
     const flowStr = flowTemplate.toString()
-    console.log('flowStr: ', flowStr)
     setGraphInfo(flowStr)
     return flowStr
   }
@@ -404,10 +397,7 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
       }
       timelineTasks.push(timelineStr)
       const issData = {
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        card_classes: item.card_classes,
+        ...item,
         issueId,
       }
       timelineClickTasks.push(`\n\r\tclick ${issueId} call clickOnCardEvent("{"data": ${JSON.stringify(issData)}}")`)
