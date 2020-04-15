@@ -45,7 +45,7 @@ const InfoBox = ({ data }) => {
         {auhorLink && (
         <div className="info-box-author-link">
           <User size={16} />
-          <a href={`${auhorLink}`} target="_blank" rel="nofollow">{auhorLink.replace('https://github.com/', '')}</a>
+          <a href={`${auhorLink}`} target="_blank" rel="noopener noreferrer">{auhorLink.replace('https://github.com/', '')}</a>
         </div>
         )}
         <div className="info-box-actions">
