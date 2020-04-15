@@ -27,6 +27,18 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
         return
       }
     }
+
+    // hack to avoid click on mermaid cards
+    if (node.classList.contains('b-body')
+      || node.classList.contains('b-right')
+      || node.classList.contains('b-left')
+      || node.classList.contains('title')
+      || node.classList.contains('cy-card')
+      || node.classList.contains('circle')
+    ) {
+      // inside click
+      return
+    }
     const parentMermaidDOM = document.getElementById('mermaid-graph-id')
     // Get all active elements
     const activeNodes = parentMermaidDOM.getElementsByClassName('active')
@@ -78,10 +90,7 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
             if (issueId === params) {
               const item = nodes[i].data
               nodeData = {
-                id: item.id,
-                title: item.title,
-                description: item.description,
-                card_classes: item.card_classes,
+                ...item,
                 issueId,
               }
             }
@@ -238,10 +247,7 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
       }
       ganttTasks.push(ganttStr)
       const issData = {
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        card_classes: item.card_classes,
+        ...item,
         issueId,
       }
       ganttClickTasks.push(`\n\r\tclick ${issueId} call clickOnCardEvent("{"data": ${JSON.stringify(issData)}}")`)
@@ -403,10 +409,7 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
       }
       timelineTasks.push(timelineStr)
       const issData = {
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        card_classes: item.card_classes,
+        ...item,
         issueId,
       }
       timelineClickTasks.push(`\n\r\tclick ${issueId} call clickOnCardEvent("{"data": ${JSON.stringify(issData)}}")`)

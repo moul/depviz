@@ -26,6 +26,9 @@
     border-radius: 15px 0 0 15px;
     .cy-icon {
       margin: 25px 10px;
+      svg path {
+        fill: #ffffff;
+      }
     }
   }
   .b-body {
