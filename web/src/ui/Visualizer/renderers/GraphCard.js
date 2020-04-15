@@ -80,7 +80,7 @@ const GraphCard = (data, type) => {
 
   let cardTemplateString = renderToStaticMarkup(cardTemplate)
   if (type === 'mermaid') {
-    cardTemplateString = cardTemplateString.replace(/(\r\n|\n|\r)/gm, '').replace(/> *</g, '><')
+    cardTemplateString = cardTemplateString.replace(/(\r\n|\n|\r)/gm, '').replace(/> *</g, '><').replace(/"/gi, '\'')
     // .replace(/"/gi, '\"').replace(/'/gi, '\'')
     // cardTemplate = cardTemplate.replace(/'/gm, '\\'')
   }

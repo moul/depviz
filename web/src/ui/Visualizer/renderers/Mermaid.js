@@ -318,6 +318,7 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
     flowTemplate += `\n\r\t%% Click events\n\r\t${flowClickEvents.join('\n\r\t')}`
 
     const flowStr = flowTemplate.toString()
+    console.log('flowStr: ', flowStr)
     setGraphInfo(flowStr)
     return flowStr
   }
