@@ -10,7 +10,7 @@ import './styles.scss'
 const CytoscapeRenderer = ({
   nodes, edges, layout, handleInfoBox,
 }) => {
-  const { forceRedraw, urlData } = useStore()
+  const { urlData } = useStore()
   const [cyMounted, setCyMount] = useState(false)
 
   useEffect(() => {

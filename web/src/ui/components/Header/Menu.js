@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import 'tabler/dist/js/tabler.min.js'
+import 'tabler/js/tabler'
 // import { forEachObjIndexed } from 'ramda'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
@@ -116,7 +116,8 @@ const Menu = ({
     }
   }
 
-  const saveGraph = (exportType) => () => {
+  const saveGraph = (exportType) => (e) => {
+    e.preventDefault()
     if (window.cy) {
       let type = 'image/png'
       switch (exportType) {
@@ -129,23 +130,33 @@ const Menu = ({
           break
       }
 
-      const name = 'test.png'
-      const graph = converGraphToCanvas(type)
-      const a = document.getElementById('downloadgraph')
+      // const name = 'test.png'
+      const canvas = document.getElementById('imgcanvas')
+      const ctx = canvas.getContext('2d')
+      if (window.cy) {
+        window.cy.renderer().renderTo(ctx)
+      }
+      return canvas.toBlob((blob) => {
+        const newImg = document.createElement('img')
+        const url = URL.createObjectURL(blob)
+
+        newImg.onload = () => {
+          URL.revokeObjectURL(url)
+        }
+
+        newImg.src = url
+        const a = document.getElementById('downloadgraph')
+        a.href = url
+        a.download = 'test.png'
+        // a.click()
+        // document.body.appendChild(newImg)
+      }, type)
+      /* const a = document.getElementById('downloadgraph')
       const file = new Blob([graph], { type })
       a.href = URL.createObjectURL(file)
       a.download = name
-      a.click()
+      a.click() */
     }
-  }
-
-  const converGraphToCanvas = (type) => {
-    const canvas = document.getElementById('imgcanvas')
-    const ctx = canvas.getContext('2d')
-    if (window.cy) {
-      window.cy.renderer().renderTo(ctx)
-    }
-    return canvas.toBlob(null, type)
   }
 
   return (
@@ -163,7 +174,7 @@ const Menu = ({
                   </div>
                 </div>
               </label>
-              {/* <a id="downloadgraph" style={{ display: 'none' }} onClick={saveGraph('png')}>Download</a>
+              <a id="downloadgraph" onClick={saveGraph('png')}>Download</a>
               <div className="dropdown">
                 <button type="button" className="btn btn-ingo dropdown-toggle" data-toggle="dropdown">
                   Save
@@ -172,7 +183,7 @@ const Menu = ({
                   <a className="dropdown-item" href="#" onClick={saveGraph('png')}>Save as PNG</a>
                   <a className="dropdown-item" href="#" onClick={saveGraph('jpg')}>Save as JPG</a>
                 </div>
-              </div> */}
+              </div>
               <button onClick={handleShowToken} className="btn">
                 {authToken ? 'Change token' : '+ Add token'}
               </button>
