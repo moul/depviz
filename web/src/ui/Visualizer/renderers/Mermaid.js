@@ -7,8 +7,10 @@ import './styles.scss'
 
 const isDev = process.env.NODE_ENV === 'development'
 
-const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
-  const { repName } = useStore()
+const MermaidRenderer = ({
+  nodes, edges, layout, handleInfoBox,
+}) => {
+  const { repName, urlData } = useStore()
   const [mermaidGraph, setMermaidGraph] = useState('Loading diagram...')
   const [mermaidOrientation, setMermaidOrientation] = useState('TB')
   const [graphInfo, setGraphInfo] = useState('')
@@ -171,7 +173,16 @@ const MermaidRenderer = ({ nodes, layout, handleInfoBox }) => {
         },
       )
     }
-  }, [layout.name, nodes.length, mermaidOrientation])
+  }, [
+    edges.length,
+    nodes.length,
+    layout.name,
+    !!urlData.withClosed,
+    !!urlData.withoutIsolated,
+    !!urlData.withoutPrs,
+    !!urlData.withoutExternalDeps,
+    mermaidOrientation,
+  ])
 
   const renderGanttTemplate = () => {
     let ganttTemplate = `gantt

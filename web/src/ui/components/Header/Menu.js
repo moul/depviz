@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import 'tabler/dist/js/tabler.min.js'
 // import { forEachObjIndexed } from 'ramda'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
@@ -11,7 +12,7 @@ const Menu = ({
   authToken, handleShowToken, urlParams = {},
 }) => {
   const {
-    updateApiData, updateLayout, updateLoadingGraph, layout,
+    updateApiData, updateLayout, updateLoadingGraph, layout, setShowInfoBox, updateUrlData,
   } = useStore()
   const {
     register, getValues, setValue, handleSubmit,
@@ -21,22 +22,34 @@ const Menu = ({
 
   // Initialize form data and make API call (only once)
   useEffect(() => {
-    Object.keys(urlData).map((key) => {
-      if (urlData[key]) {
-        setValue(key, urlData[key])
-      }
-    })
-    // forEachObjIndexed(setFormValue, urlData)
     updateLayout(urlData.layout)
     if (urlData.targets) {
       updateLoadingGraph(true)
-      urlData.withoutIsolated = !urlData.withoutIsolated
-      urlData.withoutPrs = !urlData.withoutPrs
-      urlData.withoutExternalDeps = !urlData.withoutExternalDeps
+      // Process Timeline layout (disable all checkboxes except Closed)
+      if (urlData.layout === 'timeline') {
+        urlData.withClosed = true
+        urlData.withoutIsolated = false
+        urlData.withoutPrs = false
+        urlData.withoutExternalDeps = false
+        updateBrowserHistory(generateUrl(urlData))
+        setURLData(urlData)
+        setValue('withClosed', true)
+        setValue('withoutIsolated', false)
+        setValue('withoutPrs', false)
+        setValue('withoutExternalDeps', false)
+      } else {
+        Object.keys(urlData).map((key) => {
+          if (urlData[key]) {
+            setValue(key, urlData[key])
+          }
+        })
+        urlData.withoutIsolated = !urlData.withoutIsolated
+        urlData.withoutPrs = !urlData.withoutPrs
+        urlData.withoutExternalDeps = !urlData.withoutExternalDeps
+      }
       makeAPICall(urlData)
     }
   }, [])
-
 
   const makeAPICall = async (data) => {
     const response = await fetchDepviz(`/graph${generateUrl(data)}`)
@@ -56,6 +69,7 @@ const Menu = ({
     newUrlData.withoutExternalDeps = !data.withoutExternalDeps
     updateBrowserHistory(generateUrl(newUrlData))
     setURLData(newUrlData)
+    updateUrlData(newUrlData)
     if (fetchApi) {
       makeAPICall(newUrlData)
     }
@@ -68,19 +82,70 @@ const Menu = ({
   const handleLayoutChange = () => {
     const data = getValues()
     handleURLData(true)
+    // Process Timeline layout (disable all checkboxes except Closed)
+    if (data.layout === 'timeline') {
+      const newUrlData = {
+        ...urlData,
+        ...data,
+      }
+      newUrlData.withClosed = true
+      newUrlData.withoutIsolated = false
+      newUrlData.withoutPrs = false
+      newUrlData.withoutExternalDeps = false
+      updateBrowserHistory(generateUrl(newUrlData))
+      setURLData(newUrlData)
+      // setValue('withClosed')
+      setShowInfoBox(false)
+      setValue('withClosed', true)
+      setValue('withoutIsolated', false)
+      setValue('withoutPrs', false)
+      setValue('withoutExternalDeps', false)
+    }
     updateLayout(data.layout)
   }
 
   const handleCheckboxChange = () => {
+    setShowInfoBox(false)
     handleURLData(true)
-    handleRedraw()
+    // handleRedraw()
   }
 
   const handleRedraw = () => {
     if (window.cy) {
-      const cyLayout = window.cy.layout(layout)
-      cyLayout.run()
+      window.cy.layout(layout).run()
     }
+  }
+
+  const saveGraph = (exportType) => () => {
+    if (window.cy) {
+      let type = 'image/png'
+      switch (exportType) {
+        case 'png':
+          // text = converGraphToCanvas() // window.cy.png({ output: 'blob' })
+          break
+        default:
+          // text = window.cy.jpg({ output: 'blob' })
+          type = 'image/jpeg'
+          break
+      }
+
+      const name = 'test.png'
+      const graph = converGraphToCanvas(type)
+      const a = document.getElementById('downloadgraph')
+      const file = new Blob([graph], { type })
+      a.href = URL.createObjectURL(file)
+      a.download = name
+      a.click()
+    }
+  }
+
+  const converGraphToCanvas = (type) => {
+    const canvas = document.getElementById('imgcanvas')
+    const ctx = canvas.getContext('2d')
+    if (window.cy) {
+      window.cy.renderer().renderTo(ctx)
+    }
+    return canvas.toBlob(null, type)
   }
 
   return (
@@ -98,6 +163,16 @@ const Menu = ({
                   </div>
                 </div>
               </label>
+              {/* <a id="downloadgraph" style={{ display: 'none' }} onClick={saveGraph('png')}>Download</a>
+              <div className="dropdown">
+                <button type="button" className="btn btn-ingo dropdown-toggle" data-toggle="dropdown">
+                  Save
+                </button>
+                <div className="dropdown-menu">
+                  <a className="dropdown-item" href="#" onClick={saveGraph('png')}>Save as PNG</a>
+                  <a className="dropdown-item" href="#" onClick={saveGraph('jpg')}>Save as JPG</a>
+                </div>
+              </div> */}
               <button onClick={handleShowToken} className="btn">
                 {authToken ? 'Change token' : '+ Add token'}
               </button>
@@ -106,27 +181,23 @@ const Menu = ({
           </div>
           <div className="col-lg ml-right">
             <div className="form-group">
-
               <label htmlFor="withClosed" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={handleCheckboxChange} disabled={layout.name === 'timeline'} className="custom-control-input" />
                 <span className="custom-control-label">Closed</span>
               </label>
 
-
               <label htmlFor="withoutIsolated" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} type="checkbox" name="withoutIsolated" id="withoutIsolated" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withoutIsolated" id="withoutIsolated" onChange={handleCheckboxChange} disabled={layout.name === 'timeline'} className="custom-control-input" />
                 <span className="custom-control-label">Isolated</span>
               </label>
 
-
               <label htmlFor="withoutPrs" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} type="checkbox" name="withoutPrs" id="withoutPrs" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withoutPrs" id="withoutPrs" onChange={handleCheckboxChange} disabled={layout.name === 'timeline'} className="custom-control-input" />
                 <span className="custom-control-label">PRs</span>
               </label>
 
-
               <label htmlFor="withoutExternalDeps" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} type="checkbox" name="withoutExternalDeps" id="withoutExternalDeps" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withoutExternalDeps" id="withoutExternalDeps" onChange={handleCheckboxChange} disabled={layout.name === 'timeline'} className="custom-control-input" />
                 <span className="custom-control-label">Ext. Deps</span>
               </label>
             </div>
@@ -152,6 +223,7 @@ const Menu = ({
           </div>
         </form>
       </div>
+      <canvas id="imgcanvas" style={{ display: 'none' }} />
     </div>
   )
 }

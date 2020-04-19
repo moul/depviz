@@ -34,3 +34,8 @@ input, select {
     margin-bottom: 0;
   }
 }
+
+.custom-checkbox .custom-control-input:disabled:checked ~ .custom-control-label::before {
+  background-color: rgba(142, 154, 171, 0.5)!important;
+  border-color: #8c929a;
+}

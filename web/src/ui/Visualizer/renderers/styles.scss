@@ -11,6 +11,9 @@
 div.mermaid {
   font-family: "Source Sans Pro", -apple-system, blinkmacsystemfont, segoe ui, helvetica, arial, sans-serif, apple color emoji, segoe ui emoji, segoe ui symbol;
 }
+node {
+  border-radius: 8px;
+}
 .overlay-wrapper {
   position: absolute;
   left: 0;

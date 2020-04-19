@@ -5,13 +5,12 @@ import elk from 'cytoscape-elk/src'
 import nodeHtmlLabel from 'cytoscape-node-html-label'
 import { useStore } from '../../../hooks/useStore'
 import GraphCard from './GraphCard'
-
 import './styles.scss'
 
 const CytoscapeRenderer = ({
   nodes, edges, layout, handleInfoBox,
 }) => {
-  const { forceRedraw } = useStore()
+  const { forceRedraw, urlData } = useStore()
   const [cyMounted, setCyMount] = useState(false)
 
   useEffect(() => {
@@ -38,17 +37,11 @@ const CytoscapeRenderer = ({
       style: [{
         selector: 'node.Issue, node.MergeRequest',
         style: {
-          width: '410px',
-          height: '200px',
+          width: '494px',
+          height: '224px',
           shape: 'rectangle',
-          padding: 10,
+          padding: 0,
           'background-color': 'white',
-        },
-      },
-      {
-        selector: 'node.Issue.active, node.MergeRequest.active',
-        style: {
-          border: '3px solid #0043ff',
         },
       },
       {
@@ -57,7 +50,7 @@ const CytoscapeRenderer = ({
           'background-color': 'lightblue',
           opacity: 0.5,
           label: 'data(local_id)',
-          padding: 50,
+          padding: 20,
         },
       },
       {
@@ -93,35 +86,38 @@ const CytoscapeRenderer = ({
     const cy = cytoscape(config)
     window.cy = cy
 
-    /* cy.on('tap', 'node', (evt) => {
-      const node = evt.target
-      const nodeData = node.data()
-      if (node === cy || node.group() === 'edges') {
-        cy.edges().removeClass('active')
-      } else {
-        // cy.edges().removeClass('active')
-        // node.addClass('active')
-      }
-      node.data('card_classes', `${nodeData.card_classes} active`)
-      handleInfoBox(nodeData, true)
-    }) */
-
     cy.on('tap', (event) => {
       // target holds a reference to the originator
       // of the event (core or element)
       const evtTarget = event.target
-
       if (evtTarget === cy) {
         console.log('tap on background')
-        cy.edges().removeClass('active')
+        const nodes = cy.nodes()
+        nodes.removeClass('active')
+        nodes.style({
+          'border-width': '1px',
+          'border-color': '#ffffff',
+        })
         handleInfoBox(null, false)
       } else {
         console.log('tap on some element')
-        evtTarget.addClass('active')
         const nodeData = evtTarget.data()
-        if (!nodeData.card_classes.includes('active')) {
-          evtTarget.data('card_classes', `${nodeData.card_classes} active`)
+        if (!nodeData.card_classes.includes('active') && !evtTarget.hasClass('active')) {
+          // evtTarget.data('card_classes', `${nodeData.card_classes} active`)
+          evtTarget.style({
+            'border-width': '3px',
+            'border-radius': '8px',
+            'border-color': '#0043ff',
+          })
+          evtTarget.addClass('active')
         }
+        // Double check highlighted card
+        /* const nodeElem = document.querySelector(`[id="${issueId}"]`)
+        if (nodeElem) {
+          if (!nodeElem.classList.contains('active')) {
+            nodeElem.classList.add('active')
+          }
+        } */
         handleInfoBox(nodeData)
       }
     })
@@ -158,6 +154,7 @@ const CytoscapeRenderer = ({
             created_at: new Date(),
             updated_at: new Date(),
             local_id: newEdge.data.source.replace('https://github.com/', '').replace('/issues/', '#'),
+            html_id: newEdge.data.source.replace('https://github.com/', '').replace('/issues/', '').replace(/\//gi, '_').replace(/#/gi, '_'),
             kind: 'Issue',
             title: 'Ghost issue',
             driver: 'GitHub',
@@ -185,6 +182,7 @@ const CytoscapeRenderer = ({
             created_at: new Date(),
             updated_at: new Date(),
             local_id: newEdge.data.target.replace('https://github.com/', '').replace('/issues/', '#'),
+            html_id: newEdge.data.target.replace('https://github.com/', '').replace('/issues/', '').replace(/\//gi, '_').replace(/#/gi, '_'),
             kind: 'Issue',
             title: 'Ghost issue',
             driver: 'GitHub',
@@ -216,9 +214,16 @@ const CytoscapeRenderer = ({
       })
     })
 
-    const cyLayout = cy.layout(layout)
-    cyLayout.run()
-  }, [layout.name, nodes.length, edges.length, forceRedraw])
+    cy.layout(layout).run()
+  }, [
+    edges.length,
+    nodes.length,
+    layout.name,
+    !!urlData.withClosed,
+    !!urlData.withoutIsolated,
+    !!urlData.withoutPrs,
+    !!urlData.withoutExternalDeps,
+  ])
 
   console.log('Cytoscape rendering')
   return (

@@ -26,7 +26,7 @@ const App = () => {
     targets = defaultTargets
   }
   const urlData = {
-    targets: targets || searchParams.getAll('targets').join(','),
+    targets: searchParams.getAll('targets').join(',') || targets,
     withClosed: searchParams.get('withClosed') === 'true',
     withoutIsolated: searchParams.get('withoutIsolated') === 'false',
     withoutPrs: searchParams.get('withoutPrs') === 'false',
@@ -49,7 +49,7 @@ const App = () => {
 
 
   return (
-    <StoreProvider context={{ layout: computeLayoutConfig(urlData.layout) }}>
+    <StoreProvider context={{ layout: computeLayoutConfig(urlData.layout), urlData }}>
       <div className="page">
         <div className="flex-fill">
           <Menu authToken={authToken} handleShowToken={() => setShowAuthModal(true)} urlParams={urlData} />
