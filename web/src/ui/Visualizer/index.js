@@ -249,6 +249,7 @@ const VisualizerWrapper = () => {
         </div>
       </div>
       )}
+      <div id="exported-canvas" />
     </div>
   )
 }

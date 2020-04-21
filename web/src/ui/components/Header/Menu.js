@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import 'tabler/js/tabler'
+import html2canvas from 'html2canvas'
 // import { forEachObjIndexed } from 'ramda'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
+import exportCanvasToImage from '../../../utils/exportCanvasToImage'
 import fetchDepviz from '../../../api/depviz'
 
 import './styles.scss'
@@ -116,47 +118,58 @@ const Menu = ({
     }
   }
 
-  const saveGraph = (exportType) => (e) => {
+  const saveGraph = (exportType) => async (e) => {
     e.preventDefault()
-    if (window.cy) {
-      let type = 'image/png'
-      switch (exportType) {
-        case 'png':
-          // text = converGraphToCanvas() // window.cy.png({ output: 'blob' })
-          break
-        default:
-          // text = window.cy.jpg({ output: 'blob' })
-          type = 'image/jpeg'
-          break
+
+    const selector = document.getElementById('cy')
+    const appendTo = document.getElementById('canvas-test')
+
+    const canvas = await html2canvas(selector)
+
+    if (!appendTo) {
+      document.body.appendChild(canvas)
+    } else {
+      // If canvas is already exists
+      const canvasElem = document.querySelector('#canvas-test canvas')
+      if (canvasElem) {
+        appendTo.removeChild(canvasElem)
       }
-
-      // const name = 'test.png'
-      const canvas = document.getElementById('imgcanvas')
-      const ctx = canvas.getContext('2d')
-      if (window.cy) {
-        window.cy.renderer().renderTo(ctx)
-      }
-      return canvas.toBlob((blob) => {
-        const newImg = document.createElement('img')
-        const url = URL.createObjectURL(blob)
-
-        newImg.onload = () => {
-          URL.revokeObjectURL(url)
-        }
-
-        newImg.src = url
-        const a = document.getElementById('downloadgraph')
-        a.href = url
-        a.download = 'test.png'
-        // a.click()
-        // document.body.appendChild(newImg)
-      }, type)
-      /* const a = document.getElementById('downloadgraph')
-      const file = new Blob([graph], { type })
-      a.href = URL.createObjectURL(file)
-      a.download = name
-      a.click() */
+      appendTo.appendChild(canvas)
     }
+
+    let type = 'image/png'
+    switch (exportType) {
+      case 'png':
+        // text = converGraphToCanvas() // window.cy.png({ output: 'blob' })
+        break
+      case 'svg':
+        // text = converGraphToCanvas() // window.cy.png({ output: 'blob' })
+        type = 'image/svg'
+        break
+      default:
+        // text = window.cy.jpg({ output: 'blob' })
+        type = 'image/jpeg'
+        break
+    }
+
+    return canvas.toBlob((blob) => {
+      const newImg = document.createElement('img')
+      const url = URL.createObjectURL(blob)
+
+      newImg.onload = () => {
+        URL.revokeObjectURL(url)
+      }
+
+      newImg.src = url
+      const a = document.getElementById('downloadgraph')
+      a.href = url
+      const currDate = new Date()
+      const currDay = currDate.getDate()
+      const currMonth = currDate.getMonth()
+      const currYear = currDate.getFullYear()
+      a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
+      a.click()
+    }, type)
   }
 
   return (
@@ -174,10 +187,10 @@ const Menu = ({
                   </div>
                 </div>
               </label>
-              <a id="downloadgraph" onClick={saveGraph('png')}>Download</a>
+              <a id="downloadgraph" style={{ display: 'none' }} />
               <div className="dropdown">
-                <button type="button" className="btn btn-ingo dropdown-toggle" data-toggle="dropdown">
-                  Save
+                <button type="button" className="btn btn-ingo dropdown-toggle" data-toggle="dropdown" onClick={saveGraph('png')}>
+                  Save as PNG
                 </button>
                 <div className="dropdown-menu">
                   <a className="dropdown-item" href="#" onClick={saveGraph('png')}>Save as PNG</a>

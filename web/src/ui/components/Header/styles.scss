@@ -39,3 +39,7 @@ input, select {
   background-color: rgba(142, 154, 171, 0.5)!important;
   border-color: #8c929a;
 }
+
+#exported-canvas > * {
+  display: none;
+}
