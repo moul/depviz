@@ -29,9 +29,10 @@
   },
   "dependencies": {
     "@hot-loader/react-dom": "16.13.0",
+    "canvas2svg": "appigram/canvas2svg",
     "core-js": "3.6.5",
     "cytoscape": "3.14.1",
-    "cytoscape-cola": "2.3.0",
+    "cytoscape-cola": "2.3.1",
     "cytoscape-elk": "valohai/cytoscape.js-elk#modern",
     "cytoscape-node-html-label": "1.2.0",
     "html2canvas": "^1.0.0-rc.5",
@@ -40,7 +41,7 @@
     "react-dom": "16.13.1",
     "react-draggable": "^4.3.1",
     "react-feather": "2.0.4",
-    "react-hook-form": "5.5.2",
+    "react-hook-form": "5.5.3",
     "react-router-dom": "5.1.2",
     "tabler": "appigram/tabler#dev"
   },

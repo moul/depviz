@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import 'tabler/js/tabler'
 import html2canvas from 'html2canvas'
+import C2S from 'canvas2svg'
 // import { forEachObjIndexed } from 'ramda'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
@@ -121,12 +122,13 @@ const Menu = ({
 
   const saveGraph = (exportType) => async (e) => {
     e.preventDefault()
+    setShowDropdown(false)
 
     const selector = document.getElementById('cy')
     const appendTo = document.getElementById('canvas-test')
     const canvasElem = document.getElementById('exported-canvas') || null
 
-    const canvas = await html2canvas(selector, { backgroundColor: null, canvas: canvasElem, useCORS: true })
+    const canvas = await html2canvas(selector, { backgroundColor: null })
 
     if (!appendTo) {
       document.body.appendChild(canvas)
@@ -137,20 +139,49 @@ const Menu = ({
       appendTo.appendChild(canvas)
     }
 
-    let type = 'image/png'
+    let type = ''
     switch (exportType) {
       case 'svg':
         type = 'image/svg'
         break
-      default:
+      case 'jpg':
         type = 'image/jpeg'
+        break
+      default:
+        type = 'image/png'
         break
     }
 
-    setShowDropdown(false)
-
     if (exportType === 'svg') { // Export to SVG
+      const ctxOrig = canvas.getContext('2d')
+      let canvasW = canvas.width
+      let canvasH = canvas.height
+      if (!canvasW && !canvasH) {
+        canvasW = canvas.getBoundingClientRect().width
+        canvasH = canvas.getBoundingClientRect().height
+      }
+      // const ctx = new C2S({ ctx: ctxOrig, width: canvasW, height: canvasH })
+      const ctx = new C2S(ctxOrig, 500, 500)
 
+      // draw your canvas like you would normally
+      ctx.font = 'normal 36px Times'
+      ctx.fillStyle = '#000000'
+      ctx.fillText('A Text Example', 50, 50)
+      ctx.font = 'normal 36px Arial'
+      ctx.strokeStyle = '#000000'
+      ctx.strokeText('A Text Example', 50, 90)
+      const serializedSVG = ctx.getSerializedSvg()
+      console.log('serializedSVG: ', serializedSVG)
+      const svg = ctx.getSvg()
+      console.log('exportedSVG: ', svg)
+      const a = document.getElementById('downloadgraph')
+      a.href = svg
+      const currDate = new Date()
+      const currDay = currDate.getDate()
+      const currMonth = currDate.getMonth()
+      const currYear = currDate.getFullYear()
+      a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
+      a.click()
     } else {
       canvas.toBlob((blob) => {
         const newImg = document.createElement('img')

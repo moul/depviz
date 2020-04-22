@@ -249,7 +249,9 @@ const VisualizerWrapper = () => {
         </div>
       </div>
       )}
-      <canvas id="exported-canvas" />
+      <div id="canvas-test">
+        <canvas id="exported-canvas" />
+      </div>
     </div>
   )
 }
