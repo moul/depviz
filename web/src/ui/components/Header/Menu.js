@@ -5,7 +5,7 @@ import html2canvas from 'html2canvas'
 // import { forEachObjIndexed } from 'ramda'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
-import exportCanvasToImage from '../../../utils/exportCanvasToImage'
+// import exportCanvasToImage from '../../../utils/exportCanvasToImage'
 import fetchDepviz from '../../../api/depviz'
 
 import './styles.scss'
@@ -21,6 +21,7 @@ const Menu = ({
   } = useForm()
 
   const [urlData, setURLData] = useState(urlParams)
+  const [showDropdown, setShowDropdown] = useState(false)
 
   // Initialize form data and make API call (only once)
   useEffect(() => {
@@ -123,14 +124,13 @@ const Menu = ({
 
     const selector = document.getElementById('cy')
     const appendTo = document.getElementById('canvas-test')
+    const canvasElem = document.getElementById('exported-canvas') || null
 
-    const canvas = await html2canvas(selector)
+    const canvas = await html2canvas(selector, { backgroundColor: null, canvas: canvasElem, useCORS: true })
 
     if (!appendTo) {
       document.body.appendChild(canvas)
     } else {
-      // If canvas is already exists
-      const canvasElem = document.querySelector('#canvas-test canvas')
       if (canvasElem) {
         appendTo.removeChild(canvasElem)
       }
@@ -139,37 +139,38 @@ const Menu = ({
 
     let type = 'image/png'
     switch (exportType) {
-      case 'png':
-        // text = converGraphToCanvas() // window.cy.png({ output: 'blob' })
-        break
       case 'svg':
-        // text = converGraphToCanvas() // window.cy.png({ output: 'blob' })
         type = 'image/svg'
         break
       default:
-        // text = window.cy.jpg({ output: 'blob' })
         type = 'image/jpeg'
         break
     }
 
-    return canvas.toBlob((blob) => {
-      const newImg = document.createElement('img')
-      const url = URL.createObjectURL(blob)
+    setShowDropdown(false)
 
-      newImg.onload = () => {
-        URL.revokeObjectURL(url)
-      }
+    if (exportType === 'svg') { // Export to SVG
 
-      newImg.src = url
-      const a = document.getElementById('downloadgraph')
-      a.href = url
-      const currDate = new Date()
-      const currDay = currDate.getDate()
-      const currMonth = currDate.getMonth()
-      const currYear = currDate.getFullYear()
-      a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
-      a.click()
-    }, type)
+    } else {
+      canvas.toBlob((blob) => {
+        const newImg = document.createElement('img')
+        const url = URL.createObjectURL(blob)
+
+        newImg.onload = () => {
+          URL.revokeObjectURL(url)
+        }
+
+        newImg.src = url
+        const a = document.getElementById('downloadgraph')
+        a.href = url
+        const currDate = new Date()
+        const currDay = currDate.getDate()
+        const currMonth = currDate.getMonth()
+        const currYear = currDate.getFullYear()
+        a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
+        a.click()
+      }, type)
+    }
   }
 
   return (
@@ -188,15 +189,18 @@ const Menu = ({
                 </div>
               </label>
               <a id="downloadgraph" style={{ display: 'none' }} />
+
               <div className="dropdown">
-                <button type="button" className="btn btn-ingo dropdown-toggle" data-toggle="dropdown" onClick={saveGraph('png')}>
-                  Save as PNG
-                </button>
-                <div className="dropdown-menu">
+                <a className="btn btn-info dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" onClick={() => setShowDropdown(!showDropdown)}>
+                  Export
+                </a>
+                <div className={showDropdown ? 'dropdown-menu show' : 'dropdown-menu'} aria-labelledby="dropdownMenuLink">
                   <a className="dropdown-item" href="#" onClick={saveGraph('png')}>Save as PNG</a>
                   <a className="dropdown-item" href="#" onClick={saveGraph('jpg')}>Save as JPG</a>
+                  <a className="dropdown-item" href="#" onClick={saveGraph('svg')}>Save as SVG</a>
                 </div>
               </div>
+
               <button onClick={handleShowToken} className="btn">
                 {authToken ? 'Change token' : '+ Add token'}
               </button>

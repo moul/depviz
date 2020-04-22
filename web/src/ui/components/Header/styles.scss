@@ -33,6 +33,10 @@ input, select {
   .form-label {
     margin-bottom: 0;
   }
+  .btn {
+    margin: 0 0.25rem;
+    font-size: 0.8rem;
+  }
 }
 
 .custom-checkbox .custom-control-input:disabled:checked ~ .custom-control-label::before {
@@ -40,6 +44,6 @@ input, select {
   border-color: #8c929a;
 }
 
-#exported-canvas > * {
+#exported-canvas {
   display: none;
 }
