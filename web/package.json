@@ -29,7 +29,8 @@
   },
   "dependencies": {
     "@hot-loader/react-dom": "16.13.0",
-    "canvas2svg": "appigram/canvas2svg",
+    "bitmap2vector": "0.0.4",
+    "blob-to-buffer": "^1.2.8",
     "core-js": "3.6.5",
     "cytoscape": "3.14.1",
     "cytoscape-cola": "2.3.1",

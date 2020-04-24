@@ -2,14 +2,15 @@ import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import 'tabler/js/tabler'
 import html2canvas from 'html2canvas'
-import C2S from 'canvas2svg'
-// import { forEachObjIndexed } from 'ramda'
+import { bitmap2vector } from 'bitmap2vector'
+import toBuffer from 'blob-to-buffer'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
-// import exportCanvasToImage from '../../../utils/exportCanvasToImage'
 import fetchDepviz from '../../../api/depviz'
 
 import './styles.scss'
+
+// import Frame from 'canvas-to-buffer'
 
 const Menu = ({
   authToken, handleShowToken, urlParams = {},
@@ -23,6 +24,7 @@ const Menu = ({
 
   const [urlData, setURLData] = useState(urlParams)
   const [showDropdown, setShowDropdown] = useState(false)
+  const [waitingExport, setWaitingExport] = useState(false)
 
   // Initialize form data and make API call (only once)
   useEffect(() => {
@@ -122,7 +124,12 @@ const Menu = ({
 
   const saveGraph = (exportType) => async (e) => {
     e.preventDefault()
+    // Prevent multiple clicks
+    if (waitingExport) {
+      return
+    }
     setShowDropdown(false)
+    setWaitingExport(true)
 
     const selector = document.getElementById('cy')
     const appendTo = document.getElementById('canvas-test')
@@ -153,35 +160,57 @@ const Menu = ({
     }
 
     if (exportType === 'svg') { // Export to SVG
-      const ctxOrig = canvas.getContext('2d')
-      let canvasW = canvas.width
+      // const ctxOrig = canvas.getContext('2d')
+      /* let canvasW = canvas.width
       let canvasH = canvas.height
       if (!canvasW && !canvasH) {
         canvasW = canvas.getBoundingClientRect().width
         canvasH = canvas.getBoundingClientRect().height
-      }
-      // const ctx = new C2S({ ctx: ctxOrig, width: canvasW, height: canvasH })
-      const ctx = new C2S(ctxOrig, 500, 500)
+      } */
 
-      // draw your canvas like you would normally
-      ctx.font = 'normal 36px Times'
-      ctx.fillStyle = '#000000'
-      ctx.fillText('A Text Example', 50, 50)
-      ctx.font = 'normal 36px Arial'
-      ctx.strokeStyle = '#000000'
-      ctx.strokeText('A Text Example', 50, 90)
-      const serializedSVG = ctx.getSerializedSvg()
-      console.log('serializedSVG: ', serializedSVG)
-      const svg = ctx.getSvg()
-      console.log('exportedSVG: ', svg)
-      const a = document.getElementById('downloadgraph')
-      a.href = svg
-      const currDate = new Date()
-      const currDay = currDate.getDate()
-      const currMonth = currDate.getMonth()
-      const currYear = currDate.getFullYear()
-      a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
-      a.click()
+      canvas.toBlob((blob) => {
+        const newImg = document.createElement('img')
+        const url = URL.createObjectURL(blob)
+
+        newImg.onload = () => {
+          URL.revokeObjectURL(url)
+        }
+
+        newImg.src = url
+
+        // Convert Blob to Buffer
+        toBuffer(blob, async (err, buffer) => {
+          if (err) throw err
+          const { content } = await bitmap2vector({
+            // input: url,
+            input: buffer,
+          })
+          console.log('svg: ', content)
+          // add name spaces.
+          let source = content
+          if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+            source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"')
+          }
+          if (!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
+            source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"')
+          }
+
+          // add xml declaration
+          source = `<?xml version="1.0" standalone="no"?>\r\n${source}`
+
+          // convert svg source to URI data scheme.
+          const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`
+          const a = document.getElementById('downloadgraph')
+          a.href = url
+          const currDate = new Date()
+          const currDay = currDate.getDate()
+          const currMonth = currDate.getMonth()
+          const currYear = currDate.getFullYear()
+          a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
+          a.click()
+          setWaitingExport(false)
+        })
+      }, 'image/png')
     } else {
       canvas.toBlob((blob) => {
         const newImg = document.createElement('img')
@@ -200,6 +229,7 @@ const Menu = ({
         const currYear = currDate.getFullYear()
         a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
         a.click()
+        setWaitingExport(false)
       }, type)
     }
   }
@@ -222,13 +252,13 @@ const Menu = ({
               <a id="downloadgraph" style={{ display: 'none' }} />
 
               <div className="dropdown">
-                <a className="btn btn-info dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" onClick={() => setShowDropdown(!showDropdown)}>
-                  Export
+                <a className={waitingExport ? 'btn btn-info dropdown-toggle disabled' : 'btn btn-info dropdown-toggle'} href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" onClick={() => setShowDropdown(!showDropdown)}>
+                  {waitingExport ? 'Exporting...' : 'Export'}
                 </a>
                 <div className={showDropdown ? 'dropdown-menu show' : 'dropdown-menu'} aria-labelledby="dropdownMenuLink">
                   <a className="dropdown-item" href="#" onClick={saveGraph('png')}>Save as PNG</a>
                   <a className="dropdown-item" href="#" onClick={saveGraph('jpg')}>Save as JPG</a>
-                  <a className="dropdown-item" href="#" onClick={saveGraph('svg')}>Save as SVG</a>
+                  <a className="dropdown-item" href="#" onClick={saveGraph('svg')}>Save as SVG (beta)</a>
                 </div>
               </div>
 
