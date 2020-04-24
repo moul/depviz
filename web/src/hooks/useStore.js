@@ -11,8 +11,10 @@ const DEFAULT_STATE = {
     name: 'circle',
     avoidOverlap: true,
   },
+  urlData: {},
   repName: 'moul/depviz-test',
   forceRedraw: false,
+  showInfoBox: false,
   debugInfo: {
     fps: 0,
     nodes: 0,
@@ -53,8 +55,14 @@ function createContextValue(state, setState) {
     updateGraph: (forceRedraw = true) => {
       setState({ ...state, forceRedraw })
     },
+    updateUrlData: (urlData) => {
+      setState({ ...state, urlData })
+    },
     setDebugInfo: (info) => {
       setState({ ...state, debugInfo: { ...state.debugInfo, ...info } })
+    },
+    setShowInfoBox: (show = false) => {
+      setState({ ...state, showInfoBox: show })
     },
   }
 }

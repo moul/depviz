@@ -1,42 +1,61 @@
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-// import { forEachObjIndexed } from 'ramda'
+import 'tabler/js/tabler'
+import html2canvas from 'html2canvas'
+import { bitmap2vector } from 'bitmap2vector'
+import toBuffer from 'blob-to-buffer'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
 import fetchDepviz from '../../../api/depviz'
 
 import './styles.scss'
 
+// import Frame from 'canvas-to-buffer'
+
 const Menu = ({
   authToken, handleShowToken, urlParams = {},
 }) => {
   const {
-    updateApiData, updateLayout, updateLoadingGraph, layout,
+    updateApiData, updateLayout, updateLoadingGraph, layout, setShowInfoBox, updateUrlData,
   } = useStore()
   const {
     register, getValues, setValue, handleSubmit,
   } = useForm()
 
   const [urlData, setURLData] = useState(urlParams)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [waitingExport, setWaitingExport] = useState(false)
 
   // Initialize form data and make API call (only once)
   useEffect(() => {
-    Object.keys(urlData).map((key) => {
-      if (urlData[key]) {
-        setValue(key, urlData[key])
-      }
-    })
-    // forEachObjIndexed(setFormValue, urlData)
     updateLayout(urlData.layout)
     if (urlData.targets) {
       updateLoadingGraph(true)
-      urlData.withoutIsolated = !urlData.withoutIsolated
-      urlData.withoutPrs = !urlData.withoutPrs
-      urlData.withoutExternalDeps = !urlData.withoutExternalDeps
+      // Process Timeline layout (disable all checkboxes except Closed)
+      if (urlData.layout === 'timeline') {
+        urlData.withClosed = true
+        urlData.withoutIsolated = false
+        urlData.withoutPrs = false
+        urlData.withoutExternalDeps = false
+        updateBrowserHistory(generateUrl(urlData))
+        setURLData(urlData)
+        setValue('withClosed', true)
+        setValue('withoutIsolated', false)
+        setValue('withoutPrs', false)
+        setValue('withoutExternalDeps', false)
+      } else {
+        Object.keys(urlData).map((key) => {
+          if (urlData[key]) {
+            setValue(key, urlData[key])
+          }
+        })
+        urlData.withoutIsolated = !urlData.withoutIsolated
+        urlData.withoutPrs = !urlData.withoutPrs
+        urlData.withoutExternalDeps = !urlData.withoutExternalDeps
+      }
       makeAPICall(urlData)
     }
   }, [])
-
 
   const makeAPICall = async (data) => {
     const response = await fetchDepviz(`/graph${generateUrl(data)}`)
@@ -56,6 +75,7 @@ const Menu = ({
     newUrlData.withoutExternalDeps = !data.withoutExternalDeps
     updateBrowserHistory(generateUrl(newUrlData))
     setURLData(newUrlData)
+    updateUrlData(newUrlData)
     if (fetchApi) {
       makeAPICall(newUrlData)
     }
@@ -68,18 +88,149 @@ const Menu = ({
   const handleLayoutChange = () => {
     const data = getValues()
     handleURLData(true)
+    // Process Timeline layout (disable all checkboxes except Closed)
+    if (data.layout === 'timeline') {
+      const newUrlData = {
+        ...urlData,
+        ...data,
+      }
+      newUrlData.withClosed = true
+      newUrlData.withoutIsolated = false
+      newUrlData.withoutPrs = false
+      newUrlData.withoutExternalDeps = false
+      updateBrowserHistory(generateUrl(newUrlData))
+      setURLData(newUrlData)
+      // setValue('withClosed')
+      setShowInfoBox(false)
+      setValue('withClosed', true)
+      setValue('withoutIsolated', false)
+      setValue('withoutPrs', false)
+      setValue('withoutExternalDeps', false)
+    }
     updateLayout(data.layout)
   }
 
   const handleCheckboxChange = () => {
+    setShowInfoBox(false)
     handleURLData(true)
-    handleRedraw()
+    // handleRedraw()
   }
 
   const handleRedraw = () => {
     if (window.cy) {
-      const cyLayout = window.cy.layout(layout)
-      cyLayout.run()
+      window.cy.layout(layout).run()
+    }
+  }
+
+  const saveGraph = (exportType) => async (e) => {
+    e.preventDefault()
+    // Prevent multiple clicks
+    if (waitingExport) {
+      return
+    }
+    setShowDropdown(false)
+    setWaitingExport(true)
+
+    const selector = document.getElementById('cy')
+    const appendTo = document.getElementById('canvas-test')
+    const canvasElem = document.getElementById('exported-canvas') || null
+
+    const canvas = await html2canvas(selector, { backgroundColor: null })
+
+    if (!appendTo) {
+      document.body.appendChild(canvas)
+    } else {
+      if (canvasElem) {
+        appendTo.removeChild(canvasElem)
+      }
+      appendTo.appendChild(canvas)
+    }
+
+    let type = ''
+    switch (exportType) {
+      case 'svg':
+        type = 'image/svg'
+        break
+      case 'jpg':
+        type = 'image/jpeg'
+        break
+      default:
+        type = 'image/png'
+        break
+    }
+
+    if (exportType === 'svg') { // Export to SVG
+      // const ctxOrig = canvas.getContext('2d')
+      /* let canvasW = canvas.width
+      let canvasH = canvas.height
+      if (!canvasW && !canvasH) {
+        canvasW = canvas.getBoundingClientRect().width
+        canvasH = canvas.getBoundingClientRect().height
+      } */
+
+      canvas.toBlob((blob) => {
+        const newImg = document.createElement('img')
+        const url = URL.createObjectURL(blob)
+
+        newImg.onload = () => {
+          URL.revokeObjectURL(url)
+        }
+
+        newImg.src = url
+
+        // Convert Blob to Buffer
+        toBuffer(blob, async (err, buffer) => {
+          if (err) throw err
+          const { content } = await bitmap2vector({
+            // input: url,
+            input: buffer,
+          })
+          console.log('svg: ', content)
+          // add name spaces.
+          let source = content
+          if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+            source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"')
+          }
+          if (!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
+            source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"')
+          }
+
+          // add xml declaration
+          source = `<?xml version="1.0" standalone="no"?>\r\n${source}`
+
+          // convert svg source to URI data scheme.
+          const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`
+          const a = document.getElementById('downloadgraph')
+          a.href = url
+          const currDate = new Date()
+          const currDay = currDate.getDate()
+          const currMonth = currDate.getMonth()
+          const currYear = currDate.getFullYear()
+          a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
+          a.click()
+          setWaitingExport(false)
+        })
+      }, 'image/png')
+    } else {
+      canvas.toBlob((blob) => {
+        const newImg = document.createElement('img')
+        const url = URL.createObjectURL(blob)
+
+        newImg.onload = () => {
+          URL.revokeObjectURL(url)
+        }
+
+        newImg.src = url
+        const a = document.getElementById('downloadgraph')
+        a.href = url
+        const currDate = new Date()
+        const currDay = currDate.getDate()
+        const currMonth = currDate.getMonth()
+        const currYear = currDate.getFullYear()
+        a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
+        a.click()
+        setWaitingExport(false)
+      }, type)
     }
   }
 
@@ -98,6 +249,19 @@ const Menu = ({
                   </div>
                 </div>
               </label>
+              <a id="downloadgraph" style={{ display: 'none' }} />
+
+              <div className="dropdown">
+                <a className={waitingExport ? 'btn btn-info dropdown-toggle disabled' : 'btn btn-info dropdown-toggle'} href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" onClick={() => setShowDropdown(!showDropdown)}>
+                  {waitingExport ? 'Exporting...' : 'Export'}
+                </a>
+                <div className={showDropdown ? 'dropdown-menu show' : 'dropdown-menu'} aria-labelledby="dropdownMenuLink">
+                  <a className="dropdown-item" href="#" onClick={saveGraph('png')}>Save as PNG</a>
+                  <a className="dropdown-item" href="#" onClick={saveGraph('jpg')}>Save as JPG</a>
+                  <a className="dropdown-item" href="#" onClick={saveGraph('svg')}>Save as SVG (beta)</a>
+                </div>
+              </div>
+
               <button onClick={handleShowToken} className="btn">
                 {authToken ? 'Change token' : '+ Add token'}
               </button>
@@ -106,27 +270,23 @@ const Menu = ({
           </div>
           <div className="col-lg ml-right">
             <div className="form-group">
-
               <label htmlFor="withClosed" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withClosed" id="withClosed" onChange={handleCheckboxChange} disabled={layout.name === 'timeline'} className="custom-control-input" />
                 <span className="custom-control-label">Closed</span>
               </label>
 
-
               <label htmlFor="withoutIsolated" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} type="checkbox" name="withoutIsolated" id="withoutIsolated" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withoutIsolated" id="withoutIsolated" onChange={handleCheckboxChange} disabled={layout.name === 'timeline'} className="custom-control-input" />
                 <span className="custom-control-label">Isolated</span>
               </label>
 
-
               <label htmlFor="withoutPrs" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} type="checkbox" name="withoutPrs" id="withoutPrs" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withoutPrs" id="withoutPrs" onChange={handleCheckboxChange} disabled={layout.name === 'timeline'} className="custom-control-input" />
                 <span className="custom-control-label">PRs</span>
               </label>
 
-
               <label htmlFor="withoutExternalDeps" className="custom-control custom-checkbox custom-control-inline">
-                <input ref={register} type="checkbox" name="withoutExternalDeps" id="withoutExternalDeps" onChange={handleCheckboxChange} className="custom-control-input" />
+                <input ref={register} type="checkbox" name="withoutExternalDeps" id="withoutExternalDeps" onChange={handleCheckboxChange} disabled={layout.name === 'timeline'} className="custom-control-input" />
                 <span className="custom-control-label">Ext. Deps</span>
               </label>
             </div>
@@ -152,6 +312,7 @@ const Menu = ({
           </div>
         </form>
       </div>
+      <canvas id="imgcanvas" style={{ display: 'none' }} />
     </div>
   )
 }

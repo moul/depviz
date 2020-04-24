@@ -26,7 +26,7 @@ const GraphCard = (data, type) => {
   }
 
   const cardTemplate = (
-    <div className={`cy-card issue ${cardClasses}`}>
+    <div id={data.html_id} className={`cy-card issue ${cardClasses}`}>
       <div className="b-left">
         {kindClassIcon}
       </div>

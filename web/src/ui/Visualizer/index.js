@@ -11,14 +11,11 @@ const showDebug = true // process.env.NODE_ENV === 'development'
 
 const VisualizerWrapper = () => {
   const {
-    apiData, layout, repName, isLoadingGraph,
+    apiData, layout, repName, isLoadingGraph, showInfoBox, setShowInfoBox,
   } = useStore()
-  const [showInfoBox, setShowInfoBox] = useState(false)
   const [infoBoxData, setInfoBoxData] = useState(null)
 
   const { tasks } = apiData || {}
-
-  console.log('tasks: ', tasks)
 
   const nodes = []
   const edges = []
@@ -200,7 +197,6 @@ const VisualizerWrapper = () => {
     } else {
       debugInfo.nodes = nodes.length
       debugInfo.edges = edges.length
-      console.log('layout: ', layout)
       rendererBlock = <CytoscapeRenderer nodes={nodes} edges={edges} layout={layout} handleInfoBox={handleInfoBox} />
     }
   } else {
@@ -253,6 +249,9 @@ const VisualizerWrapper = () => {
         </div>
       </div>
       )}
+      <div id="canvas-test">
+        <canvas id="exported-canvas" />
+      </div>
     </div>
   )
 }
