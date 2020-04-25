@@ -10,8 +10,6 @@ import fetchDepviz from '../../../api/depviz'
 
 import './styles.scss'
 
-// import Frame from 'canvas-to-buffer'
-
 const Menu = ({
   authToken, handleShowToken, urlParams = {},
 }) => {
@@ -135,7 +133,11 @@ const Menu = ({
     const appendTo = document.getElementById('canvas-test')
     const canvasElem = document.getElementById('exported-canvas') || null
 
-    const canvas = await html2canvas(selector, { backgroundColor: null })
+    const canvas = await html2canvas(selector, {
+      backgroundColor: exportType === 'jpg' ? '#FFFFFF' : null,
+      windowWidth: selector.scrollWidth,
+      windowHeight: selector.scrollHeight,
+    })
 
     if (!appendTo) {
       document.body.appendChild(canvas)
@@ -230,7 +232,7 @@ const Menu = ({
         a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
         a.click()
         setWaitingExport(false)
-      }, type)
+      }, type, 1)
     }
   }
 

@@ -9,6 +9,7 @@
   color: #383B62;
   background-color: #FFF;
   border-radius: 15px;
+  border: 1px solid rgba(56, 59, 98, 0.15);
   box-shadow: 0 4px 12px 2px rgba(56, 59, 98, 0.15);
   font-family: 'Open Sans', sans-serif;
   font-weight: 600;
@@ -37,6 +38,7 @@
   }
   .b-body-middle {
     margin-bottom: 15px;
+    position: relative;
   }
   .b-body-bottom {
     margin-bottom: 10px;
@@ -56,10 +58,7 @@
     line-height: 25px;
     height: 105px;
     width: 405px;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
+    display: block;
   }
   .b-body-top {
     margin-bottom: 15px;
