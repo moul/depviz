@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import 'tabler/js/tabler'
 import html2canvas from 'html2canvas'
-import { bitmap2vector } from 'bitmap2vector'
+// import { bitmap2vector } from 'bitmap2vector'
+import potrace from 'potrace'
 import toBuffer from 'blob-to-buffer'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
@@ -183,34 +184,47 @@ const Menu = ({
         // Convert Blob to Buffer
         toBuffer(blob, async (err, buffer) => {
           if (err) throw err
-          const { content } = await bitmap2vector({
+          /* const { content } = await bitmap2vector({
             // input: url,
             input: buffer,
+          }) */
+          /* const result = await png2svg({
+            tracer: 'imagetracer',
+            optimize: true,
+            input: buffer,
+            numberofcolors: 24,
+            pathomit: 1,
+          }) */
+          const params = {
+            // blackOnWhite: false,
+          }
+          potrace.trace(buffer, (err, svg) => {
+            console.log('svg: ', svg)
+            // console.log('svg: ', result)
+            // add name spaces.
+            let source = svg
+            if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+              source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"')
+            }
+            if (!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
+              source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"')
+            }
+
+            // add xml declaration
+            source = `<?xml version="1.0" standalone="no"?>\r\n${source}`
+
+            // convert svg source to URI data scheme. */
+            const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`
+            const a = document.getElementById('downloadgraph')
+            a.href = url
+            const currDate = new Date()
+            const currDay = currDate.getDate()
+            const currMonth = currDate.getMonth()
+            const currYear = currDate.getFullYear()
+            a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
+            a.click()
+            setWaitingExport(false)
           })
-          console.log('svg: ', content)
-          // add name spaces.
-          let source = content
-          if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
-            source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"')
-          }
-          if (!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
-            source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"')
-          }
-
-          // add xml declaration
-          source = `<?xml version="1.0" standalone="no"?>\r\n${source}`
-
-          // convert svg source to URI data scheme.
-          const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`
-          const a = document.getElementById('downloadgraph')
-          a.href = url
-          const currDate = new Date()
-          const currDay = currDate.getDate()
-          const currMonth = currDate.getMonth()
-          const currYear = currDate.getFullYear()
-          a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
-          a.click()
-          setWaitingExport(false)
         })
       }, 'image/png')
     } else {
