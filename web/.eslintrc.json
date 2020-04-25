@@ -36,18 +36,9 @@
     "import/no-extraneous-dependencies": 0,
     "import/extensions": 0,
     "import/no-absolute-path": 0,
-    "jsx-a11y/anchor-is-valid": [
-      "error",
-      {
-        "components": [
-          "Link"
-        ],
-        "specialLink": [
-          "to"
-        ]
-      }
-    ],
-    "jsx-a11y/no-onchange": 0, 
+    "jsx-a11y/anchor-is-valid": 0,
+    "jsx-a11y/anchor-has-content": 0,
+    "jsx-a11y/no-onchange": 0,
     "semi": ["error", "never"],
     "max-len": 0,
     "no-alert": 0,
