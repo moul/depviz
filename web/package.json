@@ -42,8 +42,8 @@
     "react": "16.13.1",
     "react-dom": "16.13.1",
     "react-draggable": "^4.3.1",
-    "react-feather": "2.0.4",
-    "react-hook-form": "5.5.3",
+    "react-feather": "2.0.8",
+    "react-hook-form": "5.6.0",
     "react-router-dom": "5.1.2",
     "tabler": "appigram/tabler#dev"
   },

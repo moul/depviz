@@ -134,10 +134,40 @@ const Menu = ({
     const appendTo = document.getElementById('canvas-test')
     const canvasElem = document.getElementById('exported-canvas') || null
 
+    let type = ''
+    // const scaleRatio = 10
+    // const ctxOrig = canvas.getContext('2d')
+    // let canvasW = 500
+    // let canvasH = 300
+    switch (exportType) {
+      case 'svg':
+        type = 'image/svg'
+        /* ctxOrig.scale(scaleRatio, scaleRatio)
+        canvasW = canvas.width
+        canvasH = canvas.height
+        if (!canvasW && !canvasH) {
+          canvasW = canvas.getBoundingClientRect().width
+          canvasH = canvas.getBoundingClientRect().height
+        }
+        canvasW *= scaleRatio
+        canvasH *= scaleRatio
+        canvas.width = canvasW
+        canvas.height = canvasH */
+        break
+      case 'jpg':
+        type = 'image/jpeg'
+        break
+      default:
+        type = 'image/png'
+        break
+    }
+
     const canvas = await html2canvas(selector, {
       backgroundColor: exportType === 'jpg' ? '#FFFFFF' : null,
       windowWidth: selector.scrollWidth,
       windowHeight: selector.scrollHeight,
+      // windowWidth: exportType === 'svg' ? selector.scrollWidth * scaleRatio : selector.scrollWidth,
+      // windowHeight: exportType === 'svg' ? selector.scrollHeight * scaleRatio : selector.scrollHeight,
     })
 
     if (!appendTo) {
@@ -149,28 +179,7 @@ const Menu = ({
       appendTo.appendChild(canvas)
     }
 
-    let type = ''
-    switch (exportType) {
-      case 'svg':
-        type = 'image/svg'
-        break
-      case 'jpg':
-        type = 'image/jpeg'
-        break
-      default:
-        type = 'image/png'
-        break
-    }
-
     if (exportType === 'svg') { // Export to SVG
-      // const ctxOrig = canvas.getContext('2d')
-      /* let canvasW = canvas.width
-      let canvasH = canvas.height
-      if (!canvasW && !canvasH) {
-        canvasW = canvas.getBoundingClientRect().width
-        canvasH = canvas.getBoundingClientRect().height
-      } */
-
       canvas.toBlob((blob) => {
         const newImg = document.createElement('img')
         const url = URL.createObjectURL(blob)
@@ -184,10 +193,18 @@ const Menu = ({
         // Convert Blob to Buffer
         toBuffer(blob, async (err, buffer) => {
           if (err) throw err
+          // WARNING: slow down rendering a lot, but more quality, for options details https://github.com/jankovicsandras/imagetracerjs/blob/master/options.md
           /* const { content } = await bitmap2vector({
-            // input: url,
             input: buffer,
-          }) */
+            layering: 1,
+            // detailed preset
+            pathomit: 0,
+            roundcoords: 2,
+            ltres: 0.5,
+            qtres: 0.5,
+            numberofcolors: 64,
+          })
+          downloadSVG(content, exportType) */
           /* const result = await png2svg({
             tracer: 'imagetracer',
             optimize: true,
@@ -195,35 +212,18 @@ const Menu = ({
             numberofcolors: 24,
             pathomit: 1,
           }) */
-          /* const params = {
-            // blackOnWhite: false,
-          } */
-          potrace.trace(buffer, (err, svg) => {
+          const params = {
+            turdSize: 0.5,
+            alphaMax: 0.1,
+            optCurve: true,
+            optTolerance: 0.2,
+            threshold: 240,
+            blackOnWhite: true,
+            color: '#20D6B5',
+          }
+          potrace.trace(buffer, params, (err, svg) => {
             console.log('svg: ', svg)
-            // console.log('svg: ', result)
-            // add name spaces.
-            let source = svg
-            if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
-              source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"')
-            }
-            if (!source.match(/^<svg[^>]+"http:\/\/www\.w3\.org\/1999\/xlink"/)) {
-              source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"')
-            }
-
-            // add xml declaration
-            source = `<?xml version="1.0" standalone="no"?>\r\n${source}`
-
-            // convert svg source to URI data scheme. */
-            const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`
-            const a = document.getElementById('downloadgraph')
-            a.href = url
-            const currDate = new Date()
-            const currDay = currDate.getDate()
-            const currMonth = currDate.getMonth()
-            const currYear = currDate.getFullYear()
-            a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
-            a.click()
-            setWaitingExport(false)
+            downloadSVG(svg, exportType)
           })
         })
       }, 'image/png')
@@ -248,6 +248,31 @@ const Menu = ({
         setWaitingExport(false)
       }, type, 1)
     }
+  }
+
+  const downloadSVG = (svg, exportType) => {
+    let source = svg
+    if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
+      source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"')
+    }
+    if (!source.match(/^<svg[^>]+"http:\/\/www\.w3\.org\/1999\/xlink"/)) {
+      source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"')
+    }
+
+    // add xml declaration
+    source = `<?xml version="1.0" standalone="no"?>\r\n${source}`
+
+    // convert svg source to URI data scheme. */
+    const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`
+    const a = document.getElementById('downloadgraph')
+    a.href = url
+    const currDate = new Date()
+    const currDay = currDate.getDate()
+    const currMonth = currDate.getMonth()
+    const currYear = currDate.getFullYear()
+    a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
+    a.click()
+    setWaitingExport(false)
   }
 
   return (
