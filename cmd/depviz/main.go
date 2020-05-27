@@ -20,6 +20,7 @@ import (
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"moul.io/banner"
 	"moul.io/depviz/v3/internal/dvcore"
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/depviz/v3/internal/dvserver"
@@ -336,6 +337,7 @@ func execServer(ctx context.Context, args []string) error {
 		})
 	}
 
+	fmt.Fprintln(os.Stderr, banner.Inline("depviz"))
 	logger.Info("server started",
 		zap.String("http-bind", svc.HTTPListenerAddr()),
 		zap.String("grpc-bind", svc.GRPCListenerAddr()),
