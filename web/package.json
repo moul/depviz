@@ -45,7 +45,7 @@
     "react-feather": "2.0.8",
     "react-hook-form": "5.6.0",
     "react-router-dom": "5.1.2",
-    "tabler": "appigram/tabler#dev"
+    "tabler": "^1.0.0-alpha.7"
   },
   "devDependencies": {
     "@babel/cli": "7.8.4",
