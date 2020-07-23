@@ -45,7 +45,7 @@
     "react-feather": "2.0.8",
     "react-hook-form": "6.0.1",
     "react-router-dom": "5.2.0",
-    "tabler": "^1.0.0-alpha.7"
+    "tabler": "1.0.0-alpha.7"
   },
   "devDependencies": {
     "@babel/cli": "7.8.4",
