@@ -43,7 +43,7 @@ require (
 	moul.io/banner v1.0.0
 	moul.io/godev v1.5.0
 	moul.io/graphman v1.6.0
-	moul.io/graphman/viz v0.0.0-20200301205736-d14252ef2f07
+	moul.io/graphman/viz v1.6.0
 	moul.io/multipmuri v1.13.0
 	moul.io/srand v1.4.0
 )
