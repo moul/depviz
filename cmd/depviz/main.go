@@ -136,7 +136,7 @@ func main() {
 }
 
 func globalPreRun() error {
-	rand.Seed(srand.Secure())
+	rand.Seed(srand.MustSecure())
 
 	if *globalBearerSecretKey != "" {
 		bearer.ReplaceGlobals(bearer.Init(*globalBearerSecretKey))
