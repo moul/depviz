@@ -19,7 +19,6 @@ import (
 	"github.com/oklog/run"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"moul.io/banner"
 	"moul.io/depviz/v3/internal/dvcore"
 	"moul.io/depviz/v3/internal/dvparser"
@@ -27,6 +26,7 @@ import (
 	"moul.io/depviz/v3/internal/dvstore"
 	"moul.io/godev"
 	"moul.io/srand"
+	"moul.io/zapconfig"
 )
 
 var (
@@ -142,16 +142,15 @@ func globalPreRun() error {
 		bearer.ReplaceGlobals(bearer.Init(*globalBearerSecretKey))
 	}
 
-	config := zap.NewDevelopmentConfig()
-	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	config := zapconfig.Configurator{}
 	if *globalDebug {
-		config.Level.SetLevel(zap.DebugLevel)
-		config.DisableStacktrace = !*globalWithStacktrace
+		config.SetLevel(zap.DebugLevel)
 	} else {
-		config.Level.SetLevel(zap.InfoLevel)
-		config.DisableStacktrace = true
+		config.SetLevel(zap.InfoLevel)
 	}
-	var err error
+	if *globalWithStacktrace {
+		config.EnableStacktrace()
+	}
 	logger, err = config.Build()
 	if err != nil {
 		return fmt.Errorf("init logger: %w", err)
