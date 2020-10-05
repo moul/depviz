@@ -151,6 +151,7 @@ func globalPreRun() error {
 	if *globalWithStacktrace {
 		config.EnableStacktrace()
 	}
+	var err error
 	logger, err = config.Build()
 	if err != nil {
 		return fmt.Errorf("init logger: %w", err)
