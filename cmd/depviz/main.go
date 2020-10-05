@@ -77,6 +77,16 @@ var (
 )
 
 func main() {
+	err := Main(os.Args)
+	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return
+		}
+		log.Fatalf("fatal: %+v", err)
+	}
+}
+
+func Main(args []string) error {
 	log.SetFlags(0)
 
 	defer func() {
@@ -127,12 +137,7 @@ func main() {
 		Exec: func(context.Context, []string) error { return flag.ErrHelp },
 	}
 
-	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return
-		}
-		log.Fatalf("fatal: %+v", err)
-	}
+	return root.ParseAndRun(context.Background(), args[1:])
 }
 
 func globalPreRun() error {
