@@ -19,7 +19,6 @@ import (
 	"github.com/oklog/run"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"moul.io/banner"
 	"moul.io/depviz/v3/internal/dvcore"
 	"moul.io/depviz/v3/internal/dvparser"
@@ -27,6 +26,7 @@ import (
 	"moul.io/depviz/v3/internal/dvstore"
 	"moul.io/godev"
 	"moul.io/srand"
+	"moul.io/zapconfig"
 )
 
 var (
@@ -77,6 +77,16 @@ var (
 )
 
 func main() {
+	err := Main(os.Args)
+	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return
+		}
+		log.Fatalf("fatal: %+v", err)
+	}
+}
+
+func Main(args []string) error {
 	log.SetFlags(0)
 
 	defer func() {
@@ -127,12 +137,7 @@ func main() {
 		Exec: func(context.Context, []string) error { return flag.ErrHelp },
 	}
 
-	if err := root.ParseAndRun(context.Background(), os.Args[1:]); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return
-		}
-		log.Fatalf("fatal: %+v", err)
-	}
+	return root.ParseAndRun(context.Background(), args[1:])
 }
 
 func globalPreRun() error {
@@ -142,14 +147,14 @@ func globalPreRun() error {
 		bearer.ReplaceGlobals(bearer.Init(*globalBearerSecretKey))
 	}
 
-	config := zap.NewDevelopmentConfig()
-	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	config := zapconfig.Configurator{}
 	if *globalDebug {
-		config.Level.SetLevel(zap.DebugLevel)
-		config.DisableStacktrace = !*globalWithStacktrace
+		config.SetLevel(zap.DebugLevel)
 	} else {
-		config.Level.SetLevel(zap.InfoLevel)
-		config.DisableStacktrace = true
+		config.SetLevel(zap.InfoLevel)
+	}
+	if *globalWithStacktrace {
+		config.EnableStacktrace()
 	}
 	var err error
 	logger, err = config.Build()

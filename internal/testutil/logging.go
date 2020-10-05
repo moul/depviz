@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"moul.io/zapconfig"
 )
 
 var debug = flag.Bool("debug", false, "more verbose logging")
@@ -16,14 +16,5 @@ func Logger(t *testing.T) *zap.Logger {
 		return zap.NewNop()
 	}
 
-	config := zap.NewDevelopmentConfig()
-	config.DisableStacktrace = true
-	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	config.Level.SetLevel(zap.DebugLevel)
-	logger, err := config.Build()
-	if err != nil {
-		t.Errorf("debug logger: %v", err)
-		return zap.NewNop()
-	}
-	return logger
+	return zapconfig.Configurator{}.MustBuild()
 }

@@ -21,14 +21,14 @@ import (
 )
 
 type RunOpts struct {
-	/// global
+	// global
 
 	NoPull  bool
 	NoGraph bool
 	Logger  *zap.Logger
 	Schema  *schema.Config
 
-	/// pull
+	// pull
 
 	GitHubToken string
 	// GitLabToken string
@@ -36,7 +36,7 @@ type RunOpts struct {
 	// JiraToken string
 	Resync bool
 
-	/// graph
+	// graph
 
 	Format           string
 	Vertical         bool
