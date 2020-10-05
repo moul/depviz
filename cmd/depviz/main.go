@@ -24,8 +24,8 @@ import (
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/depviz/v3/internal/dvserver"
 	"moul.io/depviz/v3/internal/dvstore"
-	"moul.io/godev"
 	"moul.io/srand"
+	"moul.io/u"
 	"moul.io/zapconfig"
 )
 
@@ -232,7 +232,7 @@ func execStoreDumpJSON(ctx context.Context, args []string) error {
 		return fmt.Errorf("get store dump: %w", err)
 	}
 
-	fmt.Println(godev.PrettyJSON(batch))
+	fmt.Println(u.PrettyJSON(batch))
 	return nil
 }
 
