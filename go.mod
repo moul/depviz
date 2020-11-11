@@ -11,7 +11,7 @@ require (
 	github.com/cayleygraph/quad v1.2.4
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-chi/render v1.0.1
-	github.com/gobuffalo/packr/v2 v2.8.0
+	github.com/gobuffalo/packr/v2 v2.8.1
 	github.com/gogo/gateway v1.1.0
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.2
