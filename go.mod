@@ -40,7 +40,7 @@ require (
 	golang.org/x/sys v0.0.0-20201005065044-765f4ea38db3 // indirect
 	golang.org/x/tools v0.0.0-20201002184944-ecd9fd270d5d // indirect
 	google.golang.org/genproto v0.0.0-20201002142447-3860012362da
-	google.golang.org/grpc v1.32.0
+	google.golang.org/grpc v1.33.2
 	gopkg.in/yaml.v2 v2.3.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 	moul.io/banner v1.0.1
