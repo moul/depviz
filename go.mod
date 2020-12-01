@@ -52,5 +52,5 @@ require (
 	moul.io/multipmuri v1.13.0
 	moul.io/srand v1.6.1
 	moul.io/u v1.19.1
-	moul.io/zapconfig v1.2.0
+	moul.io/zapconfig v1.3.0
 )
