@@ -30,7 +30,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/spf13/cobra v1.1.1 // indirect
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/treastech/logger v0.0.0-20180705232552-e381e9ecf2e3
 	github.com/tylertreat/BoomFilters v0.0.0-20200520150052-42a7b4300c0c // indirect
 	go.uber.org/zap v1.16.0
