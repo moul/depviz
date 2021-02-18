@@ -30,7 +30,7 @@ RUN             make install
 
 
 # minimalist runtime
-FROM alpine:3.13.0
+FROM alpine:3.13.2
 LABEL           org.label-schema.build-date=$BUILD_DATE \
                 org.label-schema.name="depviz" \
                 org.label-schema.description="" \
