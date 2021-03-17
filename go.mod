@@ -9,15 +9,15 @@ require (
 	github.com/awalterschulze/gographviz v2.0.3+incompatible // indirect
 	github.com/cayleygraph/cayley v0.7.7
 	github.com/cayleygraph/quad v1.2.4
-	github.com/go-chi/chi v4.1.2+incompatible
+	github.com/go-chi/chi/v5 v5.0.1
 	github.com/go-chi/render v1.0.1
 	github.com/gobuffalo/packr/v2 v2.8.1
 	github.com/gogo/gateway v1.1.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.4.3
-	github.com/google/go-github/v30 v30.1.0
+	github.com/google/go-github/v33 v33.0.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
-	github.com/grpc-ecosystem/grpc-gateway v1.16.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0
 	github.com/hidal-go/hidalgo v0.0.0-20201109092204-05749a6d73df // indirect
 	github.com/karrick/godirwalk v1.16.1 // indirect
 	github.com/oklog/run v1.1.0
@@ -47,7 +47,7 @@ require (
 	moul.io/banner v1.0.1
 	moul.io/godev v1.7.0
 	moul.io/graphman v1.6.0
-	moul.io/graphman/viz v0.0.0-20201111010417-ffcba52773de
+	moul.io/graphman/viz v1.6.0
 	moul.io/multipmuri v1.13.0
 	moul.io/srand v1.6.1
 	moul.io/u v1.20.0
