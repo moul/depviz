@@ -30,6 +30,12 @@ import (
 	"moul.io/multipmuri"
 )
 
+const (
+	defaultAutoUpdateInterval = 2 * time.Minute
+	cacheExpirationTime       = 5 * time.Minute
+	cachePurgeRoutine         = 10 * time.Minute
+)
+
 type Opts struct {
 	Logger             *zap.Logger
 	HTTPBind           string
@@ -71,7 +77,7 @@ type service struct {
 
 var _ DepvizServiceServer = (*service)(nil)
 
-func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts) (Service, error) {
+func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts) (Service, error) { // nolint:gocognit
 	if opts.Logger == nil {
 		opts.Logger = zap.NewNop()
 	}
@@ -88,7 +94,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 		opts.Realm = "DepViz"
 	}
 	if opts.AutoUpdateInterval == 0 {
-		opts.AutoUpdateInterval = 2 * time.Minute
+		opts.AutoUpdateInterval = defaultAutoUpdateInterval
 	}
 
 	svc := service{
@@ -143,6 +149,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 		})
 	}
 
+	// nolint:nestif
 	if opts.HTTPBind != "" {
 		r := chi.NewRouter()
 		cors := cors.New(cors.Options{
@@ -151,7 +158,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 			ExposedHeaders:   []string{"Link"},
 			AllowCredentials: true,
-			MaxAge:           300,
+			MaxAge:           300, // nolint:gomnd
 		})
 		r.Use(cors.Handler)
 		r.Use(chilogger.Logger(httpLogger))
@@ -176,7 +183,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 
 		// api endpoints
 		if !opts.WithoutCache {
-			svc.cache = cache.New(5*time.Minute, 10*time.Minute)
+			svc.cache = cache.New(cacheExpirationTime, cachePurgeRoutine)
 			handler = cacheMiddleware(handler, svc.cache, opts.Logger)
 		}
 

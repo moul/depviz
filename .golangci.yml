@@ -20,33 +20,46 @@ linters-settings:
 linters:
   disable-all: true
   enable:
+    - asciicheck
     - bodyclose
     - deadcode
     - depguard
     - dogsled
     - dupl
     - errcheck
-    #- funlen
+    - exhaustive
+    - exportloopref
+    - gci
     - gochecknoinits
-    #- gocognit
+    - gocognit
     - goconst
     - gocritic
     - gocyclo
+    - godot
+    #- goerr113
     - gofmt
+    - gofumpt
     - goimports
     - golint
+    - gomnd
+    - gomodguard
+    - gosec
     - gosimple
     - govet
     - ineffassign
-    #- interfacer
+    - interfacer
     #- maligned
     - misspell
     - nakedret
+    - nestif
+    - noctx
+    - nolintlint
     - prealloc
-    #- scopelint
+    - scopelint
+    - sqlclosecheck
     - staticcheck
     - structcheck
-    #- stylecheck
+    - stylecheck
     - typecheck
     - unconvert
     - unparam

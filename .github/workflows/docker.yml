@@ -1,0 +1,60 @@
+name: Docker
+on:
+  push:
+    branch: master
+    tags: ['v*']
+  pull_request:
+  release:
+    types: [published,released]
+
+jobs:
+  multi:
+    name: "build-and-push"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build the container image
+        uses: docker/build-push-action@v2
+        with:
+          repository: depviz
+
+      - name: Push to GitHub Packages
+        uses: docker/build-push-action@v2
+        if: github.event_name == 'release' || github.event_name == 'push'
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: docker.pkg.github.com
+          repository: moul/depviz/depviz
+          tag_with_ref: true
+
+      - name: Check Docker Hub Credentials
+        id: check_dockerhub_credentials
+        if: github.event_name == 'release' || github.event_name == 'push'
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          if [ "${DOCKER_USERNAME}" == "" ]; then
+            echo "Missing Username"
+            echo "##[set-output name=missingsecrets;]$(echo yes)"
+          elif [ "${DOCKER_PASSWORD}" == "" ]; then
+            echo "Missing Password"
+            echo "##[set-output name=missingsecrets;]$(echo yes)"
+          else
+            echo "All secrets present"
+            echo "##[set-output name=missingsecrets;]$(echo no)"
+          fi
+
+      - name: Push to Docker Hub
+        if: |
+          (github.event_name == 'release' || github.event_name == 'push') &&
+          contains(steps.check_dockerhub_credentials.outputs.missingsecrets, 'no')
+        uses: docker/build-push-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: moul/depviz
+          tag_with_ref: true

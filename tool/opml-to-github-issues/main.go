@@ -33,8 +33,9 @@ func main() {
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	for _, outline := range doc.Outlines() {
-		if err := handleOutline(ctx, client, &outline, 0, ""); err != nil {
+	outlines := doc.Outlines()
+	for idx := range outlines {
+		if err := handleOutline(ctx, client, &outlines[idx], 0, ""); err != nil {
 			panic(err)
 		}
 	}
@@ -56,8 +57,8 @@ func handleOutline(ctx context.Context, client *github.Client, outline *opml.Out
 	}
 	log.Printf("%s issue:%d parent:%d quota:%d text:%q\n", prefix, *issue.Number, parentID, resp.Rate.Remaining, outline.Text)
 
-	for _, child := range outline.Outlines {
-		if err := handleOutline(ctx, client, &child, *issue.Number, prefix+"  "); err != nil {
+	for idx := range outline.Outlines {
+		if err := handleOutline(ctx, client, &outline.Outlines[idx], *issue.Number, prefix+"  "); err != nil {
 			return err
 		}
 	}

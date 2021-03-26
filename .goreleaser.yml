@@ -1,33 +1,74 @@
+env:
+  - GO111MODULE=on
+  - GOPROXY=https://proxy.golang.org
 before:
   hooks:
     - go mod download
 builds:
   -
-    goos: [linux, darwin, windows]
-    goarch: [386, amd64, arm, arm64]
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - 386
+      - amd64
+      - arm
+      - arm64
+    ignore:
+      -
+        goos: darwin
+        goarch: 386
+    flags:
+      - "-a"
+    ldflags:
+      - '-extldflags "-static"'
     main: ./cmd/depviz/main.go
-    binary: depviz
-    hooks:
-      post: go mod tidy
-archives:
-  - wrap_in_directory: true
 checksum:
-  name_template: 'checksums.txt'
-snapshot:
-  name_template: "{{ .Tag }}-next"
+  name_template: '{{.ProjectName}}_checksums.txt'
 changelog:
   sort: asc
   filters:
     exclude:
     - '^docs:'
     - '^test:'
-brew:
-  name: depviz
-  github:
-    owner: moul
-    name: homebrew-moul
-  commit_author:
-    name: moul-bot
-    email: "m+bot@42.am"
-  homepage: https://manfred.life/depviz
-  description: "Issue dependency visualizer, a.k.a. 'auto-roadmap'."
+    - Merge pull request
+    - Merge branch
+archives:
+  -
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+    format_overrides:
+    -
+      goos: windows
+      format: zip
+    wrap_in_directory: true
+brews:
+  -
+    name: depviz
+#    github:
+#      owner: moul
+#      name: homebrew-moul
+    commit_author:
+      name: moul-bot
+      email: "bot@moul.io"
+    homepage: https://github.com/moul/depviz
+    description: "depviz"
+nfpms:
+  -
+    file_name_template: '{{ .ProjectName }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    homepage:  https://github.com/moul/depviz
+    description: "depviz"
+    maintainer: "Manfred Touron <https://manfred.life>"
+    license: "Apache-2.0 OR MIT"
+    vendor: moul
+    formats:
+      - deb
+      - rpm

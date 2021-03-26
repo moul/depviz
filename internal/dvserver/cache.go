@@ -16,8 +16,9 @@ import (
 
 // this cache middleware was inspired by https://github.com/victorspringer/http-cache
 
-func cacheMiddleware(next http.Handler, c *cache.Cache, logger *zap.Logger) http.Handler {
+func cacheMiddleware(next http.Handler, c *cache.Cache, logger *zap.Logger) http.Handler { // nolint:gocognit
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// nolint:nestif
 		if r.Method == http.MethodGet {
 			err := func() error {
 				sortURLParams(r.URL)
@@ -45,7 +46,7 @@ func cacheMiddleware(next http.Handler, c *cache.Cache, logger *zap.Logger) http
 
 				statusCode := result.StatusCode
 				value := rec.Body.Bytes()
-				if statusCode < 400 {
+				if statusCode < 400 { // nolint:gomnd
 					response := cached{
 						Value:  value,
 						Header: result.Header,
@@ -82,6 +83,7 @@ type cached struct {
 
 func sortURLParams(u *url.URL) {
 	params := u.Query()
+	// nolint:scopelint
 	for _, param := range params {
 		sort.Slice(param, func(i, j int) bool {
 			return param[i] < param[j]

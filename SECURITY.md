@@ -2,7 +2,7 @@
 
 I take security seriously. If you discover a security issue, please bring it to my attention right away!
 
-### Reporting a Vulnerability
+## Reporting a Vulnerability
 
 Please **DO NOT** file a public issue, instead send your report privately to m+security-report@42.am.
 

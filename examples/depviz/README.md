@@ -1,17 +1,18 @@
-# depviz example
+# Depviz example
 
-## result
+## Result
 
-![](https://raw.githubusercontent.com/moul/depviz/master/examples/depviz/depviz.svg?sanitize=true)
+![Depviz](https://raw.githubusercontent.com/moul/depviz/master/examples/depviz/depviz.svg?sanitize=true)
 
-## config
+## Configuration
 
 ```yaml
 repos: moul/depviz
 ```
 
-## command
+## Command
 
 ```console
 $ depviz render -f | dot -Tsvg > depviz.svg
+$
 ```
