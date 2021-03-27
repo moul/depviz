@@ -5,7 +5,7 @@ ARG             VERSION
 
 
 # web build
-FROM            node:10 as web-build
+FROM            node:15 as web-build
 WORKDIR         /app
 COPY            ./web/package*.json ./web/yarn.* ./
 RUN             npm install
