@@ -49,8 +49,8 @@ var (
 	serverFlags              = flag.NewFlagSet("server", flag.ExitOnError)
 	serverHTTPBind           = serverFlags.String("http-bind", ":8000", "HTTP bind address")
 	serverGRPCBInd           = serverFlags.String("grpc-bind", ":9000", "gRPC bind address")
-	serverRequestTimeout     = serverFlags.Duration("request-timeout", 5*time.Second, "request timeout")
-	serverShutdownTimeout    = serverFlags.Duration("shutdowm-timeout", 6*time.Second, "shutdown timeout")
+	serverRequestTimeout     = serverFlags.Duration("request-timeout", 5*time.Second, "request timeout")   // nolint:gomnd
+	serverShutdownTimeout    = serverFlags.Duration("shutdowm-timeout", 6*time.Second, "shutdown timeout") // nolint:gomnd
 	serverCORSAllowedOrigins = serverFlags.String("cors-allowed-origins", "*", "allowed CORS origins")
 	serverGitHubToken        = serverFlags.String("github-token", "", "GitHub token")
 	serverNoAutoUpdate       = serverFlags.Bool("no-auto-update", false, "don't auto-update projects in background")
@@ -60,7 +60,7 @@ var (
 	serverWithoutCache       = serverFlags.Bool("without-cache", false, "disable HTTP caching")
 	serverAuth               = serverFlags.String("auth", "", "authentication password")
 	serverRealm              = serverFlags.String("realm", "DepViz", "server Realm")
-	serverAutoUpdateInterval = serverFlags.Duration("auto-update-interval", 2*time.Minute, "time between two auto-updates")
+	serverAutoUpdateInterval = serverFlags.Duration("auto-update-interval", 2*time.Minute, "time between two auto-updates") // nolint:gomnd
 
 	runFlags            = flag.NewFlagSet("run", flag.ExitOnError)
 	runNoPull           = runFlags.Bool("no-pull", false, "don't pull providers (graph only)")

@@ -17,7 +17,7 @@ type Opts struct {
 	Logger *zap.Logger `json:"-"`
 }
 
-func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out chan<- dvmodel.Batch, opts Opts) {
+func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out chan<- dvmodel.Batch, opts Opts) { // nolint:interfacer
 	if opts.Logger == nil {
 		opts.Logger = zap.NewNop()
 	}

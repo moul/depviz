@@ -8,3 +8,5 @@ depviz.db
 /vendor/
 packrd/
 *-packr.go
+node_modules/
+tool/lint/package-lock.json

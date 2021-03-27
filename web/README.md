@@ -1,4 +1,3 @@
-
 # Get Started
 
 Make sure you have Node.js 8+.
@@ -24,7 +23,6 @@ Make sure you have Node.js 8+.
     `npm run open:dist`
 
     Note: Init a server with the latest build on localhost
-
 
 ---
 

@@ -67,7 +67,7 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 		}
 	}
 
-	if !opts.NoGraph {
+	if !opts.NoGraph { // nolint:nestif
 		// load tasks
 		filters := dvstore.LoadTasksFilters{
 			Targets:             targets,
@@ -176,7 +176,7 @@ func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken stri
 	// parallel fetches
 	wg.Add(len(targets))
 	for _, target := range targets {
-		switch provider := target.Provider(); provider {
+		switch provider := target.Provider(); provider { // nolint:exhaustive
 		case multipmuri.GitHubProvider:
 			go func(repo multipmuri.Entity) {
 				defer wg.Done()
@@ -283,7 +283,7 @@ func graphmanPertConfig(tasks []dvmodel.Task, opts RunOpts) *graphman.PertConfig
 		}
 		// FIXME: compute reverse dependsOn
 
-		switch task.Kind {
+		switch task.Kind { // nolint:exhaustive
 		case dvmodel.Task_Issue, dvmodel.Task_MergeRequest:
 			config.Actions = append(
 				config.Actions,

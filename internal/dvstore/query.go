@@ -15,7 +15,7 @@ import (
 	"moul.io/multipmuri"
 )
 
-func LastUpdatedIssueInRepo(ctx context.Context, h *cayley.Handle, entity multipmuri.Entity) (time.Time, error) {
+func LastUpdatedIssueInRepo(ctx context.Context, h *cayley.Handle, entity multipmuri.Entity) (time.Time, error) { // nolint:interfacer
 	type multipmuriMinimalInterface interface {
 		Repo() *multipmuri.GitHubRepo
 	}
@@ -115,7 +115,7 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters
 	}
 
 	tasks := dvmodel.Tasks{}
-	p = p.Limit(300)
+	p = p.Limit(300) // nolint:gomnd
 	err := schema.LoadPathTo(ctx, h, &tasks, p)
 	if err != nil {
 		return nil, fmt.Errorf("load tasks: %w", err)
