@@ -14,7 +14,7 @@ require (
 	github.com/gobuffalo/packr/v2 v2.8.1
 	github.com/gogo/gateway v1.1.0
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang/protobuf v1.4.3
+	github.com/golang/protobuf v1.5.1
 	github.com/google/go-github/v30 v30.1.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
