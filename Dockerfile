@@ -14,7 +14,7 @@ RUN             npm run build
 
 
 # go build
-FROM            golang:1.16.2-alpine as go-build
+FROM            golang:1.16.3-alpine as go-build
 RUN             apk add --update --no-cache git gcc musl-dev make
 RUN             GO111MODULE=off go get github.com/gobuffalo/packr/v2/packr2
 WORKDIR         /go/src/moul.io/depviz
@@ -30,7 +30,7 @@ RUN             make install
 
 
 # minimalist runtime
-FROM alpine:3.13.3
+FROM alpine:3.13.4
 LABEL           org.label-schema.build-date=$BUILD_DATE \
                 org.label-schema.name="depviz" \
                 org.label-schema.description="" \
