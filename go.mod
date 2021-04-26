@@ -38,20 +38,18 @@ require (
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
 	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
-	golang.org/x/sys v0.0.0-20201110211018-35f3e6cf4a65 // indirect
 	golang.org/x/text v0.3.4 // indirect
-	golang.org/x/tools v0.0.0-20210106214847-113979e3529a
+	golang.org/x/tools v0.1.0
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20201111145450-ac7456db90a6
 	google.golang.org/grpc v1.37.0
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 	moul.io/banner v1.0.1
 	moul.io/godev v1.7.0
 	moul.io/graphman v1.6.0
 	moul.io/graphman/viz v0.0.0-20201111010417-ffcba52773de
 	moul.io/multipmuri v1.13.0
 	moul.io/srand v1.6.1
-	moul.io/u v1.20.0
+	moul.io/u v1.21.0
 	moul.io/zapconfig v1.3.0
 )
