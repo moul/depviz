@@ -42,7 +42,7 @@ require (
 	golang.org/x/tools v0.1.0
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20201111145450-ac7456db90a6
-	google.golang.org/grpc v1.37.0
+	google.golang.org/grpc v1.37.1
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/banner v1.0.1
 	moul.io/godev v1.7.0
