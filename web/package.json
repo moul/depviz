@@ -37,7 +37,7 @@
     "cytoscape-elk": "valohai/cytoscape.js-elk#modern",
     "cytoscape-node-html-label": "1.2.0",
     "html2canvas": "1.0.0-rc.5",
-    "mermaid": "8.5.0",
+    "mermaid": "8.13.8",
     "potrace": "2.1.6",
     "react": "16.13.1",
     "react-dom": "16.13.1",
