@@ -14,7 +14,7 @@ RUN             npm run build
 
 
 # go build
-FROM            golang:1.16.5-alpine as go-build
+FROM            golang:1.17.7-alpine as go-build
 RUN             apk add --update --no-cache git gcc musl-dev make
 RUN             GO111MODULE=off go get github.com/gobuffalo/packr/v2/packr2
 WORKDIR         /go/src/moul.io/depviz
