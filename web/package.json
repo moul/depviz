@@ -66,7 +66,7 @@
     "babel-plugin-inline-import": "3.0.0",
     "babel-plugin-lodash": "3.3.4",
     "babel-plugin-transform-react-remove-prop-types": "0.4.24",
-    "browser-sync": "2.26.7",
+    "browser-sync": "2.26.9",
     "chalk": "4.0.0",
     "connect-history-api-fallback": "1.6.0",
     "coveralls": "3.1.0",
