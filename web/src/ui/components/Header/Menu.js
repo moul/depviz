@@ -36,12 +36,14 @@ const Menu = ({
         urlData.withoutIsolated = false
         urlData.withoutPrs = false
         urlData.withoutExternalDeps = false
+        urlData.pull = false
         updateBrowserHistory(generateUrl(urlData))
         setURLData(urlData)
         setValue('withClosed', true)
         setValue('withoutIsolated', false)
         setValue('withoutPrs', false)
         setValue('withoutExternalDeps', false)
+        setValue('pull', false)
       } else {
         Object.keys(urlData).map((key) => {
           if (urlData[key]) {
@@ -51,6 +53,7 @@ const Menu = ({
         urlData.withoutIsolated = !urlData.withoutIsolated
         urlData.withoutPrs = !urlData.withoutPrs
         urlData.withoutExternalDeps = !urlData.withoutExternalDeps
+        urlData.pull = !urlData.pull
       }
       makeAPICall(urlData)
     }
@@ -92,11 +95,13 @@ const Menu = ({
       const newUrlData = {
         ...urlData,
         ...data,
+        pull: false,
       }
       newUrlData.withClosed = true
       newUrlData.withoutIsolated = false
       newUrlData.withoutPrs = false
       newUrlData.withoutExternalDeps = false
+      newUrlData.pull = false
       updateBrowserHistory(generateUrl(newUrlData))
       setURLData(newUrlData)
       // setValue('withClosed')
@@ -105,6 +110,7 @@ const Menu = ({
       setValue('withoutIsolated', false)
       setValue('withoutPrs', false)
       setValue('withoutExternalDeps', false)
+      setValue('pull', false)
     }
     updateLayout(data.layout)
   }
