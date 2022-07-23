@@ -22,7 +22,7 @@ require (
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/rs/cors v1.7.0
 	github.com/stretchr/testify v1.7.0
-	github.com/tailscale/depaware v0.0.0-20201214215404-77d1e9757027
+	github.com/tailscale/depaware v0.0.0-20210622194025-720c4b409502
 	github.com/treastech/logger v0.0.0-20180705232552-e381e9ecf2e3
 	go.uber.org/zap v1.17.0
 	golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58
@@ -36,7 +36,7 @@ require (
 	moul.io/graphman/viz v0.0.0-20201111010417-ffcba52773de
 	moul.io/multipmuri v1.14.0
 	moul.io/srand v1.6.1
-	moul.io/u v1.22.0
+	moul.io/u v1.27.0
 	moul.io/zapconfig v1.3.0
 )
 
@@ -71,7 +71,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tylertreat/BoomFilters v0.0.0-20200520150052-42a7b4300c0c // indirect
 	go.uber.org/atomic v1.7.0 // indirect
-	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
