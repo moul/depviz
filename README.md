@@ -54,7 +54,7 @@ _Limited to the following repos: [moul/depviz](https://github.com/moul/depviz), 
 
 ## Supported providers
 
-*Depviz* aggregates the entities of multiple providers into 3 generic ones.
+_Depviz_ aggregates the entities of multiple providers into 3 generic ones.
 
 ---
 
@@ -64,9 +64,9 @@ Supported providers:
   * Task: Issue, Pull Request, Milestone
   * Owner: TODO
   * Topic: TODO
-* GitLab: *(planned)*
-* Jira *(planned)*
-* Trello *(planned)*
+* GitLab: _(planned)_
+* Jira _(planned)_
+* Trello _(planned)_
 
 TODO: detailed mapping table
 
