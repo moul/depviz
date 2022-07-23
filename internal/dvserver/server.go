@@ -218,7 +218,8 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 		}
 		svc.httpListenerAddr = listener.Addr().String()
 		srv := http.Server{
-			Handler: r,
+			ReadHeaderTimeout: 2 * time.Second, // nolint:gomnd
+			Handler:           r,
 		}
 		svc.workers.Add(func() error {
 			httpLogger.Debug("starting HTTP server", zap.String("bind", opts.HTTPBind))
