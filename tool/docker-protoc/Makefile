@@ -1,5 +1,5 @@
 IMAGE ?=	moul/depviz-protoc
-VERSION =	1
+VERSION =	2
 
 build:
 	docker build -t $(IMAGE):$(VERSION) .
