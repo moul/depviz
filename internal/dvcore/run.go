@@ -10,7 +10,7 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/schema"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/depviz/v3/internal/dvstore"
