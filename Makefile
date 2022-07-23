@@ -32,7 +32,7 @@ update_examples:
 
 
 PROTOS_SRC := $(wildcard ./api/*.proto) $(wildcard ./api/internal/*.proto)
-GEN_DEPS := $(PROTOS_SRC) Makefile
+GEN_DEPS := $(PROTOS_SRC) Makefile go.sum
 .PHONY: generate
 generate: gen.sum
 gen.sum: $(GEN_DEPS)
@@ -53,7 +53,8 @@ gen.sum: $(GEN_DEPS)
 	@rm -f gen.sum.tmp
 
 
-PROTOC_OPTS = -I `go list -m -mod=mod -f "{{.Dir}}" github.com/grpc-ecosystem/grpc-gateway`:`go list -m -mod=mod -f {{.Dir}} github.com/gogo/protobuf`/protobuf:`go list -m -mod=mod -f {{.Dir}} github.com/golang/protobuf`:./api:/protobuf
+#PROTOC_OPTS = -I `go list -m -mod=mod -f "{{.Dir}}" github.com/grpc-ecosystem/grpc-gateway`:`go list -m -mod=mod -f {{.Dir}} github.com/gogo/protobuf`/protobuf:`go list -m -mod=mod -f {{.Dir}} github.com/golang/protobuf`:./api:/protobuf
+PROTOC_OPTS = -I `go list -m -mod=mod -f "{{.Dir}}" github.com/grpc-ecosystem/grpc-gateway`:./api:/protobuf
 .PHONY: generate_local
 generate_local:
 	go mod download
