@@ -91,7 +91,7 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 
 	// assignees
 	for _, assignee := range input.Assignees {
-		assigneeRet, err := fromUser(batch, assignee) // nolint:typecheck
+		assigneeRet, err := fromUser(batch, assignee)
 		if err != nil {
 			return fmt.Errorf("from user: %w", err)
 		}
@@ -106,7 +106,7 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 
 	// labels
 	for _, label := range input.Labels {
-		labelRet, err := fromLabel(batch, label) // nolint:typecheck
+		labelRet, err := fromLabel(batch, label)
 		if err != nil {
 			return fmt.Errorf("from label: %w", err)
 		}
