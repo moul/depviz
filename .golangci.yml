@@ -7,8 +7,6 @@ run:
     - ".*\\.gen\\.go"
 
 linters-settings:
-  golint:
-    min-confidence: 0
   maligned:
     suggest-new: true
   goconst:
@@ -40,14 +38,14 @@ linters:
     - gofmt
     - gofumpt
     - goimports
-    - golint
+    #- golint
     - gomnd
     - gomodguard
     - gosec
     - gosimple
     - govet
     - ineffassign
-    - interfacer
+    #- interfacer
     #- maligned
     - misspell
     - nakedret
@@ -55,7 +53,8 @@ linters:
     - noctx
     - nolintlint
     - prealloc
-    - scopelint
+    - revive
+    - exportloopref
     - sqlclosecheck
     - staticcheck
     - structcheck
