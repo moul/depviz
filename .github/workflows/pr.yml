@@ -33,10 +33,10 @@ jobs:
         with:
           files: .
           config_file: ./tool/lint/.markdownlint.json
-      - uses: K-Phoen/action-misspell@master
-        with:
-          github_token: ${{ github.token }}
-          reporter: github-pr-review
-          locale: "US"
+      #- uses: K-Phoen/action-misspell@master
+      #  with:
+      #    github_token: ${{ github.token }}
+      #    reporter: github-pr-review
+      #    locale: "US"
       - name: alexjs
         uses: theashraf/alex-action@master

@@ -1,4 +1,4 @@
-GOPKG ?= 	moul.io/depviz
+GOPKG ?=	moul.io/depviz
 GOBINS =	./cmd/depviz
 #GOBINS += ./tools/opml-to-github-issues
 #GOBINS += ./tools/sed-i-github-issues
@@ -32,41 +32,43 @@ update_examples:
 
 
 PROTOS_SRC := $(wildcard ./api/*.proto) $(wildcard ./api/internal/*.proto)
-GEN_DEPS := $(PROTOS_SRC) Makefile
+GEN_DEPS := $(PROTOS_SRC) Makefile go.sum
 .PHONY: generate
 generate: gen.sum
 gen.sum: $(GEN_DEPS)
 	shasum $(GEN_DEPS) | sort > gen.sum.tmp
 	@diff -q gen.sum gen.sum.tmp || ( \
 	  set -xe; \
-	  GO111MODULE=on go mod vendor; \
 	  docker run \
-	    --user=`id -u` \
-	    --volume="$(PWD):/go/src/moul.io/depviz" \
-	    --workdir="/go/src/moul.io/depviz" \
-	    --entrypoint="sh" \
-	    --rm \
-	    moul/depviz-protoc:1 \
-	    -xec 'make generate_local'; \
-	    make tidy \
+		--user=`id -u` \
+		--volume="`go env GOPATH`/pkg/mod:/go/pkg/mod" \
+		--volume="$(PWD):/go/src/moul.io/depviz" \
+		--workdir="/go/src/moul.io/depviz" \
+		--entrypoint="sh" \
+		--rm \
+		moul/depviz-protoc:2 \
+		-xec 'make generate_local'; \
+		make tidy \
 	)
 	@rm -f gen.sum.tmp
 
 
-PROTOC_OPTS = -I ./vendor/github.com/grpc-ecosystem/grpc-gateway:./api:./vendor:/protobuf
+#PROTOC_OPTS = -I `go list -m -mod=mod -f "{{.Dir}}" github.com/grpc-ecosystem/grpc-gateway`:`go list -m -mod=mod -f {{.Dir}} github.com/gogo/protobuf`/protobuf:`go list -m -mod=mod -f {{.Dir}} github.com/golang/protobuf`:./api:/protobuf
+PROTOC_OPTS = -I `go list -m -mod=mod -f "{{.Dir}}" github.com/grpc-ecosystem/grpc-gateway`:./api:/protobuf
 .PHONY: generate_local
 generate_local:
+	go mod download
 	@set -e; for proto in $(PROTOS_SRC); do ( set -xe; \
 	  protoc $(PROTOC_OPTS) \
-	    --grpc-gateway_out=logtostderr=true:"$(GOPATH)/src" \
-	    --gogofaster_out="plugins=grpc:$(GOPATH)/src" \
-	    "$$proto" \
+		--grpc-gateway_out=logtostderr=true:"$(GOPATH)/src" \
+		--gogofaster_out="plugins=grpc:$(GOPATH)/src" \
+		"$$proto" \
 	); done
 	@# CUSTOM CHANGE
 	@# due to go module versionning (currently) incompatible with automatic protobuf generated imports
 	sed -i s@moul.io/depviz/@moul.io/depviz/v3/@g internal/dvserver/dvserver.pb.go
 	@# END OF CUSTOM CHANGE
-	goimports -w ./pkg ./cmd ./internal
+	go run golang.org/x/tools/cmd/goimports -w ./pkg ./cmd ./internal
 	shasum $(GEN_DEPS) | sort > gen.sum.tmp
 	mv gen.sum.tmp gen.sum
 
@@ -78,5 +80,4 @@ clean:
 
 .PHONY: packr
 packr:
-	GO111MODULE=off go get github.com/gobuffalo/packr/v2/packr2
-	cd internal/dvserver && packr2 && ls -la *-packr.go packrd/packed-packr.go
+	cd internal/dvserver && go run github.com/gobuffalo/packr/v2/packr2 build && ls -la *-packr.go packrd/packed-packr.go

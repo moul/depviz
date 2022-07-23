@@ -91,11 +91,11 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 
 	// assignees
 	for _, assignee := range input.Assignees {
-		assignee, err := fromUser(batch, assignee)
+		assigneeRet, err := fromUser(batch, assignee)
 		if err != nil {
 			return fmt.Errorf("from user: %w", err)
 		}
-		issue.HasAssignee = append(issue.HasAssignee, assignee.ID)
+		issue.HasAssignee = append(issue.HasAssignee, assigneeRet.ID)
 	}
 
 	// reviewers
@@ -106,11 +106,11 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 
 	// labels
 	for _, label := range input.Labels {
-		label, err := fromLabel(batch, label)
+		labelRet, err := fromLabel(batch, label)
 		if err != nil {
 			return fmt.Errorf("from label: %w", err)
 		}
-		issue.HasLabel = append(issue.HasLabel, label.ID)
+		issue.HasLabel = append(issue.HasLabel, labelRet.ID)
 	}
 
 	// parse body
