@@ -6,7 +6,7 @@ ARG             VERSION
 
 # web build
 FROM            node:12-alpine as web-build
-RUN             npm i -g npm@8.5.1
+RUN             npm i -g npm@8
 RUN 		apk add --no-cache python2 g++ make
 WORKDIR         /app
 COPY            ./web/package*.json ./web/yarn.* ./
