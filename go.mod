@@ -2,10 +2,7 @@ module moul.io/depviz/v3
 
 go 1.17
 
-replace (
-	github.com/brianloveswords/airtable => github.com/moul/brianloveswords-airtable v0.0.0-20191014120838-8b07ee6d33b2
-	github.com/golang/protobuf => github.com/golang/protobuf v1.3.3
-)
+replace github.com/brianloveswords/airtable => github.com/moul/brianloveswords-airtable v0.0.0-20191014120838-8b07ee6d33b2
 
 require (
 	github.com/Bearer/bearer-go v1.2.1
