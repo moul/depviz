@@ -5,7 +5,7 @@ ARG             VERSION
 
 
 # web build
-FROM            node:14 as web-build
+FROM            node:18 as web-build
 RUN             npm i -g npm@8
 WORKDIR         /app
 COPY            ./web/package*.json ./web/yarn.* ./
