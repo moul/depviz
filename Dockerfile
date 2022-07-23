@@ -5,11 +5,12 @@ ARG             VERSION
 
 
 # web build
-FROM            node:14 as web-build
+FROM            node:12-alpine as web-build
 RUN             npm i -g npm@8
+RUN             apk add --no-cache python2 g++ make
 WORKDIR         /app
 COPY            ./web/package*.json ./web/yarn.* ./
-RUN             npm install --force
+RUN             npm install --legacy-peer-deps
 COPY            ./web/ ./
 RUN             npm run build
 
