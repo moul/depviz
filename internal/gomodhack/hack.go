@@ -27,4 +27,7 @@ import (
 
 	// required by goimports.
 	_ "golang.org/x/tools/cover"
+
+	// required by packr.
+	_ "github.com/gobuffalo/packr/v2/packr2"
 )
