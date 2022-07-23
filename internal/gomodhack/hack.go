@@ -1,3 +1,6 @@
+//go:build tools
+// +build tools
+
 // Package gomodhack ensures that `go mod` can detect some required dependencies.
 // This package should not be imported directly.
 package gomodhack
