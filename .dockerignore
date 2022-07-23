@@ -1,3 +1,6 @@
 Dockerfile
 dist/
 vendor/
+web/node_modules/
+tool/lint/node_modules/
+.dockerignore
