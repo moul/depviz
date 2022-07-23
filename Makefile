@@ -80,5 +80,4 @@ clean:
 
 .PHONY: packr
 packr:
-	GO111MODULE=off go get github.com/gobuffalo/packr/v2/packr2
-	cd internal/dvserver && packr2 && ls -la *-packr.go packrd/packed-packr.go
+	cd internal/dvserver && go run github.com/gobuffalo/packr/v2/packr2 build && ls -la *-packr.go packrd/packed-packr.go
