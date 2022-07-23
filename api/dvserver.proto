@@ -4,7 +4,7 @@ package depviz.server;
 
 import "google/api/annotations.proto";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger/options/annotations.proto";
+//import "protoc-gen-swagger/options/annotations.proto";
 
 import "dvmodel.proto";
 
