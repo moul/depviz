@@ -21,6 +21,9 @@ builds:
       -
         goos: darwin
         goarch: 386
+      -
+        goos: windows
+        goarch: arm64
     flags:
       - "-a"
     ldflags:
