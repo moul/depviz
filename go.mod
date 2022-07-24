@@ -26,7 +26,7 @@ require (
 	github.com/treastech/logger v0.0.0-20180705232552-e381e9ecf2e3
 	go.uber.org/zap v1.17.0
 	golang.org/x/oauth2 v0.0.0-20210402161424-2e8d93401602
-	golang.org/x/tools v0.1.7
+	golang.org/x/tools v0.1.11
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
 	google.golang.org/grpc v1.38.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -72,14 +72,13 @@ require (
 	github.com/tylertreat/BoomFilters v0.0.0-20200520150052-42a7b4300c0c // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
-	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
-	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d // indirect
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
+	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e // indirect
+	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
-	golang.org/x/text v0.3.6 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
