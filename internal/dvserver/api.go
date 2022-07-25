@@ -17,24 +17,25 @@ func getToken(ctx context.Context) (string, error) {
 	md, _ := metadata.FromIncomingContext(ctx)
 
 	var gitHubToken string
-	if md["authorization"] != nil {
-		// skip "Basic"
-		if len(md["authorization"][0]) <= 6 {
-			return "", fmt.Errorf("invalid authorization header")
-		}
-		gitHubToken = md["authorization"][1][6:]
-		// prevent empty token (skip prefix)
-		if gitHubToken == base64.StdEncoding.EncodeToString([]byte("depviz:")) {
-			return gitHubToken, nil
-		} else {
-			bytesGithubToken, err := base64.StdEncoding.DecodeString(gitHubToken)
-			if err != nil {
-				return "", fmt.Errorf("invalid github token: %w", err)
-			}
-			// len("depviz:") = 6
-			gitHubToken = string(bytesGithubToken[7:])
-		}
+	if md["authorization"] == nil {
+		return "", nil
 	}
+	// skip "Basic"
+	if len(md["authorization"][0]) <= len("Basic ") {
+		return "", fmt.Errorf("invalid authorization header")
+	}
+	gitHubToken = md["authorization"][1][6:]
+	// prevent empty token (skip prefix)
+	if gitHubToken == base64.StdEncoding.EncodeToString([]byte("depviz:")) {
+		return gitHubToken, nil
+	}
+	bytesGithubToken, err := base64.StdEncoding.DecodeString(gitHubToken)
+	if err != nil {
+		return "", fmt.Errorf("invalid github token: %w", err)
+	}
+	// len("depviz:") = 6
+	gitHubToken = string(bytesGithubToken[7:])
+
 	return gitHubToken, nil
 }
 
