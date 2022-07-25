@@ -22,7 +22,7 @@ func getToken(ctx context.Context) (string, error) {
 		gitHubToken = md["authorization"][1][6:]
 		// prevent empty token (skip prefix)
 		if gitHubToken == base64.StdEncoding.EncodeToString([]byte("depviz:")) {
-			gitHubToken = ""
+			return gitHubToken, nil
 		} else {
 			bytesGithubToken, err := base64.StdEncoding.DecodeString(gitHubToken)
 			if err != nil {
