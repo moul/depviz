@@ -59,6 +59,7 @@ type LoadTasksFilters struct {
 	WithoutIsolated     bool
 	WithoutPRs          bool
 	WithoutExternalDeps bool
+	WithFetch           bool
 }
 
 func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters, logger *zap.Logger) (dvmodel.Tasks, error) {
