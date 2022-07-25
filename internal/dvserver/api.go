@@ -19,6 +19,9 @@ func getToken(ctx context.Context) (string, error) {
 	var gitHubToken string
 	if md["authorization"] != nil {
 		// skip "Basic"
+		if len(md["authorization"][0]) <= 6 {
+			return "", fmt.Errorf("invalid authorization header")
+		}
 		gitHubToken = md["authorization"][1][6:]
 		// prevent empty token (skip prefix)
 		if gitHubToken == base64.StdEncoding.EncodeToString([]byte("depviz:")) {
@@ -44,6 +47,7 @@ func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, er
 		return nil, fmt.Errorf("get token: %w", err)
 	}
 
+	// validation
 	if len(in.Targets) == 0 {
 		return nil, fmt.Errorf("targets is required")
 	}
