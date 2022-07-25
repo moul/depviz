@@ -2,18 +2,49 @@ package dvserver
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc/metadata"
 	"moul.io/depviz/v3/internal/dvcore"
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/depviz/v3/internal/dvstore"
 )
 
+func getToken(ctx context.Context) (string, error) {
+	md, _ := metadata.FromIncomingContext(ctx)
+
+	var gitHubToken string
+	if md["authorization"] != nil {
+		// skip "Basic"
+		gitHubToken = md["authorization"][1][6:]
+		// prevent empty token (skip prefix)
+		if gitHubToken == base64.StdEncoding.EncodeToString([]byte("depviz:")) {
+			gitHubToken = ""
+		} else {
+			bytesGithubToken, err := base64.StdEncoding.DecodeString(gitHubToken)
+			if err != nil {
+				return "", fmt.Errorf("invalid github token: %w", err)
+			}
+			// len("depviz:") = 6
+			gitHubToken = string(bytesGithubToken[7:])
+		}
+	}
+	return gitHubToken, nil
+}
+
 func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, error) {
 	s.opts.Logger.Debug("graph", zap.Any("in", in))
-	// validation
+
+	// retrieve token
+	gitHubToken, err := getToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get token: %w", err)
+	}
+
+	//printContextInternals(ctx, false)
 	if len(in.Targets) == 0 {
 		return nil, fmt.Errorf("targets is required")
 	}
@@ -23,6 +54,7 @@ func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, er
 		WithoutIsolated:     in.WithoutIsolated,
 		WithoutPRs:          in.WithoutPRs,
 		WithoutExternalDeps: in.WithoutExternalDeps,
+		WithFetch:           in.WithFetch,
 	}
 	if len(in.Targets) == 1 && in.Targets[0] == "world" {
 		filters.TheWorld = true
@@ -35,9 +67,22 @@ func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, er
 	}
 
 	// load tasks
-	tasks, err := dvstore.LoadTasks(s.h, s.schema, filters, s.opts.Logger)
-	if err != nil {
-		return nil, fmt.Errorf("load tasks: %w", err)
+	var tasks dvmodel.Tasks
+	if filters.WithFetch && gitHubToken != "" {
+		_, err := dvcore.PullAndSave(filters.Targets, s.h, s.schema, gitHubToken, false, s.opts.Logger)
+		if err != nil {
+			return nil, fmt.Errorf("pull: %w", err)
+		}
+
+		tasks, err = dvstore.LoadTasks(s.h, s.schema, filters, s.opts.Logger)
+		if err != nil {
+			return nil, fmt.Errorf("load tasks: %w", err)
+		}
+	} else {
+		tasks, err = dvstore.LoadTasks(s.h, s.schema, filters, s.opts.Logger)
+		if err != nil {
+			return nil, fmt.Errorf("load tasks: %w", err)
+		}
 	}
 
 	// build output
