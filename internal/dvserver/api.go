@@ -44,7 +44,6 @@ func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, er
 		return nil, fmt.Errorf("get token: %w", err)
 	}
 
-	//printContextInternals(ctx, false)
 	if len(in.Targets) == 0 {
 		return nil, fmt.Errorf("targets is required")
 	}
