@@ -36,14 +36,14 @@ const Menu = ({
         urlData.withoutIsolated = false
         urlData.withoutPrs = false
         urlData.withoutExternalDeps = false
-        urlData.pull = false
+        urlData.withFetch = false
         updateBrowserHistory(generateUrl(urlData))
         setURLData(urlData)
         setValue('withClosed', true)
         setValue('withoutIsolated', false)
         setValue('withoutPrs', false)
         setValue('withoutExternalDeps', false)
-        setValue('pull', false)
+        setValue('withFetch', false)
       } else {
         Object.keys(urlData).map((key) => {
           if (urlData[key]) {
@@ -53,7 +53,7 @@ const Menu = ({
         urlData.withoutIsolated = !urlData.withoutIsolated
         urlData.withoutPrs = !urlData.withoutPrs
         urlData.withoutExternalDeps = !urlData.withoutExternalDeps
-        urlData.pull = !urlData.pull
+        urlData.withFetch = !urlData.withFetch
       }
       makeAPICall(urlData)
     }
@@ -65,12 +65,13 @@ const Menu = ({
     // updateBrowserHistory(url)
   }
 
-  const handleURLData = (fetchApi = false) => {
+  const handleURLData = (fetchApi = false, with_fetch = false) => {
     updateLoadingGraph(true)
     const data = getValues()
     const newUrlData = {
       ...urlData,
       ...data,
+      withFetch: with_fetch,
     }
     newUrlData.withoutIsolated = !data.withoutIsolated
     newUrlData.withoutPrs = !data.withoutPrs
@@ -87,6 +88,10 @@ const Menu = ({
     handleURLData(true)
   }
 
+  const handleFetch = () => {
+    handleURLData(true, true)
+  }
+
   const handleLayoutChange = () => {
     const data = getValues()
     handleURLData(true)
@@ -95,13 +100,13 @@ const Menu = ({
       const newUrlData = {
         ...urlData,
         ...data,
-        pull: false,
+        withFetch: false,
       }
       newUrlData.withClosed = true
       newUrlData.withoutIsolated = false
       newUrlData.withoutPrs = false
       newUrlData.withoutExternalDeps = false
-      newUrlData.pull = false
+      newUrlData.withFetch = false
       updateBrowserHistory(generateUrl(newUrlData))
       setURLData(newUrlData)
       // setValue('withClosed')
@@ -110,7 +115,7 @@ const Menu = ({
       setValue('withoutIsolated', false)
       setValue('withoutPrs', false)
       setValue('withoutExternalDeps', false)
-      setValue('pull', false)
+      setValue('withFetch', false)
     }
     updateLayout(data.layout)
   }
@@ -293,6 +298,7 @@ const Menu = ({
                   <div className="input-group-append">
                     <button type="submit" className="btn btn-primary ml-auto">Generate</button>
                     <button type="button" onClick={handleRedraw} className="btn btn-secondary ml-auto">Redraw</button>
+                    <button type="button" onClick={handleFetch} className="btn btn-secondary ml-auto">Fetch</button>
                   </div>
                 </div>
               </label>
