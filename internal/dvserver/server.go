@@ -173,6 +173,15 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 				OrigName:     true,
 			}),
 			runtime.WithProtoErrorHandler(runtime.DefaultHTTPProtoErrorHandler),
+			runtime.WithIncomingHeaderMatcher(func(key string) (string, bool) {
+				switch key {
+				case "Authorization":
+					fmt.Println(key)
+					return key, true
+				default:
+					return key, false
+				}
+			}),
 		)
 		grpcOpts := []grpc.DialOption{grpc.WithInsecure()}
 		if err := RegisterDepvizServiceHandlerFromEndpoint(ctx, gwmux, svc.grpcListenerAddr, grpcOpts); err != nil {
