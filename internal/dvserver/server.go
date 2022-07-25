@@ -176,7 +176,6 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 			runtime.WithIncomingHeaderMatcher(func(key string) (string, bool) {
 				switch key {
 				case "Authorization":
-					fmt.Println(key)
 					return key, true
 				default:
 					return key, false
