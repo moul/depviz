@@ -66,22 +66,17 @@ func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, er
 	}
 
 	// load tasks
-	var tasks dvmodel.Tasks
 	if filters.WithFetch && gitHubToken != "" {
 		_, err := dvcore.PullAndSave(filters.Targets, s.h, s.schema, gitHubToken, false, s.opts.Logger)
 		if err != nil {
 			return nil, fmt.Errorf("pull: %w", err)
 		}
+	}
 
-		tasks, err = dvstore.LoadTasks(s.h, s.schema, filters, s.opts.Logger)
-		if err != nil {
-			return nil, fmt.Errorf("load tasks: %w", err)
-		}
-	} else {
-		tasks, err = dvstore.LoadTasks(s.h, s.schema, filters, s.opts.Logger)
-		if err != nil {
-			return nil, fmt.Errorf("load tasks: %w", err)
-		}
+	var tasks dvmodel.Tasks
+	tasks, err = dvstore.LoadTasks(s.h, s.schema, filters, s.opts.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("load tasks: %w", err)
 	}
 
 	// build output
