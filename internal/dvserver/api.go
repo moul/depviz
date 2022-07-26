@@ -39,7 +39,7 @@ func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, er
 	if err != nil {
 		return nil, fmt.Errorf("load tasks: %w", err)
 	}
-	
+
 	// fetch if not already in db
 	if len(tasks) == 0 {
 		_, err := dvcore.PullAndSave(filters.Targets, s.h, s.schema, s.opts.GitHubToken, false, s.opts.Logger)
