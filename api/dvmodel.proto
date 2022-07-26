@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package depviz.model;
 
-import "github.com/golang/protobuf/ptypes/timestamp/timestamp.proto";
+import "google/protobuf/timestamp.proto";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 option go_package = "moul.io/depviz/internal/dvmodel";

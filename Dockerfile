@@ -5,18 +5,18 @@ ARG             VERSION
 
 
 # web build
-FROM            node:10 as web-build
+FROM            node:14 as web-build
+RUN             npm i -g npm@8
 WORKDIR         /app
 COPY            ./web/package*.json ./web/yarn.* ./
-RUN             npm install
+RUN             npm install --force
 COPY            ./web/ ./
 RUN             npm run build
 
 
 # go build
-FROM            golang:1.16.5-alpine as go-build
+FROM            golang:1.18-alpine as go-build
 RUN             apk add --update --no-cache git gcc musl-dev make
-RUN             GO111MODULE=off go get github.com/gobuffalo/packr/v2/packr2
 WORKDIR         /go/src/moul.io/depviz
 ENV             GO111MODULE=on \
                 GOPROXY=proxy.golang.org
@@ -30,7 +30,7 @@ RUN             make install
 
 
 # minimalist runtime
-FROM alpine:3.13.5
+FROM            alpine:3.16
 LABEL           org.label-schema.build-date=$BUILD_DATE \
                 org.label-schema.name="depviz" \
                 org.label-schema.description="" \
