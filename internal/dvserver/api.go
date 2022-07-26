@@ -1,9 +1,12 @@
 package dvserver
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
@@ -12,6 +15,69 @@ import (
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/depviz/v3/internal/dvstore"
 )
+
+func gitHubOAuth(opts Opts, httpLogger *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if opts.GitHubClientID == "" || opts.GitHubClientSecret == "" {
+			httpLogger.Error("GitHub OAuth: missing client ID or secret")
+			http.Error(w, "missing client ID or secret", http.StatusInternalServerError)
+			return
+		}
+
+		code, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			httpLogger.Error("get body", zap.Error(err))
+			http.Error(w, "failed to retrieve body", http.StatusInternalServerError)
+			return
+		}
+
+		if len(code) < 1 {
+			httpLogger.Error("Url Param 'code' is missing")
+			http.Error(w, "Url Param 'code' is missing", http.StatusBadRequest)
+			return
+		}
+		httpLogger.Info("github code received successfully")
+
+		//  maybe switch to env variables
+		data := []byte(fmt.Sprintf(`{
+				"client_id":     "%s",
+				"client_secret": "%s",
+				"code":          "%s"
+			}`, opts.GitHubClientID, opts.GitHubClientSecret, string(code)))
+		req, err := http.NewRequestWithContext(context.Background(), "POST", "https://github.com/login/oauth/access_token", bytes.NewBuffer(data))
+		if err != nil {
+			httpLogger.Error("create request", zap.Error(err))
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Accept", "application/json")
+
+		gitHubResponse, err := http.DefaultClient.Do(req)
+		if err != nil {
+			httpLogger.Error("request token to github", zap.Error(err))
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		defer gitHubResponse.Body.Close()
+
+		token, err := ioutil.ReadAll(gitHubResponse.Body)
+		if err != nil {
+			httpLogger.Error("get body", zap.Error(err))
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		_, err = w.Write(token)
+		if err != nil {
+			httpLogger.Error("write response", zap.Error(err))
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+}
 
 func getToken(ctx context.Context) (string, error) {
 	md, _ := metadata.FromIncomingContext(ctx)
