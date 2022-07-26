@@ -53,6 +53,8 @@ type Opts struct {
 	NoAutoUpdate       bool
 	AutoUpdateTargets  []multipmuri.Entity
 	AutoUpdateInterval time.Duration
+	GitHubClientID     string
+	GitHubClientSecret string
 }
 
 type Service interface {
@@ -202,6 +204,9 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 			}
 			r.Mount("/", http.StripPrefix("/api", handler))
 		})
+
+		// OAuth2 GitHub
+		r.Post("/token", gitHubOAuth(opts, httpLogger))
 
 		// pprof endpoints
 		if opts.WithPprof {
