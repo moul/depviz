@@ -2,14 +2,16 @@ package githubprovider
 
 import (
 	"fmt"
-
 	"github.com/cayleygraph/quad"
 	"github.com/google/go-github/v30/github"
+	"github.com/xhit/go-str2duration/v2"
 	"go.uber.org/zap"
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/multipmuri"
 	"moul.io/multipmuri/pmbodyparser"
+	"regexp"
+	"strings"
 )
 
 func fromIssues(issues []*github.Issue, logger *zap.Logger) dvmodel.Batch {
@@ -35,18 +37,19 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 	//
 
 	issue := dvmodel.Task{
-		ID:           quad.IRI(entity.String()),
-		LocalID:      entity.LocalID(),
-		CreatedAt:    input.CreatedAt,
-		UpdatedAt:    input.UpdatedAt,
-		Title:        input.GetTitle(),
-		Description:  input.GetBody(),
-		Driver:       dvmodel.Driver_GitHub,
-		IsLocked:     input.GetLocked(),
-		CompletedAt:  input.ClosedAt,
-		NumComments:  int32(input.GetComments()),
-		NumUpvotes:   int32(*input.Reactions.PlusOne),
-		NumDownvotes: int32(*input.Reactions.MinusOne),
+		ID:            quad.IRI(entity.String()),
+		LocalID:       entity.LocalID(),
+		CreatedAt:     input.CreatedAt,
+		UpdatedAt:     input.UpdatedAt,
+		Title:         input.GetTitle(),
+		Description:   input.GetBody(),
+		Driver:        dvmodel.Driver_GitHub,
+		IsLocked:      input.GetLocked(),
+		CompletedAt:   input.ClosedAt,
+		NumComments:   int32(input.GetComments()),
+		NumUpvotes:    int32(*input.Reactions.PlusOne),
+		NumDownvotes:  int32(*input.Reactions.MinusOne),
+		EstimatedTime: parseDuration(input.GetBody()),
 	}
 	if input.PullRequestLinks != nil { // is PR
 		issue.Kind = dvmodel.Task_MergeRequest
@@ -139,9 +142,26 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 			return fmt.Errorf("unsupported pmbodyparser.Kind: %v", relationship.Kind)
 		}
 	}
-
 	batch.Tasks = append(batch.Tasks, &issue)
 	return nil
+}
+
+func parseDuration(body string) string {
+	rules := regexp.MustCompile("\\b\\w+\\b")
+	words := rules.FindAllString(body, -1)
+	previous := ""
+	for _, v := range words {
+		if previous == "time" {
+			_, err := str2duration.ParseDuration(v)
+			if err != nil {
+				fmt.Println(err)
+				return "undefined"
+			}
+			return v
+		}
+		previous = strings.Replace(v, " ", " ", -1)
+	}
+	return "undefined"
 }
 
 func fromUser(batch *dvmodel.Batch, input *github.User) (*dvmodel.Owner, error) {

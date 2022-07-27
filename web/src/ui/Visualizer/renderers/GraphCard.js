@@ -1,6 +1,7 @@
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import Issue from '../../components/icons/Issue'
+import Hourglass from '../../components/icons/Hourglass'
 import Pr from '../../components/icons/Pr'
 import Comments from '../../components/icons/Comments'
 import Github from '../../components/icons/Github'
@@ -37,7 +38,7 @@ const GraphCard = (data, type) => {
             <div className="cy-icon icon-comments">
               <Comments />
             </div>
-            <div className="cy-icon icon-github">
+            <div className="cy-icon icon-hourglass">
               <Github />
             </div>
             <div className="cy-icon avatar" />
@@ -46,6 +47,9 @@ const GraphCard = (data, type) => {
         <div className="b-body-middle">
           <div className="title">
             {data.title.replace(/"/gi, '\'')}
+          </div>
+          <div className="estimated-time">
+            <Hourglass/>{" "}{data.estimated_time}
           </div>
         </div>
         {/*
