@@ -7,8 +7,7 @@ import potrace from 'potrace'
 import toBuffer from 'blob-to-buffer'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
-import {fetchDepviz, getToken} from '../../../api/depviz'
-import store from '../../../utils/store'
+import { fetchDepviz } from '../../../api/depviz'
 
 import './styles.scss'
 
@@ -29,23 +28,12 @@ const Menu = ({
   const [showDropdown, setShowDropdown] = useState(false)
   const [waitingExport, setWaitingExport] = useState(false)
 
-  // request of github OAuth
-  const sendOauthCode = async (code) => {
-    const { data } = await getToken('/token', code)
-    store.setItem('auth_token', data.access_token)
-    updateBrowserHistory(generateUrl(urlData))
-  }
+
 
   // Initialize form data and make API call (only once)
   useEffect(() => {
     updateLayout(urlData.layout)
-    const code = new URLSearchParams(window.location.search).get('code');
-    if (code !== null) {
-      sendOauthCode(code).then(() => {
-        updateBrowserHistory(generateUrl(urlData));
-        window.location.reload();
-      });
-    }
+
     if (urlData.targets) {
       updateLoadingGraph(true)
       // Process Timeline layout (disable all checkboxes except Closed)
@@ -336,7 +324,7 @@ const Menu = ({
               <button onClick={handleShowToken} className="btn">
                 {authToken ? 'Change token' : '+ Add token'}
               </button>
-              <a href={`https://github.com/login/oauth/authorize?client_id=${gitHubClientId}&redirect_uri=${baseURL}`}>github</a>
+              <a href={`https://github.com/login/oauth/authorize?client_id=${gitHubClientId}&redirect_uri=${baseURL}/githubOAuth`}>github</a>
             </div>
 
           </div>
