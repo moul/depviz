@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Cache Node.js modules
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v3.0.5
         with:
           path: web/node_modules
           key:          ${{ runner.OS }}-node-${{ matrix.node }}-v1-${{ hashFiles('web/yarn.lock') }}
