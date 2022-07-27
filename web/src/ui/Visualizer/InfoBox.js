@@ -4,6 +4,7 @@ import { User } from 'react-feather'
 import Issue from '../components/icons/Issue'
 import Pr from '../components/icons/Pr'
 import './infoBox.scss'
+import {element} from "prop-types";
 
 const InfoBox = ({ data }) => {
   const openWebLink = () => {
@@ -24,7 +25,11 @@ const InfoBox = ({ data }) => {
     default:
       break
   }
-  const auhorLink = data.has_author
+  const authorLink = data.has_author
+  let assignLength = 0
+  if (data.has_assignee !== undefined) {
+    assignLength = data.has_assignee.length
+  }
   return (
     <Draggable>
       <div className="info-box">
@@ -43,10 +48,27 @@ const InfoBox = ({ data }) => {
           <div className="info-box-body">
             {data.title ? data.title.replace(/"/gi, '\'') : 'No title'}
           </div>
-          {auhorLink && (
+          {assignLength !== 0 && authorLink && (
+            <div>
+              <div className="info-box-assign-link">
+                <User size={16} />
+                Assign:&nbsp;
+                {data.has_assignee.map((element, i) => <a href={element} target="_blank" rel="noopener noreferrer">{element.toString().replace('https://github.com/', '')}
+                  {i !== assignLength-1? ', ' : ''}
+                </a>)}
+              </div>
+              <div className="info-box-assign-link">
+              <User size={16} />
+              Author:&nbsp;
+              <a href={`${authorLink}`} target="_blank" rel="noopener noreferrer">{authorLink.replace('https://github.com/', '')}</a>
+              </div>
+            </div>
+          )}
+          {authorLink && assignLength === 0 && (
           <div className="info-box-author-link">
             <User size={16} />
-            <a href={`${auhorLink}`} target="_blank" rel="noopener noreferrer">{auhorLink.replace('https://github.com/', '')}</a>
+             Author:&nbsp;
+            <a href={`${authorLink}`} target="_blank" rel="noopener noreferrer">{authorLink.replace('https://github.com/', '')}</a>
           </div>
           )}
           <div className="info-box-actions">

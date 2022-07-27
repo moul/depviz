@@ -4,8 +4,8 @@
   position: absolute;
   left: 0.5rem;
   top: 0.5rem;
-  width: 320px;
-  height: 160px;
+  width: 360px;
+  height: 180px;
   color: #383B62;
   background-color: #ffffff;
   border-radius: 6px;
@@ -54,11 +54,19 @@
     }
     .info-box-author-link {
       display: flex;
+      margin-top: 1.5rem;
       align-items: center;
       svg {
         margin-right: 0.35rem;
       }
     }
+    .info-box-assign-link {
+          display: flex;
+          align-items: center;
+          svg {
+            margin-right: 0.35rem;
+          }
+        }
   }
   .info-box-actions {
     position: absolute;
