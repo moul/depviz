@@ -2,6 +2,8 @@ package githubprovider
 
 import (
 	"fmt"
+	"regexp"
+
 	"github.com/cayleygraph/quad"
 	"github.com/google/go-github/v30/github"
 	"github.com/xhit/go-str2duration/v2"
@@ -10,8 +12,6 @@ import (
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/multipmuri"
 	"moul.io/multipmuri/pmbodyparser"
-	"regexp"
-	"strings"
 )
 
 func fromIssues(issues []*github.Issue, logger *zap.Logger) dvmodel.Batch {
@@ -147,7 +147,7 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 }
 
 func parseDuration(body string) string {
-	rules := regexp.MustCompile("\\b\\w+\\b")
+	rules := regexp.MustCompile(`\b\w+\b`)
 	words := rules.FindAllString(body, -1)
 	previous := ""
 	for _, v := range words {
@@ -159,7 +159,7 @@ func parseDuration(body string) string {
 			}
 			return v
 		}
-		previous = strings.Replace(v, " ", " ", -1)
+		previous = v
 	}
 	return "undefined"
 }
