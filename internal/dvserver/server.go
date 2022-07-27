@@ -223,6 +223,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 
 		// pages
 		r.Get("/", homepage(box, opts))
+		r.Get("/githubOAuth", homepage(box, opts))
 
 		http.DefaultServeMux = http.NewServeMux() // disables default handlers registere by importing net/http/pprof for security reasons
 		listener, err := net.Listen("tcp", opts.HTTPBind)
