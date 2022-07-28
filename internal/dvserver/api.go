@@ -14,6 +14,7 @@ import (
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/depviz/v3/internal/dvstore"
+	"moul.io/depviz/v3/internal/githubprovider"
 )
 
 func gitHubOAuth(opts Opts, httpLogger *zap.Logger) http.HandlerFunc {
@@ -182,4 +183,20 @@ func (s *service) Ping(context.Context, *Ping_Input) (*Ping_Output, error) {
 
 func (s *service) Status(context.Context, *Status_Input) (*Status_Output, error) {
 	return &Status_Output{EverythingIsOK: true}, nil
+}
+
+func (s *service) GitHubAssign(ctx context.Context, in *GitHubAssign_Input) (*GitHubAssign_Output, error) {
+	fmt.Println("GitHubAssign")
+	fmt.Println(in.Assignee, in.Id, in.Owner, in.Repo)
+
+	// retrieve token
+	gitHubToken, err := getToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get token: %w", err)
+	}
+
+	success, err := githubprovider.AddAssignee(in.Assignee, int(in.Id), in.Owner, in.Repo, gitHubToken)
+	return &GitHubAssign_Output{
+		Success: success,
+	}, err
 }

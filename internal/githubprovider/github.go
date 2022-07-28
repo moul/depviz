@@ -76,3 +76,17 @@ func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out 
 
 	// FIXME: fetch incomplete/old users, orgs, teams & repos
 }
+
+func AddAssignee(assignee string, id int, owner string, repo string, gitHubToken string) (bool, error) {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: gitHubToken})
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	_, resp, err := client.Issues.AddAssignees(ctx, owner, repo, id, []string{assignee})
+	fmt.Println(resp.StatusCode)
+	if err != nil || (resp.StatusCode >= 200 && resp.StatusCode < 300) {
+		return false, err
+	}
+	return true, nil
+}

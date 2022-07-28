@@ -267,6 +267,8 @@ const Menu = ({
     }
   }
 
+
+
   const downloadSVG = (svg, exportType) => {
     let source = svg
     if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
@@ -290,6 +292,15 @@ const Menu = ({
     a.download = `depviz-${layout.name}-graph-${currMonth + 1}-${currDay}-${currYear}.${exportType}`
     a.click()
     setWaitingExport(false)
+  }
+
+  function Test() {
+   fetchDepviz(`/github/assign${generateUrl({
+      owner: 'Doozers',
+      repo: 'depviz-test',
+      id: 1,
+      assignee: 'Doozers',
+    })}`)
   }
 
   return (
@@ -324,7 +335,8 @@ const Menu = ({
               <button onClick={handleShowToken} className="btn">
                 {authToken ? 'Change token' : '+ Add token'}
               </button>
-              <a href={`https://github.com/login/oauth/authorize?client_id=${gitHubClientId}&redirect_uri=${baseURL}/githubOAuth`}>github</a>
+              <a href={`https://github.com/login/oauth/authorize?client_id=${gitHubClientId}&scope=repo&redirect_uri=${baseURL}/githubOAuth`}>github</a>
+              <button onClick={Test} className="btn">test</button>
             </div>
 
           </div>

@@ -18,6 +18,7 @@ service DepvizService {
   rpc StoreDump(StoreDump.Input) returns (StoreDump.Output) { option (google.api.http) = {get: "/store/dump"}; };
   rpc Ping(Ping.Input) returns (Ping.Output) { option (google.api.http) = {get: "/ping"}; };
   rpc Status(Status.Input) returns (Status.Output) { option (google.api.http) = {get: "/status"}; };
+  rpc GitHubAssign(GitHubAssign.Input) returns (GitHubAssign.Output) { option (google.api.http) = {get: "/github/assign"}; };
 }
 
 message Graph {
@@ -52,5 +53,17 @@ message Status {
   message Input {}
   message Output {
     bool everything_is_ok = 1 [(gogoproto.customname) = "EverythingIsOK"];
+  }
+}
+
+message GitHubAssign {
+  message Input {
+    string owner = 1;
+    string repo = 2;
+    int64 id = 3;
+    string assignee = 4;
+  }
+  message Output {
+    bool success = 1;
   }
 }

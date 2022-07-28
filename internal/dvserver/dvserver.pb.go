@@ -542,6 +542,154 @@ func (m *Status_Output) GetEverythingIsOK() bool {
 	return false
 }
 
+type GitHubAssign struct {
+}
+
+func (m *GitHubAssign) Reset()         { *m = GitHubAssign{} }
+func (m *GitHubAssign) String() string { return proto.CompactTextString(m) }
+func (*GitHubAssign) ProtoMessage()    {}
+func (*GitHubAssign) Descriptor() ([]byte, []int) {
+	return fileDescriptor_af3aef303a4c4cd2, []int{4}
+}
+func (m *GitHubAssign) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GitHubAssign) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GitHubAssign.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *GitHubAssign) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GitHubAssign.Merge(m, src)
+}
+func (m *GitHubAssign) XXX_Size() int {
+	return m.Size()
+}
+func (m *GitHubAssign) XXX_DiscardUnknown() {
+	xxx_messageInfo_GitHubAssign.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GitHubAssign proto.InternalMessageInfo
+
+type GitHubAssign_Input struct {
+	Owner    string `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
+	Repo     string `protobuf:"bytes,2,opt,name=repo,proto3" json:"repo,omitempty"`
+	Id       int64  `protobuf:"varint,3,opt,name=id,proto3" json:"id,omitempty"`
+	Assignee string `protobuf:"bytes,4,opt,name=assignee,proto3" json:"assignee,omitempty"`
+}
+
+func (m *GitHubAssign_Input) Reset()         { *m = GitHubAssign_Input{} }
+func (m *GitHubAssign_Input) String() string { return proto.CompactTextString(m) }
+func (*GitHubAssign_Input) ProtoMessage()    {}
+func (*GitHubAssign_Input) Descriptor() ([]byte, []int) {
+	return fileDescriptor_af3aef303a4c4cd2, []int{4, 0}
+}
+func (m *GitHubAssign_Input) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GitHubAssign_Input) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GitHubAssign_Input.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *GitHubAssign_Input) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GitHubAssign_Input.Merge(m, src)
+}
+func (m *GitHubAssign_Input) XXX_Size() int {
+	return m.Size()
+}
+func (m *GitHubAssign_Input) XXX_DiscardUnknown() {
+	xxx_messageInfo_GitHubAssign_Input.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GitHubAssign_Input proto.InternalMessageInfo
+
+func (m *GitHubAssign_Input) GetOwner() string {
+	if m != nil {
+		return m.Owner
+	}
+	return ""
+}
+
+func (m *GitHubAssign_Input) GetRepo() string {
+	if m != nil {
+		return m.Repo
+	}
+	return ""
+}
+
+func (m *GitHubAssign_Input) GetId() int64 {
+	if m != nil {
+		return m.Id
+	}
+	return 0
+}
+
+func (m *GitHubAssign_Input) GetAssignee() string {
+	if m != nil {
+		return m.Assignee
+	}
+	return ""
+}
+
+type GitHubAssign_Output struct {
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+}
+
+func (m *GitHubAssign_Output) Reset()         { *m = GitHubAssign_Output{} }
+func (m *GitHubAssign_Output) String() string { return proto.CompactTextString(m) }
+func (*GitHubAssign_Output) ProtoMessage()    {}
+func (*GitHubAssign_Output) Descriptor() ([]byte, []int) {
+	return fileDescriptor_af3aef303a4c4cd2, []int{4, 1}
+}
+func (m *GitHubAssign_Output) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GitHubAssign_Output) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GitHubAssign_Output.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *GitHubAssign_Output) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GitHubAssign_Output.Merge(m, src)
+}
+func (m *GitHubAssign_Output) XXX_Size() int {
+	return m.Size()
+}
+func (m *GitHubAssign_Output) XXX_DiscardUnknown() {
+	xxx_messageInfo_GitHubAssign_Output.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GitHubAssign_Output proto.InternalMessageInfo
+
+func (m *GitHubAssign_Output) GetSuccess() bool {
+	if m != nil {
+		return m.Success
+	}
+	return false
+}
+
 func init() {
 	proto.RegisterType((*Graph)(nil), "depviz.server.Graph")
 	proto.RegisterType((*Graph_Input)(nil), "depviz.server.Graph.Input")
@@ -555,50 +703,60 @@ func init() {
 	proto.RegisterType((*Status)(nil), "depviz.server.Status")
 	proto.RegisterType((*Status_Input)(nil), "depviz.server.Status.Input")
 	proto.RegisterType((*Status_Output)(nil), "depviz.server.Status.Output")
+	proto.RegisterType((*GitHubAssign)(nil), "depviz.server.GitHubAssign")
+	proto.RegisterType((*GitHubAssign_Input)(nil), "depviz.server.GitHubAssign.Input")
+	proto.RegisterType((*GitHubAssign_Output)(nil), "depviz.server.GitHubAssign.Output")
 }
 
 func init() { proto.RegisterFile("dvserver.proto", fileDescriptor_af3aef303a4c4cd2) }
 
 var fileDescriptor_af3aef303a4c4cd2 = []byte{
-	// 603 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x94, 0xcb, 0x6a, 0xdb, 0x4e,
-	0x14, 0xc6, 0x23, 0x27, 0xb2, 0xe3, 0x31, 0x76, 0xc2, 0x84, 0x3f, 0xe8, 0xaf, 0xa4, 0xb2, 0xd1,
-	0xca, 0x59, 0x54, 0x03, 0xce, 0xae, 0x74, 0xe5, 0x26, 0x29, 0xa6, 0x85, 0x04, 0x25, 0x50, 0xda,
-	0x8d, 0x18, 0x5b, 0x13, 0x79, 0xb0, 0xac, 0x11, 0x9a, 0x91, 0x7a, 0x59, 0xf6, 0x09, 0x0a, 0x7d,
-	0x90, 0xbe, 0x46, 0x97, 0x81, 0x6e, 0xba, 0x0a, 0xc5, 0xe9, 0xa2, 0xdb, 0xbe, 0x41, 0x99, 0x8b,
-	0x9d, 0x4b, 0xd3, 0xdd, 0x9c, 0xef, 0xfb, 0xce, 0x6f, 0x66, 0x8e, 0xc7, 0x02, 0x9d, 0xb8, 0xe2,
-	0xa4, 0xa8, 0x48, 0x11, 0xe4, 0x05, 0x13, 0x0c, 0xb6, 0x63, 0x92, 0x57, 0xf4, 0x43, 0xa0, 0x45,
-	0x77, 0x2f, 0x61, 0x2c, 0x49, 0x09, 0xc2, 0x39, 0x45, 0x38, 0xcb, 0x98, 0xc0, 0x82, 0xb2, 0x8c,
-	0xeb, 0xb0, 0xfb, 0x38, 0xa1, 0x62, 0x5a, 0x8e, 0x83, 0x09, 0x9b, 0xa3, 0x84, 0x25, 0x0c, 0x29,
-	0x79, 0x5c, 0x5e, 0xa8, 0x4a, 0x15, 0x6a, 0x65, 0xe2, 0xed, 0xb8, 0x9a, 0xb3, 0x98, 0xa4, 0xba,
-	0xf4, 0xbf, 0xd4, 0x80, 0xfd, 0xbc, 0xc0, 0xf9, 0xd4, 0xfd, 0x6d, 0x01, 0x7b, 0x94, 0xe5, 0xa5,
-	0x80, 0x0e, 0x68, 0x08, 0x5c, 0x24, 0x44, 0x70, 0xc7, 0xea, 0xad, 0xf7, 0x9b, 0xe1, 0xb2, 0x84,
-	0x5d, 0xd0, 0x7a, 0x4b, 0xc5, 0x34, 0x9a, 0xa4, 0x8c, 0x93, 0xd8, 0xa9, 0xf5, 0xac, 0xfe, 0x66,
-	0x08, 0xa4, 0xf4, 0x4c, 0x29, 0x70, 0x1f, 0x6c, 0xcb, 0x8a, 0x95, 0x22, 0xa2, 0x9c, 0xa5, 0x58,
-	0x90, 0xd8, 0x59, 0x57, 0xa9, 0x2d, 0xa3, 0x8f, 0x8c, 0x0c, 0x91, 0x66, 0xc9, 0x68, 0x5e, 0x70,
-	0x67, 0x43, 0xa6, 0x86, 0x9d, 0xc5, 0x55, 0x17, 0xbc, 0xd2, 0xf2, 0x69, 0xc8, 0x35, 0x5b, 0xae,
-	0x0b, 0x0e, 0x07, 0xe0, 0xbf, 0x65, 0x03, 0x79, 0x27, 0x48, 0x91, 0xe1, 0x34, 0x8a, 0x49, 0xce,
-	0x1d, 0x5b, 0x6d, 0xb0, 0x63, 0xcc, 0x23, 0xe3, 0x1d, 0x92, 0x9c, 0xc3, 0x47, 0x40, 0x11, 0xa2,
-	0x0b, 0x22, 0x26, 0x53, 0xa7, 0xae, 0x82, 0x4d, 0xa9, 0x1c, 0x4b, 0xc1, 0x1d, 0x80, 0xfa, 0x49,
-	0x29, 0xe4, 0x9d, 0xfb, 0xc0, 0x16, 0x98, 0xcf, 0xf4, 0x8d, 0x5b, 0x03, 0x18, 0x98, 0x9f, 0x40,
-	0xcf, 0xea, 0x1c, 0xf3, 0x59, 0xa8, 0x03, 0xfe, 0x08, 0x34, 0xcf, 0x04, 0x2b, 0xc8, 0x61, 0x39,
-	0xcf, 0xdd, 0x86, 0x99, 0x99, 0x7b, 0xb0, 0x22, 0xed, 0x03, 0x7b, 0x8c, 0xe5, 0x6e, 0x56, 0xcf,
-	0xea, 0xb7, 0x06, 0x3b, 0x77, 0x49, 0x43, 0x69, 0x85, 0x3a, 0xe1, 0x1f, 0x80, 0x8d, 0x53, 0x9a,
-	0x25, 0x37, 0x14, 0x7f, 0x45, 0x71, 0x40, 0x63, 0x4e, 0x38, 0xc7, 0x09, 0x51, 0x9c, 0x66, 0xb8,
-	0x2c, 0xfd, 0xd7, 0xa0, 0x7e, 0x26, 0xb0, 0x28, 0xf9, 0x4d, 0xdb, 0xf1, 0xaa, 0xed, 0x29, 0xd8,
-	0x26, 0x15, 0x29, 0xde, 0x8b, 0x29, 0xcd, 0x92, 0x88, 0xf2, 0x88, 0xcd, 0x54, 0xff, 0xe6, 0x10,
-	0x2e, 0xae, 0xba, 0x9d, 0xa3, 0x95, 0x37, 0xe2, 0x27, 0x2f, 0xc2, 0x0e, 0xb9, 0x5d, 0xcf, 0x06,
-	0xbf, 0x6a, 0xa0, 0x7d, 0xa8, 0x4e, 0x7b, 0x46, 0x8a, 0x8a, 0x4e, 0x08, 0x3c, 0x35, 0xaf, 0x03,
-	0xba, 0xc1, 0x9d, 0x37, 0x19, 0x28, 0x35, 0xd0, 0xdb, 0xef, 0x3e, 0xe8, 0xe9, 0x13, 0xf9, 0x9d,
-	0x8f, 0xdf, 0x7e, 0x7e, 0xae, 0x6d, 0xc2, 0x3a, 0x4a, 0x14, 0x08, 0xdf, 0x1a, 0x1f, 0xf4, 0xee,
-	0x75, 0xae, 0x1c, 0x43, 0xee, 0xfe, 0xd3, 0x37, 0xf4, 0x1d, 0x45, 0x6f, 0xc3, 0x16, 0xe2, 0xd2,
-	0x42, 0xb1, 0xa4, 0xbe, 0xd4, 0x63, 0x85, 0xff, 0xdf, 0xeb, 0x96, 0xa2, 0x01, 0xbb, 0x0f, 0x59,
-	0x86, 0xd9, 0x56, 0xcc, 0x06, 0xb4, 0x51, 0x2e, 0x29, 0xe7, 0xcb, 0x79, 0xc3, 0xdd, 0xbf, 0x4e,
-	0x23, 0x65, 0x43, 0xdc, 0x7b, 0xd8, 0x34, 0xcc, 0x2d, 0xc5, 0x6c, 0xc2, 0x06, 0xe2, 0x4a, 0x1f,
-	0x3e, 0xf9, 0xba, 0xf0, 0xac, 0xcb, 0x85, 0x67, 0xfd, 0x58, 0x78, 0xd6, 0xa7, 0x6b, 0x6f, 0xed,
-	0xf2, 0xda, 0x5b, 0xfb, 0x7e, 0xed, 0xad, 0xbd, 0xe9, 0xcd, 0x59, 0x99, 0x06, 0x94, 0x21, 0xcd,
-	0x43, 0x34, 0xd3, 0xef, 0x19, 0x2d, 0x3f, 0x12, 0xe3, 0xba, 0xfa, 0xeb, 0x1e, 0xfc, 0x09, 0x00,
-	0x00, 0xff, 0xff, 0x22, 0x51, 0x32, 0xf9, 0x37, 0x04, 0x00, 0x00,
+	// 706 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x94, 0xcd, 0x6e, 0xd3, 0x4a,
+	0x14, 0xc7, 0xeb, 0xa4, 0xf9, 0x9a, 0xdc, 0xa4, 0xd5, 0xf4, 0xde, 0x2b, 0xe3, 0x96, 0x24, 0x78,
+	0x95, 0x2e, 0xf0, 0x48, 0xe9, 0x0e, 0xb1, 0x21, 0xf4, 0x83, 0x08, 0xa4, 0x56, 0x6e, 0x25, 0x04,
+	0x12, 0x8a, 0x26, 0xf1, 0xd4, 0x19, 0x25, 0xf1, 0x58, 0x9e, 0x71, 0x0a, 0x2c, 0x79, 0x02, 0x10,
+	0x0f, 0xc2, 0x6b, 0xb0, 0xac, 0xc4, 0x02, 0x56, 0x15, 0x4a, 0x79, 0x01, 0xde, 0x00, 0xcd, 0x87,
+	0xd3, 0xa6, 0x14, 0x76, 0x3e, 0xff, 0xff, 0x39, 0xbf, 0x33, 0x33, 0x67, 0x3c, 0xa0, 0x1e, 0xcc,
+	0x38, 0x49, 0x66, 0x24, 0xf1, 0xe2, 0x84, 0x09, 0x06, 0x6b, 0x01, 0x89, 0x67, 0xf4, 0xad, 0xa7,
+	0x45, 0x67, 0x2b, 0x64, 0x2c, 0x9c, 0x10, 0x84, 0x63, 0x8a, 0x70, 0x14, 0x31, 0x81, 0x05, 0x65,
+	0x11, 0xd7, 0xc9, 0xce, 0xfd, 0x90, 0x8a, 0x51, 0x3a, 0xf0, 0x86, 0x6c, 0x8a, 0x42, 0x16, 0x32,
+	0xa4, 0xe4, 0x41, 0x7a, 0xaa, 0x22, 0x15, 0xa8, 0x2f, 0x93, 0x5e, 0x0b, 0x66, 0x53, 0x16, 0x90,
+	0x89, 0x0e, 0xdd, 0x4f, 0x39, 0x50, 0x38, 0x48, 0x70, 0x3c, 0x72, 0x7e, 0x5a, 0xa0, 0xd0, 0x8b,
+	0xe2, 0x54, 0x40, 0x1b, 0x94, 0x04, 0x4e, 0x42, 0x22, 0xb8, 0x6d, 0xb5, 0xf2, 0xed, 0x8a, 0x9f,
+	0x85, 0xb0, 0x09, 0xaa, 0x67, 0x54, 0x8c, 0xfa, 0xc3, 0x09, 0xe3, 0x24, 0xb0, 0x73, 0x2d, 0xab,
+	0x5d, 0xf6, 0x81, 0x94, 0x1e, 0x2b, 0x05, 0x6e, 0x83, 0x75, 0x19, 0xb1, 0x54, 0xf4, 0x29, 0x67,
+	0x13, 0x2c, 0x48, 0x60, 0xe7, 0x55, 0xd6, 0x9a, 0xd1, 0x7b, 0x46, 0x86, 0x48, 0xb3, 0x64, 0x6a,
+	0x9c, 0x70, 0x7b, 0x55, 0x66, 0x75, 0xeb, 0xf3, 0x8b, 0x26, 0x78, 0xae, 0xe5, 0x23, 0x9f, 0x6b,
+	0xb6, 0xfc, 0x4e, 0x38, 0xec, 0x80, 0xff, 0xb2, 0x02, 0xf2, 0x5a, 0x90, 0x24, 0xc2, 0x93, 0x7e,
+	0x40, 0x62, 0x6e, 0x17, 0x54, 0x83, 0x0d, 0x63, 0xee, 0x19, 0x6f, 0x97, 0xc4, 0x1c, 0xde, 0x05,
+	0x8a, 0xd0, 0x3f, 0x25, 0x62, 0x38, 0xb2, 0x8b, 0x2a, 0xb1, 0x22, 0x95, 0x7d, 0x29, 0x38, 0x1d,
+	0x50, 0x3c, 0x4c, 0x85, 0xdc, 0x73, 0x1b, 0x14, 0x04, 0xe6, 0x63, 0xbd, 0xe3, 0x6a, 0x07, 0x7a,
+	0x66, 0x04, 0xfa, 0xac, 0x4e, 0x30, 0x1f, 0xfb, 0x3a, 0xc1, 0xed, 0x81, 0xca, 0xb1, 0x60, 0x09,
+	0xd9, 0x4d, 0xa7, 0xb1, 0x53, 0x32, 0x67, 0xe6, 0xec, 0x2c, 0x48, 0xdb, 0xa0, 0x30, 0xc0, 0xb2,
+	0x9b, 0xd5, 0xb2, 0xda, 0xd5, 0xce, 0xc6, 0x32, 0xa9, 0x2b, 0x2d, 0x5f, 0x67, 0xb8, 0x3b, 0x60,
+	0xf5, 0x88, 0x46, 0xe1, 0x15, 0xc5, 0x5d, 0x50, 0x6c, 0x50, 0x9a, 0x12, 0xce, 0x71, 0x48, 0x14,
+	0xa7, 0xe2, 0x67, 0xa1, 0xfb, 0x02, 0x14, 0x8f, 0x05, 0x16, 0x29, 0xbf, 0x2a, 0xdb, 0x5f, 0x94,
+	0x3d, 0x04, 0xeb, 0x64, 0x46, 0x92, 0x37, 0x62, 0x44, 0xa3, 0xb0, 0x4f, 0x79, 0x9f, 0x8d, 0x55,
+	0x7d, 0xb9, 0x0b, 0xe7, 0x17, 0xcd, 0xfa, 0xde, 0xc2, 0xeb, 0xf1, 0xc3, 0xa7, 0x7e, 0x9d, 0x5c,
+	0x8f, 0xc7, 0xee, 0x07, 0x0b, 0xfc, 0x73, 0x40, 0xc5, 0x93, 0x74, 0xf0, 0x88, 0x73, 0x1a, 0x46,
+	0xce, 0xab, 0xec, 0x4a, 0xfc, 0x0b, 0x0a, 0xec, 0x2c, 0x22, 0x89, 0x59, 0x8c, 0x0e, 0x20, 0x04,
+	0xab, 0x09, 0x89, 0x99, 0xba, 0x07, 0x15, 0x5f, 0x7d, 0xc3, 0x3a, 0xc8, 0x51, 0x3d, 0xf3, 0xbc,
+	0x9f, 0xa3, 0x01, 0x74, 0x40, 0x19, 0x2b, 0x18, 0x21, 0x6a, 0xc6, 0x15, 0x7f, 0x11, 0x2f, 0x6f,
+	0x97, 0xa7, 0xc3, 0x21, 0xe1, 0x5c, 0x2f, 0xd7, 0xcf, 0xc2, 0xce, 0xd7, 0x3c, 0xa8, 0xed, 0xaa,
+	0x13, 0x3c, 0x26, 0xc9, 0x8c, 0x0e, 0x09, 0x3c, 0x32, 0x37, 0x16, 0x3a, 0xde, 0xd2, 0x7f, 0xe2,
+	0x29, 0xd5, 0xd3, 0x47, 0xb2, 0x79, 0xab, 0xa7, 0xbb, 0xb9, 0xf5, 0x77, 0x5f, 0x7e, 0x7c, 0xcc,
+	0x95, 0x61, 0x11, 0x85, 0x0a, 0x84, 0xaf, 0x8d, 0x14, 0x36, 0x6e, 0x54, 0x2e, 0x1c, 0x43, 0x6e,
+	0xfe, 0xd1, 0x37, 0xf4, 0x0d, 0x45, 0xaf, 0xc1, 0x2a, 0xe2, 0xd2, 0x42, 0x81, 0xa4, 0x3e, 0xd3,
+	0xa3, 0x86, 0x77, 0x6e, 0x54, 0x4b, 0xd1, 0x80, 0x9d, 0xdb, 0x2c, 0xc3, 0xac, 0x29, 0x66, 0x09,
+	0x16, 0x50, 0x2c, 0x29, 0x27, 0xd9, 0x1d, 0x80, 0x9b, 0xbf, 0xad, 0x46, 0xca, 0x86, 0xb8, 0x75,
+	0xbb, 0x69, 0x98, 0x6b, 0x8a, 0x59, 0x81, 0x25, 0xc4, 0x35, 0x6b, 0xba, 0x3c, 0x7d, 0x78, 0xef,
+	0xe6, 0x19, 0x5e, 0x33, 0x4d, 0x07, 0xf7, 0x6f, 0x29, 0xa6, 0xcf, 0xff, 0xaa, 0xcf, 0x3a, 0xac,
+	0x23, 0xfd, 0x52, 0x21, 0x3d, 0xff, 0xee, 0x83, 0xcf, 0xf3, 0x86, 0x75, 0x3e, 0x6f, 0x58, 0xdf,
+	0xe7, 0x0d, 0xeb, 0xfd, 0x65, 0x63, 0xe5, 0xfc, 0xb2, 0xb1, 0xf2, 0xed, 0xb2, 0xb1, 0xf2, 0xb2,
+	0x35, 0x65, 0xe9, 0xc4, 0xa3, 0x0c, 0x69, 0x38, 0xa2, 0x91, 0xfe, 0xa5, 0x51, 0xf6, 0x4e, 0x0e,
+	0x8a, 0xea, 0xf5, 0xda, 0xf9, 0x15, 0x00, 0x00, 0xff, 0xff, 0x20, 0xbc, 0x8b, 0x05, 0x3a, 0x05,
+	0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -617,6 +775,7 @@ type DepvizServiceClient interface {
 	StoreDump(ctx context.Context, in *StoreDump_Input, opts ...grpc.CallOption) (*StoreDump_Output, error)
 	Ping(ctx context.Context, in *Ping_Input, opts ...grpc.CallOption) (*Ping_Output, error)
 	Status(ctx context.Context, in *Status_Input, opts ...grpc.CallOption) (*Status_Output, error)
+	GitHubAssign(ctx context.Context, in *GitHubAssign_Input, opts ...grpc.CallOption) (*GitHubAssign_Output, error)
 }
 
 type depvizServiceClient struct {
@@ -663,12 +822,22 @@ func (c *depvizServiceClient) Status(ctx context.Context, in *Status_Input, opts
 	return out, nil
 }
 
+func (c *depvizServiceClient) GitHubAssign(ctx context.Context, in *GitHubAssign_Input, opts ...grpc.CallOption) (*GitHubAssign_Output, error) {
+	out := new(GitHubAssign_Output)
+	err := c.cc.Invoke(ctx, "/depviz.server.DepvizService/GitHubAssign", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DepvizServiceServer is the server API for DepvizService service.
 type DepvizServiceServer interface {
 	Graph(context.Context, *Graph_Input) (*Graph_Output, error)
 	StoreDump(context.Context, *StoreDump_Input) (*StoreDump_Output, error)
 	Ping(context.Context, *Ping_Input) (*Ping_Output, error)
 	Status(context.Context, *Status_Input) (*Status_Output, error)
+	GitHubAssign(context.Context, *GitHubAssign_Input) (*GitHubAssign_Output, error)
 }
 
 // UnimplementedDepvizServiceServer can be embedded to have forward compatible implementations.
@@ -686,6 +855,9 @@ func (*UnimplementedDepvizServiceServer) Ping(ctx context.Context, req *Ping_Inp
 }
 func (*UnimplementedDepvizServiceServer) Status(ctx context.Context, req *Status_Input) (*Status_Output, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
+}
+func (*UnimplementedDepvizServiceServer) GitHubAssign(ctx context.Context, req *GitHubAssign_Input) (*GitHubAssign_Output, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GitHubAssign not implemented")
 }
 
 func RegisterDepvizServiceServer(s *grpc.Server, srv DepvizServiceServer) {
@@ -764,6 +936,24 @@ func _DepvizService_Status_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DepvizService_GitHubAssign_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GitHubAssign_Input)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DepvizServiceServer).GitHubAssign(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/depviz.server.DepvizService/GitHubAssign",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DepvizServiceServer).GitHubAssign(ctx, req.(*GitHubAssign_Input))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _DepvizService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "depviz.server.DepvizService",
 	HandlerType: (*DepvizServiceServer)(nil),
@@ -783,6 +973,10 @@ var _DepvizService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Status",
 			Handler:    _DepvizService_Status_Handler,
+		},
+		{
+			MethodName: "GitHubAssign",
+			Handler:    _DepvizService_GitHubAssign_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -1167,6 +1361,111 @@ func (m *Status_Output) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *GitHubAssign) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GitHubAssign) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GitHubAssign) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *GitHubAssign_Input) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GitHubAssign_Input) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GitHubAssign_Input) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Assignee) > 0 {
+		i -= len(m.Assignee)
+		copy(dAtA[i:], m.Assignee)
+		i = encodeVarintDvserver(dAtA, i, uint64(len(m.Assignee)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.Id != 0 {
+		i = encodeVarintDvserver(dAtA, i, uint64(m.Id))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.Repo) > 0 {
+		i -= len(m.Repo)
+		copy(dAtA[i:], m.Repo)
+		i = encodeVarintDvserver(dAtA, i, uint64(len(m.Repo)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Owner) > 0 {
+		i -= len(m.Owner)
+		copy(dAtA[i:], m.Owner)
+		i = encodeVarintDvserver(dAtA, i, uint64(len(m.Owner)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GitHubAssign_Output) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GitHubAssign_Output) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GitHubAssign_Output) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Success {
+		i--
+		if m.Success {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintDvserver(dAtA []byte, offset int, v uint64) int {
 	offset -= sovDvserver(v)
 	base := offset
@@ -1319,6 +1618,51 @@ func (m *Status_Output) Size() (n int) {
 	var l int
 	_ = l
 	if m.EverythingIsOK {
+		n += 2
+	}
+	return n
+}
+
+func (m *GitHubAssign) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *GitHubAssign_Input) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Owner)
+	if l > 0 {
+		n += 1 + l + sovDvserver(uint64(l))
+	}
+	l = len(m.Repo)
+	if l > 0 {
+		n += 1 + l + sovDvserver(uint64(l))
+	}
+	if m.Id != 0 {
+		n += 1 + sovDvserver(uint64(m.Id))
+	}
+	l = len(m.Assignee)
+	if l > 0 {
+		n += 1 + l + sovDvserver(uint64(l))
+	}
+	return n
+}
+
+func (m *GitHubAssign_Output) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Success {
 		n += 2
 	}
 	return n
@@ -2163,6 +2507,291 @@ func (m *Status_Output) Unmarshal(dAtA []byte) error {
 				}
 			}
 			m.EverythingIsOK = bool(v != 0)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDvserver(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GitHubAssign) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDvserver
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GitHubAssign: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GitHubAssign: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDvserver(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GitHubAssign_Input) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDvserver
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Input: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Input: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Owner", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Owner = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Repo", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Repo = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			m.Id = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Id |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Assignee", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Assignee = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDvserver(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GitHubAssign_Output) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDvserver
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Output: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Output: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Success", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Success = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skipDvserver(dAtA[iNdEx:])
