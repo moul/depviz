@@ -14,6 +14,9 @@ import (
 	"moul.io/multipmuri/pmbodyparser"
 )
 
+const InvalidDuration string = "invalid"
+const UndefinedDuration string = "undefined"
+
 func fromIssues(issues []*github.Issue, logger *zap.Logger) dvmodel.Batch {
 	batch := dvmodel.Batch{}
 	for _, issue := range issues {
@@ -37,20 +40,20 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 	//
 
 	issue := dvmodel.Task{
-		ID:            quad.IRI(entity.String()),
-		LocalID:       entity.LocalID(),
-		CreatedAt:     input.CreatedAt,
-		UpdatedAt:     input.UpdatedAt,
-		Title:         input.GetTitle(),
-		Description:   input.GetBody(),
-		Driver:        dvmodel.Driver_GitHub,
-		IsLocked:      input.GetLocked(),
-		CompletedAt:   input.ClosedAt,
-		NumComments:   int32(input.GetComments()),
-		NumUpvotes:    int32(*input.Reactions.PlusOne),
-		NumDownvotes:  int32(*input.Reactions.MinusOne),
-		EstimatedTime: parseDuration(input.GetBody()),
+		ID:           quad.IRI(entity.String()),
+		LocalID:      entity.LocalID(),
+		CreatedAt:    input.CreatedAt,
+		UpdatedAt:    input.UpdatedAt,
+		Title:        input.GetTitle(),
+		Description:  input.GetBody(),
+		Driver:       dvmodel.Driver_GitHub,
+		IsLocked:     input.GetLocked(),
+		CompletedAt:  input.ClosedAt,
+		NumComments:  int32(input.GetComments()),
+		NumUpvotes:   int32(*input.Reactions.PlusOne),
+		NumDownvotes: int32(*input.Reactions.MinusOne),
 	}
+	issue.EstimatedDuration = parseDuration(issue.Description)
 	if input.PullRequestLinks != nil { // is PR
 		issue.Kind = dvmodel.Task_MergeRequest
 	} else { // is issue
@@ -147,21 +150,19 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 }
 
 func parseDuration(body string) string {
-	rules := regexp.MustCompile(`\b\w+\b`)
-	words := rules.FindAllString(body, -1)
-	previous := ""
-	for _, v := range words {
-		if previous == "time" {
-			_, err := str2duration.ParseDuration(v)
-			if err != nil {
-				fmt.Println(err)
-				return "undefined"
-			}
-			return v
-		}
-		previous = v
+	compile, err := regexp.Compile(`time[ \t]+([w|d|h|m|0-9]+)`)
+	if err != nil {
+		return UndefinedDuration
 	}
-	return "undefined"
+	match := compile.FindStringSubmatch(body)
+	if len(match) < 2 || len(match[1]) == 0 {
+		return UndefinedDuration
+	}
+	_, err = str2duration.ParseDuration(match[1])
+	if err != nil {
+		return InvalidDuration
+	}
+	return match[1]
 }
 
 func fromUser(batch *dvmodel.Batch, input *github.User) (*dvmodel.Owner, error) {

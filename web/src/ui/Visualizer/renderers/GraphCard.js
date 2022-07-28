@@ -25,7 +25,8 @@ const GraphCard = (data, type) => {
     default:
       break
   }
-
+  let estimatedDuration = ""
+  if (data.estimated_duration !== undefined && data.estimated_duration !== "undefined") { estimatedDuration = data.estimated_duration}
   const cardTemplate = (
     <div id={data.html_id} className={`cy-card issue ${cardClasses}`}>
       <div className="b-left">
@@ -48,9 +49,11 @@ const GraphCard = (data, type) => {
           <div className="title">
             {data.title.replace(/"/gi, '\'')}
           </div>
+          {estimatedDuration && (
           <div className="estimated-time">
-            <Hourglass/>{" "}{data.estimated_time}
+            <Hourglass/>{" "}{estimatedDuration}
           </div>
+          )}
         </div>
         {/*
         <div class='b-body-bottom'>
