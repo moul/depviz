@@ -85,8 +85,11 @@ func AddAssignee(assignee string, id int, owner string, repo string, gitHubToken
 
 	_, resp, err := client.Issues.AddAssignees(ctx, owner, repo, id, []string{assignee})
 	fmt.Println(resp.StatusCode)
-	if err != nil || (resp.StatusCode >= 200 && resp.StatusCode < 300) {
+	if err != nil {
 		return false, err
 	}
-	return true, nil
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return true, nil
+	}
+	return false, nil
 }
