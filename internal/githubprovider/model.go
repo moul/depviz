@@ -14,8 +14,10 @@ import (
 	"moul.io/multipmuri/pmbodyparser"
 )
 
-const InvalidDuration string = "invalid"
-const UndefinedDuration string = "undefined"
+const (
+	InvalidDuration   string = "invalid"
+	UndefinedDuration string = "undefined"
+)
 
 func fromIssues(issues []*github.Issue, logger *zap.Logger) dvmodel.Batch {
 	batch := dvmodel.Batch{}
@@ -150,15 +152,12 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 }
 
 func parseDuration(body string) string {
-	compile, err := regexp.Compile(`time[ \t]+([w|d|h|m|0-9]+)`)
-	if err != nil {
-		return UndefinedDuration
-	}
+	compile := regexp.MustCompile(`time[ \t]+([w|d|h|m|0-9]+)`)
 	match := compile.FindStringSubmatch(body)
 	if len(match) < 2 || len(match[1]) == 0 {
 		return UndefinedDuration
 	}
-	_, err = str2duration.ParseDuration(match[1])
+	_, err := str2duration.ParseDuration(match[1])
 	if err != nil {
 		return InvalidDuration
 	}
