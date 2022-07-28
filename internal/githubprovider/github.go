@@ -77,19 +77,21 @@ func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out 
 	// FIXME: fetch incomplete/old users, orgs, teams & repos
 }
 
-func AddAssignee(assignee string, id int, owner string, repo string, gitHubToken string) (bool, error) {
+func AddAssignee(assignee string, id int, owner string, repo string, gitHubToken string, Logger *zap.Logger) bool {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: gitHubToken})
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
 	_, resp, err := client.Issues.AddAssignees(ctx, owner, repo, id, []string{assignee})
-	fmt.Println(resp.StatusCode)
 	if err != nil {
-		return false, err
+		Logger.Error("add assignee", zap.Error(err))
+		return false
 	}
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return true, nil
+		Logger.Info("add assignee", zap.Int("status code", resp.StatusCode))
+		return true
 	}
-	return false, nil
+	Logger.Warn("add assignee", zap.String("assignee", assignee), zap.Int("id", id), zap.String("owner", owner), zap.String("repo", repo), zap.Int("status", resp.StatusCode))
+	return false
 }

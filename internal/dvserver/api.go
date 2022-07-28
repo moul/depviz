@@ -195,8 +195,8 @@ func (s *service) GitHubAssign(ctx context.Context, in *GitHubAssign_Input) (*Gi
 		return nil, fmt.Errorf("get token: %w", err)
 	}
 
-	success, err := githubprovider.AddAssignee(in.Assignee, int(in.Id), in.Owner, in.Repo, gitHubToken)
+	success := githubprovider.AddAssignee(in.Assignee, int(in.Id), in.Owner, in.Repo, gitHubToken, s.opts.Logger)
 	return &GitHubAssign_Output{
 		Success: success,
-	}, err
+	}, nil
 }
