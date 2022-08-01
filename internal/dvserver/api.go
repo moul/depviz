@@ -195,7 +195,7 @@ func (s *service) GitHubAssign(ctx context.Context, in *GitHubAssign_Input) (*Gi
 		return nil, fmt.Errorf("get token: %w", err)
 	}
 
-	success := githubprovider.AddAssignee(in.Assignee, int(in.Id), in.Owner, in.Repo, gitHubToken, s.opts.Logger)
+	success := githubprovider.AddAssignee(ctx, in.Assignee, int(in.Id), in.Owner, in.Repo, gitHubToken, s.opts.Logger)
 	return &GitHubAssign_Output{
 		Success: success,
 	}, nil
@@ -208,7 +208,7 @@ func (s *service) GitHubIssueAddMetadata(ctx context.Context, in *GitHubIssueMet
 		return nil, fmt.Errorf("get token: %w", err)
 	}
 
-	success := githubprovider.IssueAddMetadata(int(in.Id), in.Owner, in.Repo, gitHubToken, in.Metadata, s.opts.Logger)
+	success := githubprovider.IssueAddMetadata(ctx, int(in.Id), in.Owner, in.Repo, gitHubToken, in.Metadata, s.opts.Logger)
 
 	return &GitHubIssueMetadata_Output{Success: success}, nil
 }

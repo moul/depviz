@@ -78,8 +78,7 @@ func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out 
 	// FIXME: fetch incomplete/old users, orgs, teams & repos
 }
 
-func AddAssignee(assignee string, id int, owner string, repo string, gitHubToken string, Logger *zap.Logger) bool {
-	ctx := context.Background()
+func AddAssignee(ctx context.Context, assignee string, id int, owner string, repo string, gitHubToken string, Logger *zap.Logger) bool {
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: gitHubToken})
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
@@ -97,8 +96,7 @@ func AddAssignee(assignee string, id int, owner string, repo string, gitHubToken
 	return false
 }
 
-func IssueAddMetadata(id int, owner string, repo string, gitHubToken string, metadata string, Logger *zap.Logger) bool {
-	ctx := context.Background() // TODO: remove and add context
+func IssueAddMetadata(ctx context.Context, id int, owner string, repo string, gitHubToken string, metadata string, Logger *zap.Logger) bool {
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: gitHubToken})
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
