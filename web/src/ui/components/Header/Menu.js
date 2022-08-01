@@ -295,11 +295,11 @@ const Menu = ({
   }
 
   function Test() {
-   fetchDepviz(`/github/assign${generateUrl({
+   fetchDepviz(`/github/issue/add/metadata${generateUrl({
       owner: 'Doozers',
       repo: 'depviz-test',
       id: 1,
-      assignee: 'Doozers',
+      metadata: 'TEST2',
     })}`)
   }
 

@@ -1,4 +1,4 @@
 2d7cf12f3c53d2b5556de9d6156a3164a925d010  ./api/dvmodel.proto
-6104b8794d0750ce3a232694d309ab2869f409af  ./api/dvserver.proto
 88ad959456f1a62bde50639586e44e685d46c7c3  Makefile
+b225baad5020a85b1df614f28d6d1fd602cce948  ./api/dvserver.proto
 d5c1c89229933475a68cb5db7110d05152ad2db2  go.sum

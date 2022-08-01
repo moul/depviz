@@ -3,6 +3,7 @@ package githubprovider
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v30/github"
@@ -93,5 +94,48 @@ func AddAssignee(assignee string, id int, owner string, repo string, gitHubToken
 		return true
 	}
 	Logger.Warn("add assignee", zap.String("assignee", assignee), zap.Int("id", id), zap.String("owner", owner), zap.String("repo", repo), zap.Int("status", resp.StatusCode))
+	return false
+}
+
+func IssueAddMetadata(id int, owner string, repo string, gitHubToken string, metadata string, Logger *zap.Logger) bool {
+	ctx := context.Background() // TODO: remove and add context
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: gitHubToken})
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	issue, resp, err := client.Issues.Get(ctx, owner, repo, id)
+	if err != nil {
+		Logger.Error("get issue", zap.Error(err))
+		return false
+	}
+
+	// add metadata at the end of the body in the "-- depviz auto --" section
+	newBody := *issue.Body
+	var hasSection bool
+	for _, s := range strings.Split(*issue.Body, "\n") {
+		// check if the section exist(mark to change)
+		if s == "-- depviz auto --\r" {
+			hasSection = true
+		}
+		// return true if duplicate
+		if s == metadata {
+			return true
+		}
+	}
+	if !hasSection {
+		newBody += "\n\n-- depviz auto --"
+	}
+	newBody += "\n" + metadata
+
+	_, resp, err = client.Issues.Edit(ctx, owner, repo, id, &github.IssueRequest{Body: &newBody})
+	if err != nil {
+		Logger.Error("add metadata", zap.Error(err))
+		return false
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		Logger.Info("add metadata", zap.Int("status code", resp.StatusCode))
+		return true
+	}
+	Logger.Warn("add metadata", zap.String("metadata", metadata), zap.Int("id", id), zap.String("owner", owner), zap.String("repo", repo), zap.Int("status", resp.StatusCode))
 	return false
 }
