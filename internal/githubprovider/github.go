@@ -78,32 +78,62 @@ func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out 
 	// FIXME: fetch incomplete/old users, orgs, teams & repos
 }
 
-func AddAssignee(ctx context.Context, assignee string, id int, owner string, repo string, gitHubToken string, Logger *zap.Logger) bool {
+func getGitHubClient(ctx context.Context, gitHubToken string) *github.Client {
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: gitHubToken})
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
+
+	return client
+}
+
+func AddAssignee(ctx context.Context, assignee string, id int, owner string, repo string, gitHubToken string, logger *zap.Logger) bool {
+	client := getGitHubClient(ctx, gitHubToken)
 
 	_, resp, err := client.Issues.AddAssignees(ctx, owner, repo, id, []string{assignee})
 	if err != nil {
-		Logger.Error("add assignee", zap.Error(err))
+		logger.Error("add assignee", zap.Error(err))
 		return false
 	}
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		Logger.Info("add assignee", zap.Int("status code", resp.StatusCode))
+		logger.Info("add assignee", zap.Int("status code", resp.StatusCode))
 		return true
 	}
-	Logger.Warn("add assignee", zap.String("assignee", assignee), zap.Int("id", id), zap.String("owner", owner), zap.String("repo", repo), zap.Int("status", resp.StatusCode))
+	logger.Warn("add assignee", zap.String("assignee", assignee), zap.Int("id", id), zap.String("owner", owner), zap.String("repo", repo), zap.Int("status", resp.StatusCode))
 	return false
 }
 
-func IssueAddMetadata(ctx context.Context, id int, owner string, repo string, gitHubToken string, metadata string, Logger *zap.Logger) bool {
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: gitHubToken})
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
+func SubscribeToRepo(ctx context.Context, owner string, repo string, current bool, gitHubToken string, logger *zap.Logger) bool {
+	client := getGitHubClient(ctx, gitHubToken)
 
-	issue, resp, err := client.Issues.Get(ctx, owner, repo, id)
+	// FIXME: should be replaced by
+	// client.Activity.SetRepositorySubscription(ctx, owner, repo, &github.Subscription{Subscribed: github.Bool(!current)})
+	// but this seems to be broken now
+	if current {
+		_, err := client.Activity.DeleteRepositorySubscription(ctx, owner, repo)
+		if err != nil {
+			logger.Error("unsubscribe from repo", zap.Error(err))
+			return false
+		}
+	} else {
+		_, _, err := client.Activity.SetRepositorySubscription(ctx, owner, repo, &github.Subscription{Subscribed: github.Bool(true)})
+		if err != nil {
+			logger.Error("subscribe to repo", zap.Error(err))
+			return false
+		}
+	}
+	return true
+}
+
+func IssueAddMetadata(ctx context.Context, id int, owner string, repo string, gitHubToken string, metadata string, logger *zap.Logger) bool {
+	client := getGitHubClient(ctx, gitHubToken)
+
+	issue, _, err := client.Issues.Get(ctx, owner, repo, id)
 	if err != nil {
-		Logger.Error("get issue", zap.Error(err))
+		logger.Error("get issue", zap.Error(err))
+		return false
+	}
+	if err != nil {
+		logger.Error("get issue", zap.Error(err))
 		return false
 	}
 
@@ -125,15 +155,31 @@ func IssueAddMetadata(ctx context.Context, id int, owner string, repo string, gi
 	}
 	newBody += "\n" + metadata
 
-	_, resp, err = client.Issues.Edit(ctx, owner, repo, id, &github.IssueRequest{Body: &newBody})
+	_, resp, err := client.Issues.Edit(ctx, owner, repo, id, &github.IssueRequest{Body: &newBody})
 	if err != nil {
-		Logger.Error("add metadata", zap.Error(err))
+		logger.Error("add metadata", zap.Error(err))
 		return false
 	}
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		Logger.Info("add metadata", zap.Int("status code", resp.StatusCode))
+		logger.Info("add metadata", zap.Int("status code", resp.StatusCode))
 		return true
 	}
-	Logger.Warn("add metadata", zap.String("metadata", metadata), zap.Int("id", id), zap.String("owner", owner), zap.String("repo", repo), zap.Int("status", resp.StatusCode))
+	logger.Warn("add metadata", zap.String("metadata", metadata), zap.Int("id", id), zap.String("owner", owner), zap.String("repo", repo), zap.Int("status", resp.StatusCode))
+	return false
+}
+
+func IssueAddComment(ctx context.Context, id int, owner string, repo string, gitHubToken string, comment string, logger *zap.Logger) bool {
+	client := getGitHubClient(ctx, gitHubToken)
+
+	_, resp, err := client.Issues.CreateComment(ctx, owner, repo, id, &github.IssueComment{Body: &comment})
+	if err != nil {
+		logger.Error("add comment", zap.Error(err))
+		return false
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		logger.Info("add comment", zap.Int("status code", resp.StatusCode))
+		return true
+	}
+	logger.Warn("add comment", zap.String("comment", comment), zap.Int("id", id), zap.String("owner", owner), zap.String("repo", repo), zap.Int("status", resp.StatusCode))
 	return false
 }

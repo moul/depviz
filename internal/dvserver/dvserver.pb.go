@@ -690,6 +690,146 @@ func (m *GitHubAssign_Output) GetSuccess() bool {
 	return false
 }
 
+type GitHubRepoSubscribe struct {
+}
+
+func (m *GitHubRepoSubscribe) Reset()         { *m = GitHubRepoSubscribe{} }
+func (m *GitHubRepoSubscribe) String() string { return proto.CompactTextString(m) }
+func (*GitHubRepoSubscribe) ProtoMessage()    {}
+func (*GitHubRepoSubscribe) Descriptor() ([]byte, []int) {
+	return fileDescriptor_af3aef303a4c4cd2, []int{5}
+}
+func (m *GitHubRepoSubscribe) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GitHubRepoSubscribe) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GitHubRepoSubscribe.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *GitHubRepoSubscribe) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GitHubRepoSubscribe.Merge(m, src)
+}
+func (m *GitHubRepoSubscribe) XXX_Size() int {
+	return m.Size()
+}
+func (m *GitHubRepoSubscribe) XXX_DiscardUnknown() {
+	xxx_messageInfo_GitHubRepoSubscribe.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GitHubRepoSubscribe proto.InternalMessageInfo
+
+type GitHubRepoSubscribe_Input struct {
+	Owner   string `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
+	Repo    string `protobuf:"bytes,2,opt,name=repo,proto3" json:"repo,omitempty"`
+	Current bool   `protobuf:"varint,3,opt,name=current,proto3" json:"current,omitempty"`
+}
+
+func (m *GitHubRepoSubscribe_Input) Reset()         { *m = GitHubRepoSubscribe_Input{} }
+func (m *GitHubRepoSubscribe_Input) String() string { return proto.CompactTextString(m) }
+func (*GitHubRepoSubscribe_Input) ProtoMessage()    {}
+func (*GitHubRepoSubscribe_Input) Descriptor() ([]byte, []int) {
+	return fileDescriptor_af3aef303a4c4cd2, []int{5, 0}
+}
+func (m *GitHubRepoSubscribe_Input) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GitHubRepoSubscribe_Input) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GitHubRepoSubscribe_Input.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *GitHubRepoSubscribe_Input) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GitHubRepoSubscribe_Input.Merge(m, src)
+}
+func (m *GitHubRepoSubscribe_Input) XXX_Size() int {
+	return m.Size()
+}
+func (m *GitHubRepoSubscribe_Input) XXX_DiscardUnknown() {
+	xxx_messageInfo_GitHubRepoSubscribe_Input.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GitHubRepoSubscribe_Input proto.InternalMessageInfo
+
+func (m *GitHubRepoSubscribe_Input) GetOwner() string {
+	if m != nil {
+		return m.Owner
+	}
+	return ""
+}
+
+func (m *GitHubRepoSubscribe_Input) GetRepo() string {
+	if m != nil {
+		return m.Repo
+	}
+	return ""
+}
+
+func (m *GitHubRepoSubscribe_Input) GetCurrent() bool {
+	if m != nil {
+		return m.Current
+	}
+	return false
+}
+
+type GitHubRepoSubscribe_Output struct {
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+}
+
+func (m *GitHubRepoSubscribe_Output) Reset()         { *m = GitHubRepoSubscribe_Output{} }
+func (m *GitHubRepoSubscribe_Output) String() string { return proto.CompactTextString(m) }
+func (*GitHubRepoSubscribe_Output) ProtoMessage()    {}
+func (*GitHubRepoSubscribe_Output) Descriptor() ([]byte, []int) {
+	return fileDescriptor_af3aef303a4c4cd2, []int{5, 1}
+}
+func (m *GitHubRepoSubscribe_Output) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GitHubRepoSubscribe_Output) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GitHubRepoSubscribe_Output.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *GitHubRepoSubscribe_Output) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GitHubRepoSubscribe_Output.Merge(m, src)
+}
+func (m *GitHubRepoSubscribe_Output) XXX_Size() int {
+	return m.Size()
+}
+func (m *GitHubRepoSubscribe_Output) XXX_DiscardUnknown() {
+	xxx_messageInfo_GitHubRepoSubscribe_Output.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GitHubRepoSubscribe_Output proto.InternalMessageInfo
+
+func (m *GitHubRepoSubscribe_Output) GetSuccess() bool {
+	if m != nil {
+		return m.Success
+	}
+	return false
+}
+
 type GitHubIssueMetadata struct {
 }
 
@@ -697,7 +837,7 @@ func (m *GitHubIssueMetadata) Reset()         { *m = GitHubIssueMetadata{} }
 func (m *GitHubIssueMetadata) String() string { return proto.CompactTextString(m) }
 func (*GitHubIssueMetadata) ProtoMessage()    {}
 func (*GitHubIssueMetadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_af3aef303a4c4cd2, []int{5}
+	return fileDescriptor_af3aef303a4c4cd2, []int{6}
 }
 func (m *GitHubIssueMetadata) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -737,7 +877,7 @@ func (m *GitHubIssueMetadata_Input) Reset()         { *m = GitHubIssueMetadata_I
 func (m *GitHubIssueMetadata_Input) String() string { return proto.CompactTextString(m) }
 func (*GitHubIssueMetadata_Input) ProtoMessage()    {}
 func (*GitHubIssueMetadata_Input) Descriptor() ([]byte, []int) {
-	return fileDescriptor_af3aef303a4c4cd2, []int{5, 0}
+	return fileDescriptor_af3aef303a4c4cd2, []int{6, 0}
 }
 func (m *GitHubIssueMetadata_Input) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -802,7 +942,7 @@ func (m *GitHubIssueMetadata_Output) Reset()         { *m = GitHubIssueMetadata_
 func (m *GitHubIssueMetadata_Output) String() string { return proto.CompactTextString(m) }
 func (*GitHubIssueMetadata_Output) ProtoMessage()    {}
 func (*GitHubIssueMetadata_Output) Descriptor() ([]byte, []int) {
-	return fileDescriptor_af3aef303a4c4cd2, []int{5, 1}
+	return fileDescriptor_af3aef303a4c4cd2, []int{6, 1}
 }
 func (m *GitHubIssueMetadata_Output) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -838,6 +978,154 @@ func (m *GitHubIssueMetadata_Output) GetSuccess() bool {
 	return false
 }
 
+type GitHubIssueComment struct {
+}
+
+func (m *GitHubIssueComment) Reset()         { *m = GitHubIssueComment{} }
+func (m *GitHubIssueComment) String() string { return proto.CompactTextString(m) }
+func (*GitHubIssueComment) ProtoMessage()    {}
+func (*GitHubIssueComment) Descriptor() ([]byte, []int) {
+	return fileDescriptor_af3aef303a4c4cd2, []int{7}
+}
+func (m *GitHubIssueComment) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GitHubIssueComment) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GitHubIssueComment.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *GitHubIssueComment) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GitHubIssueComment.Merge(m, src)
+}
+func (m *GitHubIssueComment) XXX_Size() int {
+	return m.Size()
+}
+func (m *GitHubIssueComment) XXX_DiscardUnknown() {
+	xxx_messageInfo_GitHubIssueComment.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GitHubIssueComment proto.InternalMessageInfo
+
+type GitHubIssueComment_Input struct {
+	Owner   string `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
+	Repo    string `protobuf:"bytes,2,opt,name=repo,proto3" json:"repo,omitempty"`
+	Id      int64  `protobuf:"varint,3,opt,name=id,proto3" json:"id,omitempty"`
+	Comment string `protobuf:"bytes,4,opt,name=comment,proto3" json:"comment,omitempty"`
+}
+
+func (m *GitHubIssueComment_Input) Reset()         { *m = GitHubIssueComment_Input{} }
+func (m *GitHubIssueComment_Input) String() string { return proto.CompactTextString(m) }
+func (*GitHubIssueComment_Input) ProtoMessage()    {}
+func (*GitHubIssueComment_Input) Descriptor() ([]byte, []int) {
+	return fileDescriptor_af3aef303a4c4cd2, []int{7, 0}
+}
+func (m *GitHubIssueComment_Input) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GitHubIssueComment_Input) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GitHubIssueComment_Input.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *GitHubIssueComment_Input) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GitHubIssueComment_Input.Merge(m, src)
+}
+func (m *GitHubIssueComment_Input) XXX_Size() int {
+	return m.Size()
+}
+func (m *GitHubIssueComment_Input) XXX_DiscardUnknown() {
+	xxx_messageInfo_GitHubIssueComment_Input.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GitHubIssueComment_Input proto.InternalMessageInfo
+
+func (m *GitHubIssueComment_Input) GetOwner() string {
+	if m != nil {
+		return m.Owner
+	}
+	return ""
+}
+
+func (m *GitHubIssueComment_Input) GetRepo() string {
+	if m != nil {
+		return m.Repo
+	}
+	return ""
+}
+
+func (m *GitHubIssueComment_Input) GetId() int64 {
+	if m != nil {
+		return m.Id
+	}
+	return 0
+}
+
+func (m *GitHubIssueComment_Input) GetComment() string {
+	if m != nil {
+		return m.Comment
+	}
+	return ""
+}
+
+type GitHubIssueComment_Output struct {
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+}
+
+func (m *GitHubIssueComment_Output) Reset()         { *m = GitHubIssueComment_Output{} }
+func (m *GitHubIssueComment_Output) String() string { return proto.CompactTextString(m) }
+func (*GitHubIssueComment_Output) ProtoMessage()    {}
+func (*GitHubIssueComment_Output) Descriptor() ([]byte, []int) {
+	return fileDescriptor_af3aef303a4c4cd2, []int{7, 1}
+}
+func (m *GitHubIssueComment_Output) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GitHubIssueComment_Output) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GitHubIssueComment_Output.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *GitHubIssueComment_Output) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GitHubIssueComment_Output.Merge(m, src)
+}
+func (m *GitHubIssueComment_Output) XXX_Size() int {
+	return m.Size()
+}
+func (m *GitHubIssueComment_Output) XXX_DiscardUnknown() {
+	xxx_messageInfo_GitHubIssueComment_Output.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GitHubIssueComment_Output proto.InternalMessageInfo
+
+func (m *GitHubIssueComment_Output) GetSuccess() bool {
+	if m != nil {
+		return m.Success
+	}
+	return false
+}
+
 func init() {
 	proto.RegisterType((*Graph)(nil), "depviz.server.Graph")
 	proto.RegisterType((*Graph_Input)(nil), "depviz.server.Graph.Input")
@@ -854,64 +1142,78 @@ func init() {
 	proto.RegisterType((*GitHubAssign)(nil), "depviz.server.GitHubAssign")
 	proto.RegisterType((*GitHubAssign_Input)(nil), "depviz.server.GitHubAssign.Input")
 	proto.RegisterType((*GitHubAssign_Output)(nil), "depviz.server.GitHubAssign.Output")
+	proto.RegisterType((*GitHubRepoSubscribe)(nil), "depviz.server.GitHubRepoSubscribe")
+	proto.RegisterType((*GitHubRepoSubscribe_Input)(nil), "depviz.server.GitHubRepoSubscribe.Input")
+	proto.RegisterType((*GitHubRepoSubscribe_Output)(nil), "depviz.server.GitHubRepoSubscribe.Output")
 	proto.RegisterType((*GitHubIssueMetadata)(nil), "depviz.server.GitHubIssueMetadata")
 	proto.RegisterType((*GitHubIssueMetadata_Input)(nil), "depviz.server.GitHubIssueMetadata.Input")
 	proto.RegisterType((*GitHubIssueMetadata_Output)(nil), "depviz.server.GitHubIssueMetadata.Output")
+	proto.RegisterType((*GitHubIssueComment)(nil), "depviz.server.GitHubIssueComment")
+	proto.RegisterType((*GitHubIssueComment_Input)(nil), "depviz.server.GitHubIssueComment.Input")
+	proto.RegisterType((*GitHubIssueComment_Output)(nil), "depviz.server.GitHubIssueComment.Output")
 }
 
 func init() { proto.RegisterFile("dvserver.proto", fileDescriptor_af3aef303a4c4cd2) }
 
 var fileDescriptor_af3aef303a4c4cd2 = []byte{
-	// 780 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x95, 0xcd, 0x6e, 0xeb, 0x44,
-	0x14, 0xc7, 0xeb, 0x34, 0x9f, 0x13, 0x92, 0x56, 0x13, 0xa8, 0x8c, 0x5b, 0x92, 0xe0, 0x55, 0xba,
-	0xc0, 0x23, 0xa5, 0x3b, 0xc4, 0xa6, 0xa1, 0x1f, 0x44, 0x80, 0x5a, 0xb9, 0x95, 0x10, 0x48, 0x28,
-	0x9a, 0xc4, 0x53, 0x67, 0x94, 0xc4, 0x63, 0x79, 0xc6, 0x29, 0xb0, 0xe4, 0x09, 0xa8, 0xd8, 0xf0,
-	0x16, 0xbc, 0x06, 0xcb, 0x4a, 0x6c, 0x58, 0x55, 0x28, 0x65, 0xc7, 0xea, 0xbe, 0xc1, 0xd5, 0x7c,
-	0x38, 0x4d, 0x7a, 0x73, 0xaf, 0xba, 0xb8, 0xbb, 0x39, 0xff, 0x73, 0xce, 0xef, 0x9c, 0x99, 0x39,
-	0x1e, 0x83, 0x7a, 0x30, 0xe7, 0x24, 0x99, 0x93, 0xc4, 0x8b, 0x13, 0x26, 0x18, 0xac, 0x05, 0x24,
-	0x9e, 0xd3, 0x5f, 0x3c, 0x2d, 0x3a, 0x07, 0x21, 0x63, 0xe1, 0x94, 0x20, 0x1c, 0x53, 0x84, 0xa3,
-	0x88, 0x09, 0x2c, 0x28, 0x8b, 0xb8, 0x0e, 0x76, 0x3e, 0x0b, 0xa9, 0x18, 0xa7, 0x43, 0x6f, 0xc4,
-	0x66, 0x28, 0x64, 0x21, 0x43, 0x4a, 0x1e, 0xa6, 0x37, 0xca, 0x52, 0x86, 0x5a, 0x99, 0xf0, 0x5a,
-	0x30, 0x9f, 0xb1, 0x80, 0x4c, 0xb5, 0xe9, 0xfe, 0x99, 0x03, 0x85, 0xf3, 0x04, 0xc7, 0x63, 0xe7,
-	0x95, 0x05, 0x0a, 0xfd, 0x28, 0x4e, 0x05, 0xb4, 0x41, 0x49, 0xe0, 0x24, 0x24, 0x82, 0xdb, 0x56,
-	0x7b, 0xbb, 0x53, 0xf1, 0x33, 0x13, 0xb6, 0x40, 0xf5, 0x96, 0x8a, 0xf1, 0x60, 0x34, 0x65, 0x9c,
-	0x04, 0x76, 0xae, 0x6d, 0x75, 0xca, 0x3e, 0x90, 0xd2, 0x97, 0x4a, 0x81, 0x87, 0x60, 0x57, 0x5a,
-	0x2c, 0x15, 0x03, 0xca, 0xd9, 0x14, 0x0b, 0x12, 0xd8, 0xdb, 0x2a, 0x6a, 0xc7, 0xe8, 0x7d, 0x23,
-	0x43, 0xa4, 0x59, 0x32, 0x34, 0x4e, 0xb8, 0x9d, 0x97, 0x51, 0xbd, 0xfa, 0xe2, 0xa1, 0x05, 0xbe,
-	0xd3, 0xf2, 0xa5, 0xcf, 0x35, 0x5b, 0xae, 0x13, 0x0e, 0xbb, 0xe0, 0xa3, 0x2c, 0x81, 0xfc, 0x24,
-	0x48, 0x12, 0xe1, 0xe9, 0x20, 0x20, 0x31, 0xb7, 0x0b, 0xaa, 0x40, 0xc3, 0x38, 0x4f, 0x8d, 0xef,
-	0x84, 0xc4, 0x1c, 0x7e, 0x02, 0x14, 0x61, 0x70, 0x43, 0xc4, 0x68, 0x6c, 0x17, 0x55, 0x60, 0x45,
-	0x2a, 0x67, 0x52, 0x70, 0xba, 0xa0, 0x78, 0x91, 0x0a, 0xb9, 0xe7, 0x0e, 0x28, 0x08, 0xcc, 0x27,
-	0x7a, 0xc7, 0xd5, 0x2e, 0xf4, 0xcc, 0x15, 0xe8, 0xb3, 0xba, 0xc6, 0x7c, 0xe2, 0xeb, 0x00, 0xb7,
-	0x0f, 0x2a, 0x57, 0x82, 0x25, 0xe4, 0x24, 0x9d, 0xc5, 0x4e, 0xc9, 0x9c, 0x99, 0x73, 0xb4, 0x24,
-	0x1d, 0x82, 0xc2, 0x10, 0xcb, 0x6a, 0x56, 0xdb, 0xea, 0x54, 0xbb, 0x8d, 0x75, 0x52, 0x4f, 0xba,
-	0x7c, 0x1d, 0xe1, 0x1e, 0x81, 0xfc, 0x25, 0x8d, 0xc2, 0x27, 0x8a, 0xbb, 0xa4, 0xd8, 0xa0, 0x34,
-	0x23, 0x9c, 0xe3, 0x90, 0x28, 0x4e, 0xc5, 0xcf, 0x4c, 0xf7, 0x7b, 0x50, 0xbc, 0x12, 0x58, 0xa4,
-	0xfc, 0x29, 0xed, 0x6c, 0x99, 0xf6, 0x05, 0xd8, 0x25, 0x73, 0x92, 0xfc, 0x2c, 0xc6, 0x34, 0x0a,
-	0x07, 0x94, 0x0f, 0xd8, 0x44, 0xe5, 0x97, 0x7b, 0x70, 0xf1, 0xd0, 0xaa, 0x9f, 0x2e, 0x7d, 0x7d,
-	0x7e, 0xf1, 0xb5, 0x5f, 0x27, 0xab, 0xf6, 0xc4, 0xbd, 0xb3, 0xc0, 0x07, 0xe7, 0x54, 0x7c, 0x95,
-	0x0e, 0x8f, 0x39, 0xa7, 0x61, 0xe4, 0xfc, 0x98, 0x8d, 0xc4, 0x87, 0xa0, 0xc0, 0x6e, 0x23, 0x92,
-	0x98, 0x66, 0xb4, 0x01, 0x21, 0xc8, 0x27, 0x24, 0x66, 0x6a, 0x0e, 0x2a, 0xbe, 0x5a, 0xc3, 0x3a,
-	0xc8, 0x51, 0x7d, 0xe7, 0xdb, 0x7e, 0x8e, 0x06, 0xd0, 0x01, 0x65, 0xac, 0x60, 0x84, 0xa8, 0x3b,
-	0xae, 0xf8, 0x4b, 0x7b, 0x7d, 0xbb, 0x3c, 0x1d, 0x8d, 0x08, 0xe7, 0xba, 0x5d, 0x3f, 0x33, 0xdd,
-	0x3f, 0x2c, 0xd0, 0xd0, 0x3d, 0xf5, 0x39, 0x4f, 0xc9, 0xb7, 0x44, 0xe0, 0x00, 0x0b, 0xfc, 0x9e,
-	0x5a, 0x9b, 0x19, 0x5c, 0xd6, 0x5a, 0x66, 0xbf, 0xa4, 0xb5, 0xee, 0xff, 0x79, 0x50, 0x3b, 0x51,
-	0x97, 0x7b, 0x45, 0x92, 0x39, 0x1d, 0x11, 0x78, 0x69, 0x3e, 0x26, 0xe8, 0x78, 0x6b, 0x9f, 0xb0,
-	0xa7, 0x54, 0x4f, 0xdf, 0xd6, 0xfe, 0x46, 0x9f, 0xae, 0xe6, 0xd6, 0x7f, 0xfd, 0xfb, 0xbf, 0xdf,
-	0x73, 0x65, 0x58, 0x44, 0xa1, 0x02, 0xe1, 0x95, 0x69, 0x83, 0xcd, 0x67, 0x99, 0x4b, 0x8f, 0x21,
-	0xb7, 0xde, 0xea, 0x37, 0xf4, 0x86, 0xa2, 0xd7, 0x60, 0x15, 0x71, 0xe9, 0x42, 0x81, 0xa4, 0x7e,
-	0xa3, 0xa7, 0x10, 0x7e, 0xfc, 0x2c, 0x5b, 0x8a, 0x06, 0xec, 0x6c, 0x72, 0x19, 0x66, 0x4d, 0x31,
-	0x4b, 0xb0, 0x80, 0x62, 0x49, 0xb9, 0xce, 0xc6, 0x13, 0xee, 0xbf, 0xd1, 0x8d, 0x94, 0x0d, 0xf1,
-	0x60, 0xb3, 0xd3, 0x30, 0x77, 0x14, 0xb3, 0x02, 0x4b, 0x88, 0x6b, 0xd6, 0x6c, 0x7d, 0x30, 0xe1,
-	0xa7, 0xcf, 0xcf, 0x70, 0xc5, 0x69, 0x2a, 0xb8, 0xef, 0x0a, 0x31, 0x75, 0xf6, 0x54, 0x9d, 0x5d,
-	0x58, 0x47, 0xfa, 0x11, 0x45, 0x7a, 0x34, 0xe1, 0x9d, 0x05, 0xf6, 0x56, 0x86, 0xee, 0x38, 0x08,
-	0xb2, 0xb9, 0x83, 0x9d, 0x8d, 0xd8, 0xb5, 0xd9, 0x34, 0x0d, 0x1c, 0xbe, 0x20, 0xd2, 0xf4, 0xe1,
-	0xaa, 0x3e, 0x0e, 0xa0, 0x93, 0xf5, 0x41, 0x65, 0x14, 0xc2, 0x41, 0x80, 0xb2, 0x89, 0xec, 0x7d,
-	0xfe, 0xd7, 0xa2, 0x69, 0xdd, 0x2f, 0x9a, 0xd6, 0xbf, 0x8b, 0xa6, 0xf5, 0xdb, 0x63, 0x73, 0xeb,
-	0xfe, 0xb1, 0xb9, 0xf5, 0xcf, 0x63, 0x73, 0xeb, 0x87, 0xf6, 0x8c, 0xa5, 0x53, 0x8f, 0x32, 0xa4,
-	0xeb, 0x21, 0x1a, 0xe9, 0x17, 0x10, 0x65, 0xbf, 0x95, 0x61, 0x51, 0x3d, 0xf6, 0x47, 0xaf, 0x03,
-	0x00, 0x00, 0xff, 0xff, 0xaf, 0x52, 0xc5, 0xe9, 0x69, 0x06, 0x00, 0x00,
+	// 903 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0x4f, 0x6f, 0x1b, 0x45,
+	0x14, 0xcf, 0x3a, 0xb1, 0x1d, 0x4f, 0xb0, 0x1b, 0xbd, 0xd0, 0x68, 0xbb, 0x09, 0x4e, 0xba, 0x17,
+	0x9c, 0x03, 0x1e, 0xc9, 0xb9, 0x21, 0x2e, 0x4d, 0xd3, 0x16, 0xab, 0xa0, 0x46, 0x9b, 0x4a, 0x08,
+	0x10, 0xb2, 0xc6, 0xde, 0xe9, 0x7a, 0x14, 0xef, 0xce, 0x6a, 0x67, 0xd6, 0x05, 0x8e, 0x1c, 0x10,
+	0x42, 0x42, 0xa2, 0x42, 0x48, 0x7c, 0x0b, 0xbe, 0x06, 0xc7, 0x4a, 0x5c, 0x38, 0x55, 0xc8, 0xe1,
+	0x0b, 0xf0, 0x0d, 0xd0, 0xfc, 0x59, 0xd7, 0x9b, 0x3a, 0xc5, 0x88, 0xde, 0xf6, 0xf7, 0xde, 0x6f,
+	0x7e, 0xef, 0x37, 0x33, 0xef, 0xed, 0x2e, 0x6a, 0x85, 0x53, 0x41, 0xb3, 0x29, 0xcd, 0xba, 0x69,
+	0xc6, 0x25, 0x87, 0x66, 0x48, 0xd3, 0x29, 0xfb, 0xba, 0x6b, 0x82, 0xde, 0x7e, 0xc4, 0x79, 0x34,
+	0xa1, 0x98, 0xa4, 0x0c, 0x93, 0x24, 0xe1, 0x92, 0x48, 0xc6, 0x13, 0x61, 0xc8, 0xde, 0x7b, 0x11,
+	0x93, 0xe3, 0x7c, 0xd8, 0x1d, 0xf1, 0x18, 0x47, 0x3c, 0xe2, 0x58, 0x87, 0x87, 0xf9, 0x13, 0x8d,
+	0x34, 0xd0, 0x4f, 0x96, 0xde, 0x0c, 0xa7, 0x31, 0x0f, 0xe9, 0xc4, 0x40, 0xff, 0xd7, 0x0a, 0xaa,
+	0x3e, 0xc8, 0x48, 0x3a, 0xf6, 0xfe, 0x76, 0x50, 0xb5, 0x9f, 0xa4, 0xb9, 0x04, 0x17, 0xd5, 0x25,
+	0xc9, 0x22, 0x2a, 0x85, 0xeb, 0x1c, 0xae, 0x77, 0x1a, 0x41, 0x01, 0xe1, 0x00, 0x6d, 0x3d, 0x65,
+	0x72, 0x3c, 0x18, 0x4d, 0xb8, 0xa0, 0xa1, 0x5b, 0x39, 0x74, 0x3a, 0x9b, 0x01, 0x52, 0xa1, 0xbb,
+	0x3a, 0x02, 0x47, 0x68, 0x5b, 0x21, 0x9e, 0xcb, 0x01, 0x13, 0x7c, 0x42, 0x24, 0x0d, 0xdd, 0x75,
+	0xcd, 0xba, 0x61, 0xe3, 0x7d, 0x1b, 0x06, 0x6c, 0xb4, 0x14, 0x35, 0xcd, 0x84, 0xbb, 0xa1, 0x58,
+	0x27, 0xad, 0xd9, 0x8b, 0x03, 0xf4, 0x89, 0x09, 0x9f, 0x05, 0xc2, 0x68, 0xab, 0xe7, 0x4c, 0x40,
+	0x0f, 0xdd, 0x2c, 0x16, 0xd0, 0x2f, 0x25, 0xcd, 0x12, 0x32, 0x19, 0x84, 0x34, 0x15, 0x6e, 0x55,
+	0x17, 0xd8, 0xb1, 0xc9, 0x7b, 0x36, 0x77, 0x4a, 0x53, 0x01, 0xef, 0x20, 0xad, 0x30, 0x78, 0x42,
+	0xe5, 0x68, 0xec, 0xd6, 0x34, 0xb1, 0xa1, 0x22, 0xf7, 0x55, 0xc0, 0xeb, 0xa1, 0xda, 0xa3, 0x5c,
+	0xaa, 0x3d, 0x77, 0x50, 0x55, 0x12, 0x71, 0x61, 0x76, 0xbc, 0xd5, 0x83, 0xae, 0xbd, 0x02, 0x73,
+	0x56, 0x8f, 0x89, 0xb8, 0x08, 0x0c, 0xc1, 0xef, 0xa3, 0xc6, 0xb9, 0xe4, 0x19, 0x3d, 0xcd, 0xe3,
+	0xd4, 0xab, 0xdb, 0x33, 0xf3, 0x8e, 0xe7, 0x4a, 0x47, 0xa8, 0x3a, 0x24, 0xaa, 0x9a, 0x73, 0xe8,
+	0x74, 0xb6, 0x7a, 0x3b, 0x65, 0xa5, 0x13, 0x95, 0x0a, 0x0c, 0xc3, 0x3f, 0x46, 0x1b, 0x67, 0x2c,
+	0x89, 0x5e, 0xaa, 0xf8, 0x73, 0x15, 0x17, 0xd5, 0x63, 0x2a, 0x04, 0x89, 0xa8, 0xd6, 0x69, 0x04,
+	0x05, 0xf4, 0x3f, 0x45, 0xb5, 0x73, 0x49, 0x64, 0x2e, 0x5e, 0x2e, 0xbb, 0x3f, 0x5f, 0xf6, 0x01,
+	0xda, 0xa6, 0x53, 0x9a, 0x7d, 0x25, 0xc7, 0x2c, 0x89, 0x06, 0x4c, 0x0c, 0xf8, 0x85, 0x5e, 0xbf,
+	0x79, 0x02, 0xb3, 0x17, 0x07, 0xad, 0x7b, 0xf3, 0x5c, 0x5f, 0x3c, 0x7a, 0x18, 0xb4, 0xe8, 0x22,
+	0xbe, 0xf0, 0x9f, 0x39, 0xe8, 0xad, 0x07, 0x4c, 0x7e, 0x98, 0x0f, 0xef, 0x08, 0xc1, 0xa2, 0xc4,
+	0xfb, 0xa2, 0x68, 0x89, 0xb7, 0x51, 0x95, 0x3f, 0x4d, 0x68, 0x66, 0xcd, 0x18, 0x00, 0x80, 0x36,
+	0x32, 0x9a, 0x72, 0xdd, 0x07, 0x8d, 0x40, 0x3f, 0x43, 0x0b, 0x55, 0x98, 0xb9, 0xf3, 0xf5, 0xa0,
+	0xc2, 0x42, 0xf0, 0xd0, 0x26, 0xd1, 0x62, 0x94, 0xea, 0x3b, 0x6e, 0x04, 0x73, 0x5c, 0xde, 0xae,
+	0xc8, 0x47, 0x23, 0x2a, 0x84, 0xb1, 0x1b, 0x14, 0xd0, 0xff, 0xd6, 0x41, 0x3b, 0xc6, 0x53, 0x40,
+	0x53, 0x7e, 0x9e, 0x0f, 0xc5, 0x28, 0x63, 0x43, 0xea, 0x3d, 0xfc, 0xef, 0xd6, 0x5c, 0x54, 0x1f,
+	0xe5, 0x59, 0x46, 0x13, 0x69, 0x7b, 0xb2, 0x80, 0x2b, 0x19, 0xf9, 0x65, 0x6e, 0xa4, 0x2f, 0x44,
+	0x4e, 0x3f, 0xa6, 0x92, 0x84, 0x44, 0x92, 0x37, 0x74, 0x46, 0xb1, 0x95, 0x2b, 0xce, 0xa8, 0xc0,
+	0x2b, 0x59, 0xfb, 0xd9, 0x41, 0xb0, 0x60, 0xed, 0x2e, 0x8f, 0x63, 0xb5, 0xab, 0xcf, 0xff, 0xbf,
+	0x33, 0x75, 0x64, 0x46, 0xcd, 0x1a, 0x2b, 0xe0, 0x2a, 0xbe, 0x7a, 0xdf, 0xd5, 0x51, 0xf3, 0x54,
+	0x77, 0xff, 0x39, 0xcd, 0xa6, 0x6c, 0x44, 0xe1, 0xcc, 0xbe, 0x6d, 0xc0, 0xeb, 0x96, 0xde, 0x71,
+	0x5d, 0x1d, 0xed, 0x9a, 0x76, 0xde, 0x5b, 0x9a, 0x33, 0xd5, 0xfc, 0xd6, 0x37, 0xbf, 0xff, 0xf5,
+	0x53, 0x65, 0x13, 0x6a, 0x38, 0xd2, 0x42, 0x64, 0x61, 0x1c, 0xa1, 0x7d, 0x65, 0xe5, 0x3c, 0x63,
+	0x95, 0x0f, 0xae, 0xcd, 0x5b, 0xf5, 0x1d, 0xad, 0xde, 0x84, 0x2d, 0x2c, 0x54, 0x0a, 0x87, 0x4a,
+	0xf5, 0x23, 0x33, 0xa6, 0x70, 0xeb, 0xca, 0x6a, 0x15, 0xb4, 0xc2, 0xde, 0xb2, 0x94, 0xd5, 0x6c,
+	0x6a, 0xcd, 0x3a, 0x54, 0x71, 0xaa, 0x54, 0x1e, 0x17, 0xf3, 0x0b, 0x7b, 0xaf, 0xb8, 0x51, 0x61,
+	0xab, 0xb8, 0xbf, 0x3c, 0x69, 0x35, 0x6f, 0x68, 0xcd, 0x06, 0xd4, 0xb1, 0x30, 0x5a, 0x71, 0x79,
+	0x72, 0xe1, 0xf6, 0xd5, 0x33, 0x5c, 0x48, 0xda, 0x0a, 0xfe, 0xeb, 0x28, 0xb6, 0xce, 0xae, 0xae,
+	0xb3, 0x0d, 0x2d, 0x6c, 0xbe, 0x32, 0xd8, 0xcc, 0x2e, 0x7c, 0xbf, 0x7c, 0x2a, 0xa1, 0xb3, 0x54,
+	0xb3, 0xc4, 0xb1, 0xd5, 0x8f, 0x56, 0x60, 0x5a, 0x13, 0x6d, 0x6d, 0xc2, 0x85, 0xdd, 0xc2, 0x84,
+	0x6a, 0x55, 0x2c, 0xe6, 0x45, 0x9f, 0x39, 0x68, 0x77, 0xa1, 0xfd, 0xef, 0x84, 0x61, 0x31, 0x9c,
+	0xd7, 0xf8, 0x29, 0x0d, 0xf0, 0x6b, 0xfd, 0x94, 0x99, 0xd6, 0x8f, 0xaf, 0xfd, 0xec, 0x83, 0x57,
+	0xf8, 0x61, 0x8a, 0x85, 0x49, 0x18, 0xe2, 0x62, 0x6c, 0xe1, 0x07, 0x07, 0xdd, 0x2c, 0x7b, 0xb2,
+	0x53, 0x09, 0xef, 0x5e, 0x5f, 0xc8, 0x52, 0xac, 0xa3, 0xce, 0xbf, 0x13, 0xad, 0xa1, 0xdb, 0xda,
+	0xd0, 0x1e, 0xdc, 0x7a, 0xd5, 0x90, 0x1d, 0xd7, 0x93, 0xf7, 0x7f, 0x9b, 0xb5, 0x9d, 0xe7, 0xb3,
+	0xb6, 0xf3, 0xe7, 0xac, 0xed, 0xfc, 0x78, 0xd9, 0x5e, 0x7b, 0x7e, 0xd9, 0x5e, 0xfb, 0xe3, 0xb2,
+	0xbd, 0xf6, 0xd9, 0x61, 0xcc, 0xf3, 0x49, 0x97, 0x71, 0x6c, 0xaa, 0x61, 0x96, 0x98, 0xef, 0x27,
+	0x2e, 0x7e, 0x4a, 0x86, 0x35, 0xfd, 0xab, 0x70, 0xfc, 0x4f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xc1,
+	0xc1, 0xd8, 0x4d, 0xa7, 0x08, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -931,8 +1233,10 @@ type DepvizServiceClient interface {
 	Ping(ctx context.Context, in *Ping_Input, opts ...grpc.CallOption) (*Ping_Output, error)
 	Status(ctx context.Context, in *Status_Input, opts ...grpc.CallOption) (*Status_Output, error)
 	GitHubAssign(ctx context.Context, in *GitHubAssign_Input, opts ...grpc.CallOption) (*GitHubAssign_Output, error)
+	GitHubRepoSubscribe(ctx context.Context, in *GitHubRepoSubscribe_Input, opts ...grpc.CallOption) (*GitHubRepoSubscribe_Output, error)
 	// any suggestions to change request name ?
 	GitHubIssueAddMetadata(ctx context.Context, in *GitHubIssueMetadata_Input, opts ...grpc.CallOption) (*GitHubIssueMetadata_Output, error)
+	GitHubIssueAddComment(ctx context.Context, in *GitHubIssueComment_Input, opts ...grpc.CallOption) (*GitHubIssueComment_Output, error)
 }
 
 type depvizServiceClient struct {
@@ -988,9 +1292,27 @@ func (c *depvizServiceClient) GitHubAssign(ctx context.Context, in *GitHubAssign
 	return out, nil
 }
 
+func (c *depvizServiceClient) GitHubRepoSubscribe(ctx context.Context, in *GitHubRepoSubscribe_Input, opts ...grpc.CallOption) (*GitHubRepoSubscribe_Output, error) {
+	out := new(GitHubRepoSubscribe_Output)
+	err := c.cc.Invoke(ctx, "/depviz.server.DepvizService/GitHubRepoSubscribe", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *depvizServiceClient) GitHubIssueAddMetadata(ctx context.Context, in *GitHubIssueMetadata_Input, opts ...grpc.CallOption) (*GitHubIssueMetadata_Output, error) {
 	out := new(GitHubIssueMetadata_Output)
 	err := c.cc.Invoke(ctx, "/depviz.server.DepvizService/GitHubIssueAddMetadata", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *depvizServiceClient) GitHubIssueAddComment(ctx context.Context, in *GitHubIssueComment_Input, opts ...grpc.CallOption) (*GitHubIssueComment_Output, error) {
+	out := new(GitHubIssueComment_Output)
+	err := c.cc.Invoke(ctx, "/depviz.server.DepvizService/GitHubIssueAddComment", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1004,8 +1326,10 @@ type DepvizServiceServer interface {
 	Ping(context.Context, *Ping_Input) (*Ping_Output, error)
 	Status(context.Context, *Status_Input) (*Status_Output, error)
 	GitHubAssign(context.Context, *GitHubAssign_Input) (*GitHubAssign_Output, error)
+	GitHubRepoSubscribe(context.Context, *GitHubRepoSubscribe_Input) (*GitHubRepoSubscribe_Output, error)
 	// any suggestions to change request name ?
 	GitHubIssueAddMetadata(context.Context, *GitHubIssueMetadata_Input) (*GitHubIssueMetadata_Output, error)
+	GitHubIssueAddComment(context.Context, *GitHubIssueComment_Input) (*GitHubIssueComment_Output, error)
 }
 
 // UnimplementedDepvizServiceServer can be embedded to have forward compatible implementations.
@@ -1027,8 +1351,14 @@ func (*UnimplementedDepvizServiceServer) Status(ctx context.Context, req *Status
 func (*UnimplementedDepvizServiceServer) GitHubAssign(ctx context.Context, req *GitHubAssign_Input) (*GitHubAssign_Output, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GitHubAssign not implemented")
 }
+func (*UnimplementedDepvizServiceServer) GitHubRepoSubscribe(ctx context.Context, req *GitHubRepoSubscribe_Input) (*GitHubRepoSubscribe_Output, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GitHubRepoSubscribe not implemented")
+}
 func (*UnimplementedDepvizServiceServer) GitHubIssueAddMetadata(ctx context.Context, req *GitHubIssueMetadata_Input) (*GitHubIssueMetadata_Output, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GitHubIssueAddMetadata not implemented")
+}
+func (*UnimplementedDepvizServiceServer) GitHubIssueAddComment(ctx context.Context, req *GitHubIssueComment_Input) (*GitHubIssueComment_Output, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GitHubIssueAddComment not implemented")
 }
 
 func RegisterDepvizServiceServer(s *grpc.Server, srv DepvizServiceServer) {
@@ -1125,6 +1455,24 @@ func _DepvizService_GitHubAssign_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DepvizService_GitHubRepoSubscribe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GitHubRepoSubscribe_Input)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DepvizServiceServer).GitHubRepoSubscribe(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/depviz.server.DepvizService/GitHubRepoSubscribe",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DepvizServiceServer).GitHubRepoSubscribe(ctx, req.(*GitHubRepoSubscribe_Input))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DepvizService_GitHubIssueAddMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GitHubIssueMetadata_Input)
 	if err := dec(in); err != nil {
@@ -1139,6 +1487,24 @@ func _DepvizService_GitHubIssueAddMetadata_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(DepvizServiceServer).GitHubIssueAddMetadata(ctx, req.(*GitHubIssueMetadata_Input))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DepvizService_GitHubIssueAddComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GitHubIssueComment_Input)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DepvizServiceServer).GitHubIssueAddComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/depviz.server.DepvizService/GitHubIssueAddComment",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DepvizServiceServer).GitHubIssueAddComment(ctx, req.(*GitHubIssueComment_Input))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1168,8 +1534,16 @@ var _DepvizService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _DepvizService_GitHubAssign_Handler,
 		},
 		{
+			MethodName: "GitHubRepoSubscribe",
+			Handler:    _DepvizService_GitHubRepoSubscribe_Handler,
+		},
+		{
 			MethodName: "GitHubIssueAddMetadata",
 			Handler:    _DepvizService_GitHubIssueAddMetadata_Handler,
+		},
+		{
+			MethodName: "GitHubIssueAddComment",
+			Handler:    _DepvizService_GitHubIssueAddComment_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -1659,6 +2033,109 @@ func (m *GitHubAssign_Output) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *GitHubRepoSubscribe) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GitHubRepoSubscribe) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GitHubRepoSubscribe) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *GitHubRepoSubscribe_Input) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GitHubRepoSubscribe_Input) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GitHubRepoSubscribe_Input) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Current {
+		i--
+		if m.Current {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.Repo) > 0 {
+		i -= len(m.Repo)
+		copy(dAtA[i:], m.Repo)
+		i = encodeVarintDvserver(dAtA, i, uint64(len(m.Repo)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Owner) > 0 {
+		i -= len(m.Owner)
+		copy(dAtA[i:], m.Owner)
+		i = encodeVarintDvserver(dAtA, i, uint64(len(m.Owner)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GitHubRepoSubscribe_Output) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GitHubRepoSubscribe_Output) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GitHubRepoSubscribe_Output) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Success {
+		i--
+		if m.Success {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *GitHubIssueMetadata) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -1747,6 +2224,111 @@ func (m *GitHubIssueMetadata_Output) MarshalTo(dAtA []byte) (int, error) {
 }
 
 func (m *GitHubIssueMetadata_Output) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Success {
+		i--
+		if m.Success {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GitHubIssueComment) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GitHubIssueComment) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GitHubIssueComment) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *GitHubIssueComment_Input) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GitHubIssueComment_Input) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GitHubIssueComment_Input) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Comment) > 0 {
+		i -= len(m.Comment)
+		copy(dAtA[i:], m.Comment)
+		i = encodeVarintDvserver(dAtA, i, uint64(len(m.Comment)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.Id != 0 {
+		i = encodeVarintDvserver(dAtA, i, uint64(m.Id))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.Repo) > 0 {
+		i -= len(m.Repo)
+		copy(dAtA[i:], m.Repo)
+		i = encodeVarintDvserver(dAtA, i, uint64(len(m.Repo)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Owner) > 0 {
+		i -= len(m.Owner)
+		copy(dAtA[i:], m.Owner)
+		i = encodeVarintDvserver(dAtA, i, uint64(len(m.Owner)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GitHubIssueComment_Output) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GitHubIssueComment_Output) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *GitHubIssueComment_Output) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1966,6 +2548,47 @@ func (m *GitHubAssign_Output) Size() (n int) {
 	return n
 }
 
+func (m *GitHubRepoSubscribe) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *GitHubRepoSubscribe_Input) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Owner)
+	if l > 0 {
+		n += 1 + l + sovDvserver(uint64(l))
+	}
+	l = len(m.Repo)
+	if l > 0 {
+		n += 1 + l + sovDvserver(uint64(l))
+	}
+	if m.Current {
+		n += 2
+	}
+	return n
+}
+
+func (m *GitHubRepoSubscribe_Output) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Success {
+		n += 2
+	}
+	return n
+}
+
 func (m *GitHubIssueMetadata) Size() (n int) {
 	if m == nil {
 		return 0
@@ -2000,6 +2623,51 @@ func (m *GitHubIssueMetadata_Input) Size() (n int) {
 }
 
 func (m *GitHubIssueMetadata_Output) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Success {
+		n += 2
+	}
+	return n
+}
+
+func (m *GitHubIssueComment) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *GitHubIssueComment_Input) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Owner)
+	if l > 0 {
+		n += 1 + l + sovDvserver(uint64(l))
+	}
+	l = len(m.Repo)
+	if l > 0 {
+		n += 1 + l + sovDvserver(uint64(l))
+	}
+	if m.Id != 0 {
+		n += 1 + sovDvserver(uint64(m.Id))
+	}
+	l = len(m.Comment)
+	if l > 0 {
+		n += 1 + l + sovDvserver(uint64(l))
+	}
+	return n
+}
+
+func (m *GitHubIssueComment_Output) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3156,6 +3824,260 @@ func (m *GitHubAssign_Output) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *GitHubRepoSubscribe) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDvserver
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GitHubRepoSubscribe: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GitHubRepoSubscribe: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDvserver(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GitHubRepoSubscribe_Input) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDvserver
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Input: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Input: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Owner", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Owner = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Repo", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Repo = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Current", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Current = bool(v != 0)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDvserver(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GitHubRepoSubscribe_Output) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDvserver
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Output: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Output: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Success", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Success = bool(v != 0)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDvserver(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *GitHubIssueMetadata) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -3372,6 +4294,291 @@ func (m *GitHubIssueMetadata_Input) Unmarshal(dAtA []byte) error {
 	return nil
 }
 func (m *GitHubIssueMetadata_Output) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDvserver
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Output: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Output: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Success", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Success = bool(v != 0)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDvserver(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GitHubIssueComment) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDvserver
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GitHubIssueComment: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GitHubIssueComment: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDvserver(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GitHubIssueComment_Input) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowDvserver
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Input: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Input: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Owner", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Owner = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Repo", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Repo = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			m.Id = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Id |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Comment", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowDvserver
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Comment = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipDvserver(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthDvserver
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GitHubIssueComment_Output) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
