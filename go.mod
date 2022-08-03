@@ -21,7 +21,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/rs/cors v1.7.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.8.0
 	github.com/tailscale/depaware v0.0.0-20210622194025-720c4b409502
 	github.com/treastech/logger v0.0.0-20180705232552-e381e9ecf2e3
 	github.com/xhit/go-str2duration/v2 v2.0.0
@@ -83,5 +83,5 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
