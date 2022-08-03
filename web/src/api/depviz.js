@@ -1,5 +1,9 @@
 import baseApi from './index'
 
-const fetchDepviz = (url, params) => baseApi.get(`${url}`, params)
+const fetchDepviz = (url, params) => baseApi.get(`/api${url}`, params)
+const getToken = (url, params) => baseApi.post(`${url}`, params)
 
-export default fetchDepviz
+export {
+  fetchDepviz,
+  getToken
+}
