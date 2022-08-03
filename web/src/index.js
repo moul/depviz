@@ -5,13 +5,16 @@ import React from 'react'
 import { render } from 'react-dom'
 import { AppContainer } from 'react-hot-loader'
 import App from './App'
+import NiceModal from '@ebay/nice-modal-react';
 
 require('./favicon.ico') // Tell webpack to load favicon.ico
 
 render(
-  <AppContainer>
-    <App />
-  </AppContainer>,
+    <NiceModal.Provider>
+      <AppContainer>
+        <App />
+      </AppContainer>,
+    </NiceModal.Provider>,
   document.getElementById('app'),
 )
 

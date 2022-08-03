@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import 'tabler/js/tabler'
 import html2canvas from 'html2canvas'
@@ -8,8 +8,9 @@ import toBuffer from 'blob-to-buffer'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
 import { fetchDepviz } from '../../../api/depviz'
-
 import './styles.scss'
+import {useModal} from "@ebay/nice-modal-react";
+import UserInfoModal from "../Modal/Assign";
 
 const gitHubClientId = process.env.GITHUB_CLIENT_ID
 const baseURL = process.env.API_URL
@@ -97,6 +98,15 @@ const Menu = ({
   const handleFetch = () => {
     handleURLData(true, true)
   }
+
+  const userModal = useModal(UserInfoModal);
+
+  const handleNewUser = useCallback(() => {
+    console.log('Je vais appeler la methode show de ma modal')
+    userModal.show().then((newUser) => {
+      console.log(newUser)
+    });
+  }, [userModal]);
 
   const handleLayoutChange = () => {
     const data = getValues()
@@ -315,6 +325,7 @@ const Menu = ({
                     <button type="submit" className="btn btn-primary ml-auto">Generate</button>
                     <button type="button" onClick={handleRedraw} className="btn btn-secondary ml-auto">Redraw</button>
                     <button type="button" onClick={handleFetch} className="btn btn-secondary ml-auto">Fetch</button>
+                    <button type="button" onClick={handleNewUser} className="btn btn-secondary ml-auto">Modal</button>
                   </div>
                 </div>
               </label>
