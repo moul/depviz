@@ -2,14 +2,21 @@ package githubprovider
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/cayleygraph/quad"
 	"github.com/google/go-github/v30/github"
+	"github.com/xhit/go-str2duration/v2"
 	"go.uber.org/zap"
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/multipmuri"
 	"moul.io/multipmuri/pmbodyparser"
+)
+
+const (
+	InvalidDuration   string = "invalid"
+	UndefinedDuration string = "undefined"
 )
 
 func fromIssues(issues []*github.Issue, logger *zap.Logger) dvmodel.Batch {
@@ -48,6 +55,7 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 		NumUpvotes:   int32(*input.Reactions.PlusOne),
 		NumDownvotes: int32(*input.Reactions.MinusOne),
 	}
+	issue.EstimatedDuration = parseDuration(issue.Description)
 	if input.PullRequestLinks != nil { // is PR
 		issue.Kind = dvmodel.Task_MergeRequest
 	} else { // is issue
@@ -139,9 +147,21 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 			return fmt.Errorf("unsupported pmbodyparser.Kind: %v", relationship.Kind)
 		}
 	}
-
 	batch.Tasks = append(batch.Tasks, &issue)
 	return nil
+}
+
+func parseDuration(body string) string {
+	compile := regexp.MustCompile(`time[ \t]+([w|d|h|m|0-9]+)`)
+	match := compile.FindStringSubmatch(body)
+	if len(match) < 2 || len(match[1]) == 0 {
+		return UndefinedDuration
+	}
+	_, err := str2duration.ParseDuration(match[1])
+	if err != nil {
+		return InvalidDuration
+	}
+	return match[1]
 }
 
 func fromUser(batch *dvmodel.Batch, input *github.User) (*dvmodel.Owner, error) {

@@ -1,6 +1,7 @@
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import Issue from '../../components/icons/Issue'
+import Hourglass from '../../components/icons/Hourglass'
 import Pr from '../../components/icons/Pr'
 import Comments from '../../components/icons/Comments'
 import Github from '../../components/icons/Github'
@@ -24,7 +25,8 @@ const GraphCard = (data, type) => {
     default:
       break
   }
-
+  let estimatedDuration = ""
+  if (data.estimated_duration !== undefined && data.estimated_duration !== "undefined") { estimatedDuration = data.estimated_duration}
   const cardTemplate = (
     <div id={data.html_id} className={`cy-card issue ${cardClasses}`}>
       <div className="b-left">
@@ -37,7 +39,7 @@ const GraphCard = (data, type) => {
             <div className="cy-icon icon-comments">
               <Comments />
             </div>
-            <div className="cy-icon icon-github">
+            <div className="cy-icon icon-hourglass">
               <Github />
             </div>
             <div className="cy-icon avatar" />
@@ -47,6 +49,11 @@ const GraphCard = (data, type) => {
           <div className="title">
             {data.title.replace(/"/gi, '\'')}
           </div>
+          {estimatedDuration && (
+          <div className="estimated-time">
+            <Hourglass/>{" "}{estimatedDuration}
+          </div>
+          )}
         </div>
         {/*
         <div class='b-body-bottom'>
