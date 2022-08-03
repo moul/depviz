@@ -5,6 +5,7 @@ import { hot } from 'react-hot-loader'
 import { XCircle } from 'react-feather'
 import { StoreProvider } from './hooks/useStore'
 import HomePage from './ui/pages/HomePage/HomePage'
+import GitHubOAuthPage from './ui/pages/GitHubOAuthPage/GitHubOAuthPage'
 import Menu from './ui/components/Header/Menu'
 import Modal from './ui/components/Modal/Modal'
 import store from './utils/store'
@@ -56,6 +57,7 @@ const App = () => {
           <Router>
             <Switch>
               <Route exact path="/" component={HomePage} />
+              <Route exact path="/githubOAuth" component={GitHubOAuthPage} />
             </Switch>
           </Router>
         </div>

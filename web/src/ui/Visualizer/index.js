@@ -9,11 +9,19 @@ import ErrorBoundary from '../components/ErrorBoundary/ErrorBoundary'
 
 const showDebug = true // process.env.NODE_ENV === 'development'
 
+function CheckIfOpenByID(tasks, issueID) {
+  let other = tasks.find(element => element.id === issueID)
+  return other !== undefined && other.state !== 'Closed';
+}
+
 const VisualizerWrapper = () => {
   const {
     apiData, layout, repName, isLoadingGraph, showInfoBox, setShowInfoBox,
   } = useStore()
   const [infoBoxData, setInfoBoxData] = useState(null)
+
+  const withClosed =(new URLSearchParams(window.location.search).get('withClosed')) === 'true'
+
 
   const { tasks } = apiData || {}
 
@@ -116,57 +124,67 @@ const VisualizerWrapper = () => {
       // relationships
       if (task.is_depending_on !== undefined) {
         task.is_depending_on.forEach((other) => {
-          edges.push({
-            data: {
-              source: task.id,
-              target: other,
-              relation: 'is_depending_on',
-            },
-          })
+          if (CheckIfOpenByID(tasks, other) || withClosed) {
+            edges.push({
+              data: {
+                source: task.id,
+                target: other,
+                relation: 'is_depending_on',
+              },
+            })
+          }
         })
       }
       if (task.is_blocking !== undefined) {
         task.is_blocking.forEach((other) => {
-          edges.push({
-            data: {
-              source: other,
-              target: task.id,
-              relation: 'is_depending_on',
-            },
-          })
+          if (CheckIfOpenByID(tasks, other) || withClosed) {
+            edges.push({
+              data: {
+                source: other,
+                target: task.id,
+                relation: 'is_depending_on',
+              },
+            })
+          }
         })
       }
       if (task.is_related_with !== undefined) {
         task.is_related_with.forEach((other) => {
-          edges.push({
-            data: {
-              source: other,
-              target: task.id,
-              relation: 'related_with',
-            },
-          })
+          if (CheckIfOpenByID(tasks, other) || withClosed) {
+            edges.push({
+              data: {
+                source: other,
+                target: task.id,
+                relation: 'related_with',
+              },
+            })
+          }
         })
       }
       if (task.is_part_of !== undefined) {
         task.is_part_of.forEach((other) => {
-          edges.push({
-            data: {
-              source: task.id,
-              target: other,
-              relation: 'part_of',
-            },
-          })
+          if (CheckIfOpenByID(tasks, other) || withClosed) {
+            edges.push({
+              data: {
+                source: task.id,
+                target: other,
+                relation: 'part_of',
+              },
+            })
+          }
         })
       }
       if (task.has_part !== undefined) {
         task.has_part.forEach((other) => {
-          edges.push({
-            data: {
-              source: other,
-              target: task.id,
-              relation: 'part_of',
-            },
-          })
+          if (CheckIfOpenByID(tasks, other) || withClosed) {
+            edges.push({
+              data: {
+                source: other,
+                target: task.id,
+                relation: 'part_of',
+              },
+            })
+          }
         })
       }
       if (task.has_owner !== undefined) {
