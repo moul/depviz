@@ -71,7 +71,7 @@ const InfoBox = ({ data }) => {
           )}
           <div className="info-box-actions">
             <button onClick={openWebLink} className="btn btn-primary ml-auto">View on github</button>
-            <Container triggerText={triggerText} onSubmit={onSubmit} />
+            <Container githubURI={data.id} triggerText={triggerText} onSubmit={onSubmit} />
           </div>
         </div>
       </div>

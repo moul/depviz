@@ -6,19 +6,20 @@ import {generateUrl} from "../Header/utils";
 export class Container extends Component {
   state = { isShown: false };
 
-    Assign = (username) => {
+    Assign = (owner, repo, id, assignee) => {
     fetchDepviz(`/github/assign${generateUrl({
-      owner: 'Mikatech',
-      repo: 'goftp-rfc959',
-      id: 1,
-      assignee: username,
+      owner: owner,
+      repo: repo,
+      id: id,
+      assignee: assignee,
     })}`)
   };
 
   onSubmit = (event) => {
     event.preventDefault(event);
     console.log(event.target.name.value);
-    this.Assign(event.target.name.value);
+    const data = this.props.githubURI.split('/');
+    this.Assign(data[3], data[4], data[6], event.target.name.value);
     this.closeModal();
   };
   showModal = () => {
