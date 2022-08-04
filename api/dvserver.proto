@@ -27,6 +27,7 @@ message Graph {
     bool without_isolated = 3;
     bool without_prs = 4 [(gogoproto.customname) = "WithoutPRs"];
     bool without_external_deps = 5;
+    bool with_fetch = 6;
   }
   message Output {
     repeated depviz.model.Task tasks = 1;

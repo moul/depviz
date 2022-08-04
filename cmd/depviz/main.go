@@ -61,6 +61,8 @@ var (
 	serverAuth               = serverFlags.String("auth", "", "authentication password")
 	serverRealm              = serverFlags.String("realm", "DepViz", "server Realm")
 	serverAutoUpdateInterval = serverFlags.Duration("auto-update-interval", 2*time.Minute, "time between two auto-updates") // nolint:gomnd
+	serverGitHubClientID     = serverFlags.String("github-client-id", "", "GitHub client ID")
+	serverGitHubClientSecret = serverFlags.String("github-client-secret", "", "GitHub client secret")
 
 	runFlags            = flag.NewFlagSet("run", flag.ExitOnError)
 	runNoPull           = runFlags.Bool("no-pull", false, "don't pull providers (graph only)")
@@ -315,6 +317,8 @@ func execServer(ctx context.Context, args []string) error {
 			NoAutoUpdate:       *serverNoAutoUpdate,
 			AutoUpdateTargets:  targets,
 			AutoUpdateInterval: *serverAutoUpdateInterval,
+			GitHubClientID:     *serverGitHubClientID,
+			GitHubClientSecret: *serverGitHubClientSecret,
 		}
 		svc, err = dvserver.New(ctx, store, schemaConfig, opts)
 		if err != nil {

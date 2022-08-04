@@ -53,6 +53,8 @@ type Opts struct {
 	NoAutoUpdate       bool
 	AutoUpdateTargets  []multipmuri.Entity
 	AutoUpdateInterval time.Duration
+	GitHubClientID     string
+	GitHubClientSecret string
 }
 
 type Service interface {
@@ -173,6 +175,14 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 				OrigName:     true,
 			}),
 			runtime.WithProtoErrorHandler(runtime.DefaultHTTPProtoErrorHandler),
+			runtime.WithIncomingHeaderMatcher(func(key string) (string, bool) {
+				switch key {
+				case "Authorization":
+					return key, true
+				default:
+					return key, false
+				}
+			}),
 		)
 		grpcOpts := []grpc.DialOption{grpc.WithInsecure()}
 		if err := RegisterDepvizServiceHandlerFromEndpoint(ctx, gwmux, svc.grpcListenerAddr, grpcOpts); err != nil {
@@ -195,6 +205,9 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 			r.Mount("/", http.StripPrefix("/api", handler))
 		})
 
+		// OAuth2 GitHub
+		r.Post("/token", gitHubOAuth(opts, httpLogger))
+
 		// pprof endpoints
 		if opts.WithPprof {
 			r.HandleFunc("/debug/pprof/*", pprof.Index)
@@ -210,6 +223,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 
 		// pages
 		r.Get("/", homepage(box, opts))
+		r.Get("/githubOAuth", homepage(box, opts))
 
 		http.DefaultServeMux = http.NewServeMux() // disables default handlers registere by importing net/http/pprof for security reasons
 		listener, err := net.Listen("tcp", opts.HTTPBind)

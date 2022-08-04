@@ -7,9 +7,12 @@ import potrace from 'potrace'
 import toBuffer from 'blob-to-buffer'
 import { useStore } from '../../../hooks/useStore'
 import { generateUrl, updateBrowserHistory } from './utils'
-import fetchDepviz from '../../../api/depviz'
+import { fetchDepviz } from '../../../api/depviz'
 
 import './styles.scss'
+
+const gitHubClientId = process.env.GITHUB_CLIENT_ID
+const baseURL = process.env.API_URL
 
 const Menu = ({
   authToken, handleShowToken, urlParams = {},
@@ -25,9 +28,12 @@ const Menu = ({
   const [showDropdown, setShowDropdown] = useState(false)
   const [waitingExport, setWaitingExport] = useState(false)
 
+
+
   // Initialize form data and make API call (only once)
   useEffect(() => {
     updateLayout(urlData.layout)
+
     if (urlData.targets) {
       updateLoadingGraph(true)
       // Process Timeline layout (disable all checkboxes except Closed)
@@ -36,12 +42,14 @@ const Menu = ({
         urlData.withoutIsolated = false
         urlData.withoutPrs = false
         urlData.withoutExternalDeps = false
+        urlData.withFetch = false
         updateBrowserHistory(generateUrl(urlData))
         setURLData(urlData)
         setValue('withClosed', true)
         setValue('withoutIsolated', false)
         setValue('withoutPrs', false)
         setValue('withoutExternalDeps', false)
+        setValue('withFetch', false)
       } else {
         Object.keys(urlData).map((key) => {
           if (urlData[key]) {
@@ -51,6 +59,7 @@ const Menu = ({
         urlData.withoutIsolated = !urlData.withoutIsolated
         urlData.withoutPrs = !urlData.withoutPrs
         urlData.withoutExternalDeps = !urlData.withoutExternalDeps
+        urlData.withFetch = !urlData.withFetch
       }
       makeAPICall(urlData)
     }
@@ -62,12 +71,13 @@ const Menu = ({
     // updateBrowserHistory(url)
   }
 
-  const handleURLData = (fetchApi = false) => {
+  const handleURLData = (fetchApi = false, with_fetch = false) => {
     updateLoadingGraph(true)
     const data = getValues()
     const newUrlData = {
       ...urlData,
       ...data,
+      withFetch: with_fetch,
     }
     newUrlData.withoutIsolated = !data.withoutIsolated
     newUrlData.withoutPrs = !data.withoutPrs
@@ -84,6 +94,10 @@ const Menu = ({
     handleURLData(true)
   }
 
+  const handleFetch = () => {
+    handleURLData(true, true)
+  }
+
   const handleLayoutChange = () => {
     const data = getValues()
     handleURLData(true)
@@ -92,11 +106,13 @@ const Menu = ({
       const newUrlData = {
         ...urlData,
         ...data,
+        withFetch: false,
       }
       newUrlData.withClosed = true
       newUrlData.withoutIsolated = false
       newUrlData.withoutPrs = false
       newUrlData.withoutExternalDeps = false
+      newUrlData.withFetch = false
       updateBrowserHistory(generateUrl(newUrlData))
       setURLData(newUrlData)
       // setValue('withClosed')
@@ -105,6 +121,7 @@ const Menu = ({
       setValue('withoutIsolated', false)
       setValue('withoutPrs', false)
       setValue('withoutExternalDeps', false)
+      setValue('withFetch', false)
     }
     updateLayout(data.layout)
   }
@@ -287,6 +304,7 @@ const Menu = ({
                   <div className="input-group-append">
                     <button type="submit" className="btn btn-primary ml-auto">Generate</button>
                     <button type="button" onClick={handleRedraw} className="btn btn-secondary ml-auto">Redraw</button>
+                    <button type="button" onClick={handleFetch} className="btn btn-secondary ml-auto">Fetch</button>
                   </div>
                 </div>
               </label>
@@ -306,6 +324,7 @@ const Menu = ({
               <button onClick={handleShowToken} className="btn">
                 {authToken ? 'Change token' : '+ Add token'}
               </button>
+              <a href={`https://github.com/login/oauth/authorize?client_id=${gitHubClientId}&redirect_uri=${baseURL}/githubOAuth`}>github</a>
             </div>
 
           </div>
