@@ -16,7 +16,7 @@ RUN             npm run build
 
 
 # go build
-FROM            golang:1.18-alpine as go-build
+FROM            golang:1.19.0-alpine as go-build
 RUN             apk add --update --no-cache git gcc musl-dev make
 WORKDIR         /go/src/moul.io/depviz
 ENV             GO111MODULE=on \
