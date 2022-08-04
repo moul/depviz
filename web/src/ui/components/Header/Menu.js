@@ -304,10 +304,12 @@ const Menu = ({
     setWaitingExport(false)
   }
 
-  function Test() {
+  //Make toggler
+  function watchRepo() {
+    const repoData = urlData.targets.split('/')
    fetchDepviz(`/github/repo/subscribe${generateUrl({
-      owner: 'Doozers',
-      repo: 'depviz-test',
+      owner: repoData[0],
+      repo: repoData[1],
       current: false,
     })}`)
   }
@@ -325,6 +327,7 @@ const Menu = ({
                     <button type="submit" className="btn btn-primary ml-auto">Generate</button>
                     <button type="button" onClick={handleRedraw} className="btn btn-secondary ml-auto">Redraw</button>
                     <button type="button" onClick={handleFetch} className="btn btn-secondary ml-auto">Fetch</button>
+                    <button type="button" onClick={watchRepo} className="btn btn-secondary ml-auto">Watch</button>
                     <button type="button" onClick={handleNewUser} className="btn btn-secondary ml-auto">Modal</button>
                   </div>
                 </div>
@@ -346,7 +349,6 @@ const Menu = ({
                 {authToken ? 'Change token' : '+ Add token'}
               </button>
               <a href={`https://github.com/login/oauth/authorize?client_id=${gitHubClientId}&scope=repo&redirect_uri=${baseURL}/githubOAuth`}>github</a>
-              <button onClick={Test} className="btn">test</button>
             </div>
 
           </div>

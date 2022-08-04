@@ -4,7 +4,8 @@ import { User } from 'react-feather'
 import Issue from '../components/icons/Issue'
 import Pr from '../components/icons/Pr'
 import './infoBox.scss'
-import { Container } from '../components/Modal/Assign/Container';
+import { Container as AssignContainer} from '../components/Modal/Assign/Container';
+import { Container as MetadataContainer} from '../components/Modal/Metadata/Container';
 import {fetchDepviz} from "../../api/depviz";
 import {generateUrl} from "../components/Header/utils";
 import {element} from "prop-types";
@@ -20,7 +21,8 @@ const InfoBox = ({ data }) => {
     })}`)
   }
 
-  const triggerText = 'Assign someone';
+  const triggerTextAssign = 'Assign someone';
+  const triggerTextMetadata = 'Edit metadata';
   const onSubmit = (event) => {
     event.preventDefault(event);
     console.log(event.target.name.value);
@@ -93,7 +95,8 @@ const InfoBox = ({ data }) => {
           )}
           <div className="info-box-actions">
             <button onClick={openWebLink} className="btn btn-primary ml-auto">View on github</button>
-            <Container githubURI={data.id} triggerText={triggerText} onSubmit={onSubmit} />
+            <AssignContainer githubURI={data.id} triggerText={triggerTextAssign} onSubmit={onSubmit} />
+            <MetadataContainer githubURI={data.id} triggerText={triggerTextMetadata} onSubmit={onSubmit} />
           </div>
         </div>
       </div>
