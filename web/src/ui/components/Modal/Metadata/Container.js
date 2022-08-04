@@ -18,18 +18,22 @@ export class Container extends Component {
   onSubmit = (event) => {
     event.preventDefault(event);
     const data = this.props.githubURI.split('/');
+    let metadata = "";
     if (event.target.time !== undefined) {
-      this.Metadata(data[3], data[4], data[6], event.target.time.value);
+      metadata += event.target.time.value + '|';
     }
     if (event.target.depend !== undefined) {
       isNaN(event.target.depend.value) ?
-      this.Metadata(data[3], data[4], data[6], "depends on " + event.target.depend.value) :
-      this.Metadata(data[3], data[4], data[6], "depends on %23" + event.target.depend.value);
+      metadata += "depends on " + event.target.depend.value + '|' :
+      metadata += "depends on %23" + event.target.depend.value + '|';
     }
     if (event.target.block !== undefined) {
       isNaN(event.target.block.value) ?
-      this.Metadata(data[3], data[4], data[6], "blocks " + event.target.block.value) :
-      this.Metadata(data[3], data[4], data[6], "blocks %23" + event.target.block.value);
+      metadata += "blocks " + event.target.block.value :
+      metadata += "blocks %23" + event.target.block.value;
+    }
+    if (metadata !== "") {
+      this.Metadata(data[3], data[4], data[6], metadata);
     }
     this.closeModal();
   };
