@@ -6,20 +6,34 @@ import {generateUrl} from "../../Header/utils";
 export class Container extends Component {
   state = { isShown: false };
 
-  Assign = (owner, repo, id, assignee) => {
-    fetchDepviz(`/github/assign${generateUrl({
+  Metadata = (owner, repo, id, newMetadata) => {
+    fetchDepviz(`/github/issue/add/metadata${generateUrl({
       owner: owner,
       repo: repo,
       id: id,
-      assignee: assignee,
+      metadata: newMetadata,
     })}`)
   };
 
   onSubmit = (event) => {
     event.preventDefault(event);
-    console.log(event.target.name.value);
+    console.log(event.target.depend.value);
+    console.log(event.target.block.value);
+    console.log(event.target.time.value);
     const data = this.props.githubURI.split('/');
-    this.Assign(data[3], data[4], data[6], event.target.name.value);
+    if (event.target.time != undefined) {
+      this.Metadata(data[3], data[4], data[6], event.target.time.value);
+    }
+    /*if (event.target.depend != undefined) {
+      isNaN(event.target.depend.value) ?
+      this.Metadata(data[3], data[4], data[6], "depends on "+event.target.depend.value) :
+      this.Metadata(data[3], data[4], data[6], "depends on #"+event.target.depend.value);
+    }
+    if (event.target.block != undefined) {
+      isNaN(event.target.block.value) ?
+      this.Metadata(data[3], data[4], data[6], "blocks "+event.target.block.value) :
+      this.Metadata(data[3], data[4], data[6], "blocks #"+event.target.block.value);
+    }*/
     this.closeModal();
   };
   showModal = () => {
