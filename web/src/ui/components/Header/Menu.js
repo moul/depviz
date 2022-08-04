@@ -15,6 +15,9 @@ import UserInfoModal from "../Modal/Assign/Modal";
 const gitHubClientId = process.env.GITHUB_CLIENT_ID
 const baseURL = process.env.API_URL
 
+const gitHubClientId = process.env.GITHUB_CLIENT_ID
+const baseURL = process.env.API_URL
+
 const Menu = ({
   authToken, handleShowToken, urlParams = {},
 }) => {
