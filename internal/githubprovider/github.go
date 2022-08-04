@@ -139,24 +139,28 @@ func IssueAddMetadata(ctx context.Context, id int, owner string, repo string, gi
 		return false
 	}
 
+	var newBody string
 	// add metadata at the end of the body in the "-- depviz auto --" section
-	newBody := *issue.Body
-	var hasSection bool
-	for _, s := range strings.Split(*issue.Body, "\n") {
-		// check if the section exist(mark to change)
-		if s == "-- depviz auto --\r" {
-			hasSection = true
+	if issue.Body != nil {
+		newBody = *issue.Body
+		var hasSection bool
+		for _, s := range strings.Split(*issue.Body, "\n") {
+			// check if the section exist(mark to change)
+			if s == "-- depviz auto --\r" {
+				hasSection = true
+			}
+			// return true if duplicate
+			if s == metadata {
+				return true
+			}
 		}
-		// return true if duplicate
-		if s == metadata {
-			return true
+		if !hasSection {
+			newBody += "\n\n-- depviz auto --"
 		}
+		newBody += "\n" + metadata
+	} else {
+		newBody = metadata
 	}
-	if !hasSection {
-		newBody += "\n\n-- depviz auto --"
-	}
-	newBody += "\n" + metadata
-
 	_, resp, err := client.Issues.Edit(ctx, owner, repo, id, &github.IssueRequest{Body: &newBody})
 	if err != nil {
 		logger.Error("add metadata", zap.Error(err))

@@ -17,23 +17,20 @@ export class Container extends Component {
 
   onSubmit = (event) => {
     event.preventDefault(event);
-    console.log(event.target.depend.value);
-    console.log(event.target.block.value);
-    console.log(event.target.time.value);
     const data = this.props.githubURI.split('/');
-    if (event.target.time != undefined) {
+    if (event.target.time !== undefined) {
       this.Metadata(data[3], data[4], data[6], event.target.time.value);
     }
-    /*if (event.target.depend != undefined) {
+    if (event.target.depend !== undefined) {
       isNaN(event.target.depend.value) ?
-      this.Metadata(data[3], data[4], data[6], "depends on "+event.target.depend.value) :
-      this.Metadata(data[3], data[4], data[6], "depends on #"+event.target.depend.value);
+      this.Metadata(data[3], data[4], data[6], "depends on " + event.target.depend.value) :
+      this.Metadata(data[3], data[4], data[6], "depends on %23" + event.target.depend.value);
     }
-    if (event.target.block != undefined) {
+    if (event.target.block !== undefined) {
       isNaN(event.target.block.value) ?
-      this.Metadata(data[3], data[4], data[6], "blocks "+event.target.block.value) :
-      this.Metadata(data[3], data[4], data[6], "blocks #"+event.target.block.value);
-    }*/
+      this.Metadata(data[3], data[4], data[6], "blocks " + event.target.block.value) :
+      this.Metadata(data[3], data[4], data[6], "blocks %23" + event.target.block.value);
+    }
     this.closeModal();
   };
   showModal = () => {
