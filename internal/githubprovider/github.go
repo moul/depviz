@@ -89,6 +89,10 @@ func getGitHubClient(ctx context.Context, gitHubToken string) *github.Client {
 func AddAssignee(ctx context.Context, assignee string, id int, owner string, repo string, gitHubToken string, logger *zap.Logger) bool {
 	client := getGitHubClient(ctx, gitHubToken)
 
+	if assignee == "" {
+		logger.Info("remove assignee", zap.Int("id", id), zap.String("owner", owner), zap.String("repo", repo))
+		return false
+	}
 	_, resp, err := client.Issues.AddAssignees(ctx, owner, repo, id, []string{assignee})
 	if err != nil {
 		logger.Error("add assignee", zap.Error(err))
