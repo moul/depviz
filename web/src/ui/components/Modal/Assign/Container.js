@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
-import { Modal } from './Assign';
+import { Modal } from './Modal';
 import TriggerButton from './TriggerButton';
-import {fetchDepviz} from "../../../api/depviz";
-import {generateUrl} from "../Header/utils";
+import {fetchDepviz} from "../../../../api/depviz";
+import {generateUrl} from "../../Header/utils";
 export class Container extends Component {
   state = { isShown: false };
 

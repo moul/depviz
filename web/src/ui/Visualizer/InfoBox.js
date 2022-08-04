@@ -4,7 +4,7 @@ import { User } from 'react-feather'
 import Issue from '../components/icons/Issue'
 import Pr from '../components/icons/Pr'
 import './infoBox.scss'
-import { Container } from '../components/Modal/Container';
+import { Container } from '../components/Modal/Assign/Container';
 import {fetchDepviz} from "../../api/depviz";
 import {generateUrl} from "../components/Header/utils";
 import {element} from "prop-types";

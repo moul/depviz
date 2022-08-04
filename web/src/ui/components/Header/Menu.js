@@ -10,7 +10,7 @@ import { generateUrl, updateBrowserHistory } from './utils'
 import { fetchDepviz } from '../../../api/depviz'
 import './styles.scss'
 import {useModal} from "@ebay/nice-modal-react";
-import UserInfoModal from "../Modal/Assign";
+import UserInfoModal from "../Modal/Assign/Modal";
 
 const gitHubClientId = process.env.GITHUB_CLIENT_ID
 const baseURL = process.env.API_URL
