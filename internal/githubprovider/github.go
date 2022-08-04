@@ -18,6 +18,14 @@ type Opts struct {
 	Logger *zap.Logger `json:"-"`
 }
 
+func getGitHubClient(ctx context.Context, gitHubToken string) *github.Client {
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: gitHubToken})
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	return client
+}
+
 func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out chan<- dvmodel.Batch, opts Opts) { // nolint:interfacer
 	if opts.Logger == nil {
 		opts.Logger = zap.NewNop()
@@ -34,9 +42,7 @@ func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out 
 	repo := target.Repo()
 
 	// create client
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
+	client := getGitHubClient(ctx, token)
 
 	// queries
 	totalIssues := 0
@@ -76,14 +82,6 @@ func FetchRepo(ctx context.Context, entity multipmuri.Entity, token string, out 
 	}
 
 	// FIXME: fetch incomplete/old users, orgs, teams & repos
-}
-
-func getGitHubClient(ctx context.Context, gitHubToken string) *github.Client {
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: gitHubToken})
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
-
-	return client
 }
 
 func AddAssignee(ctx context.Context, assignee string, id int, owner string, repo string, gitHubToken string, logger *zap.Logger) bool {
