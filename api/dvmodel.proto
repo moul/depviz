@@ -97,6 +97,7 @@ message Task {
   int32 num_comments = 18 [(gogoproto.moretags) = "quad:\"schema:numComments,optional\""];
   int32 num_upvotes = 19 [(gogoproto.moretags) = "quad:\"schema:numUpvotes,optional\""];
   int32 num_downvotes = 20 [(gogoproto.moretags) = "quad:\"schema:numDownvotes,optional\""];
+  string estimated_duration = 21 [(gogoproto.moretags) = "quad:\"schema:estimated_duration,optional\""];
 
   // relationships
   string has_author = 100 [(gogoproto.moretags) = "quad:\"hasAuthor,optional\"", (gogoproto.casttype) = "github.com/cayleygraph/quad.IRI"];
