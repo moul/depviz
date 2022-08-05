@@ -20,7 +20,7 @@ export class Container extends Component {
     const data = this.props.githubURI.split('/');
     let metadata = "";
     if (event.target.time.value !== "") {
-      metadata += event.target.time.value + '|';
+      metadata += "time " + event.target.time.value + '|';
     }
     if (event.target.depend.value !== "") {
       isNaN(event.target.depend.value) ?
