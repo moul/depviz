@@ -127,8 +127,8 @@ const VisualizerWrapper = () => {
           if (CheckIfOpenByID(tasks, other) || withClosed) {
             edges.push({
               data: {
-                source: task.id,
-                target: other,
+                source: other,
+                target: task.id,
                 relation: 'is_depending_on',
               },
             })
@@ -140,8 +140,8 @@ const VisualizerWrapper = () => {
           if (CheckIfOpenByID(tasks, other) || withClosed) {
             edges.push({
               data: {
-                source: other,
-                target: task.id,
+                source: task.id,
+                target: other,
                 relation: 'is_depending_on',
               },
             })
