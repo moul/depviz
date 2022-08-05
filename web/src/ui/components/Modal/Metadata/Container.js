@@ -33,6 +33,10 @@ export class Container extends Component {
       metadata += "blocks %23" + event.target.block.value;
     }
     if (metadata !== "") {
+      //FIXME: tmp to fix format
+      if (metadata[metadata.length - 1] === '|') {
+        metadata = metadata.slice(0, -1);
+      }
       this.Metadata(data[3], data[4], data[6], metadata);
     }
     this.closeModal();
