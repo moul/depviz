@@ -19,15 +19,15 @@ export class Container extends Component {
     event.preventDefault(event);
     const data = this.props.githubURI.split('/');
     let metadata = "";
-    if (event.target.time !== undefined) {
+    if (event.target.time.value !== "") {
       metadata += event.target.time.value + '|';
     }
-    if (event.target.depend !== undefined) {
+    if (event.target.depend.value !== "") {
       isNaN(event.target.depend.value) ?
       metadata += "depends on " + event.target.depend.value + '|' :
       metadata += "depends on %23" + event.target.depend.value + '|';
     }
-    if (event.target.block !== undefined) {
+    if (event.target.block.value !== "") {
       isNaN(event.target.block.value) ?
       metadata += "blocks " + event.target.block.value :
       metadata += "blocks %23" + event.target.block.value;
