@@ -14,6 +14,7 @@ import (
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/depviz/v3/internal/dvstore"
+	"moul.io/depviz/v3/internal/githubprovider"
 )
 
 func gitHubOAuth(opts Opts, httpLogger *zap.Logger) http.HandlerFunc {
@@ -194,4 +195,56 @@ func (s *service) Ping(context.Context, *Ping_Input) (*Ping_Output, error) {
 
 func (s *service) Status(context.Context, *Status_Input) (*Status_Output, error) {
 	return &Status_Output{EverythingIsOK: true}, nil
+}
+
+func (s *service) GitHubAssign(ctx context.Context, in *GitHubAssign_Input) (*GitHubAssign_Output, error) {
+	// retrieve token
+	gitHubToken, err := getToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get token: %w", err)
+	}
+
+	success := githubprovider.AddAssignee(ctx, in.Assignee, int(in.Id), in.Owner, in.Repo, gitHubToken, s.opts.Logger)
+	return &GitHubAssign_Output{
+		Success: success,
+	}, nil
+}
+
+func (s *service) GitHubRepoSubscribe(ctx context.Context, input *GitHubRepoSubscribe_Input) (*GitHubRepoSubscribe_Output, error) {
+	// retrieve token
+	gitHubToken, err := getToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get token: %w", err)
+	}
+
+	success := githubprovider.SubscribeToRepo(ctx, input.Owner, input.Repo, input.Current, gitHubToken, s.opts.Logger)
+	return &GitHubRepoSubscribe_Output{
+		Success: success,
+	}, nil
+}
+
+func (s *service) GitHubIssueAddMetadata(ctx context.Context, in *GitHubIssueMetadata_Input) (*GitHubIssueMetadata_Output, error) {
+	// retrieve token
+	gitHubToken, err := getToken(ctx)
+	if err != nil {
+		s.opts.Logger.Error("get token", zap.Error(err))
+		return nil, fmt.Errorf("get token: %w", err)
+	}
+
+	success := githubprovider.IssueAddMetadata(ctx, int(in.Id), in.Owner, in.Repo, gitHubToken, in.Metadata, s.opts.Logger)
+
+	return &GitHubIssueMetadata_Output{Success: success}, nil
+}
+
+func (s *service) GitHubIssueAddComment(ctx context.Context, input *GitHubIssueComment_Input) (*GitHubIssueComment_Output, error) {
+	// retrieve token
+	gitHubToken, err := getToken(ctx)
+	if err != nil {
+		s.opts.Logger.Error("get token", zap.Error(err))
+		return nil, fmt.Errorf("get token: %w", err)
+	}
+
+	success := githubprovider.IssueAddComment(ctx, int(input.Id), input.Owner, input.Repo, gitHubToken, input.Comment, s.opts.Logger)
+
+	return &GitHubIssueComment_Output{Success: success}, nil
 }

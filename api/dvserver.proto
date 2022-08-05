@@ -18,6 +18,11 @@ service DepvizService {
   rpc StoreDump(StoreDump.Input) returns (StoreDump.Output) { option (google.api.http) = {get: "/store/dump"}; };
   rpc Ping(Ping.Input) returns (Ping.Output) { option (google.api.http) = {get: "/ping"}; };
   rpc Status(Status.Input) returns (Status.Output) { option (google.api.http) = {get: "/status"}; };
+  rpc GitHubAssign(GitHubAssign.Input) returns (GitHubAssign.Output) { option (google.api.http) = {get: "/github/assign"}; };
+  rpc GitHubRepoSubscribe(GitHubRepoSubscribe.Input) returns (GitHubRepoSubscribe.Output) { option (google.api.http) = {get: "/github/repo/subscribe"}; };
+  // any suggestions to change request name ?
+  rpc GitHubIssueAddMetadata(GitHubIssueMetadata.Input) returns (GitHubIssueMetadata.Output) { option (google.api.http) = {get: "/github/issue/add/metadata"}; };
+  rpc GitHubIssueAddComment(GitHubIssueComment.Input) returns (GitHubIssueComment.Output) { option (google.api.http) = {get: "/github/issue/add/comment"}; };
 }
 
 message Graph {
@@ -52,5 +57,52 @@ message Status {
   message Input {}
   message Output {
     bool everything_is_ok = 1 [(gogoproto.customname) = "EverythingIsOK"];
+  }
+}
+
+message GitHubAssign {
+  message Input {
+    string owner = 1;
+    string repo = 2;
+    int64 id = 3;
+    string assignee = 4;
+  }
+  message Output {
+    bool success = 1;
+  }
+}
+
+message GitHubRepoSubscribe {
+  message Input {
+    string owner = 1;
+    string repo = 2;
+    bool current = 3;
+  }
+  message Output {
+    bool success = 1;
+  }
+}
+
+message GitHubIssueMetadata {
+  message Input {
+    string owner = 1;
+    string repo = 2;
+    int64 id = 3;
+    string metadata = 4;
+  }
+  message Output {
+    bool success = 1;
+  }
+}
+
+message GitHubIssueComment {
+  message Input {
+    string owner = 1;
+    string repo = 2;
+    int64 id = 3;
+    string comment = 4;
+  }
+  message Output {
+    bool success = 1;
   }
 }

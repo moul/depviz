@@ -4,9 +4,31 @@ import { User } from 'react-feather'
 import Issue from '../components/icons/Issue'
 import Pr from '../components/icons/Pr'
 import './infoBox.scss'
+import { Container as AssignContainer} from '../components/Modal/Assign/Container';
+import { Container as MetadataContainer} from '../components/Modal/Metadata/Container';
+import {fetchDepviz} from "../../api/depviz";
+import {generateUrl} from "../components/Header/utils";
 import {element} from "prop-types";
 
 const InfoBox = ({ data }) => {
+
+  function Assign(username) {
+    fetchDepviz(`/github/assign${generateUrl({
+      owner: 'Mikatech',
+      repo: 'goftp-rfc959',
+      id: 1,
+      assignee: username,
+    })}`)
+  }
+
+  const triggerTextAssign = 'Assign someone';
+  const triggerTextMetadata = 'Edit metadata';
+  const onSubmit = (event) => {
+    event.preventDefault(event);
+    console.log(event.target.name.value);
+    Assign(event.target.name.value)
+  };
+
   const openWebLink = () => {
     try { // your browser may block popups
       window.open(data.id)
@@ -72,7 +94,9 @@ const InfoBox = ({ data }) => {
           </div>
           )}
           <div className="info-box-actions">
-            <button onClick={openWebLink} className="btn btn-primary ml-auto">View on GitHub</button>
+            <button onClick={openWebLink} className="btn btn-primary ml-auto">View on github</button>
+            <AssignContainer githubURI={data.id} triggerText={triggerTextAssign} onSubmit={onSubmit} />
+            <MetadataContainer githubURI={data.id} triggerText={triggerTextMetadata} onSubmit={onSubmit} />
           </div>
         </div>
       </div>

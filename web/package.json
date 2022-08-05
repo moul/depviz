@@ -28,6 +28,8 @@
   },
   "dependencies": {
     "@hot-loader/react-dom": "16.13.0",
+    "antd": "^4.22.1",
+    "antd-form-builder": "^2.1.4",
     "bitmap2vector": "0.0.4",
     "blob-to-buffer": "1.2.8",
     "core-js": "3.23.5",
@@ -35,6 +37,7 @@
     "cytoscape-cola": "2.3.1",
     "cytoscape-elk": "2.0.2",
     "cytoscape-node-html-label": "1.2.0",
+    "focus-trap-react": "^9.0.2",
     "html2canvas": "1.0.0-rc.5",
     "mermaid": "8.5.0",
     "potrace": "2.1.6",
@@ -43,6 +46,7 @@
     "react-draggable": "4.3.1",
     "react-feather": "2.0.8",
     "react-hook-form": "6.0.1",
+    "react-icons": "^4.4.0",
     "react-router-dom": "5.2.0",
     "tabler": "1.0.0-alpha.7"
   },
@@ -57,6 +61,7 @@
     "@babel/polyfill": "7.11.5",
     "@babel/preset-env": "7.11.5",
     "@babel/preset-react": "7.10.4",
+    "@ebay/nice-modal-react": "^1.2.6",
     "autoprefixer": "9.7.6",
     "babel-eslint": "10.1.0",
     "babel-jest": "26.6.3",

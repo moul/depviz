@@ -11,3 +11,9 @@ packrd/
 *-packr.go
 node_modules/
 tool/lint/package-lock.json
+web/main.*
+web/favicon.ico
+web/index.html
+.idea/
+depviz
+
