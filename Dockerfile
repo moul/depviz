@@ -10,7 +10,6 @@ RUN             apk add --no-cache python2 g++ make
 WORKDIR         /app
 COPY            ./web/package*.json ./web/yarn.* ./
 RUN             npm install --legacy-peer-deps
-RUN		        npm install axios --legacy-peer-deps
 COPY            ./web/ ./
 
 # FIXME: avoid having those ARGs, make the runtime dynamic.
