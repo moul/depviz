@@ -10,13 +10,14 @@ RUN             apk add --no-cache python2 g++ make
 WORKDIR         /app
 COPY            ./web/package*.json ./web/yarn.* ./
 RUN             npm install --legacy-peer-deps
-RUN		npm install axios --legacy-peer-deps
+RUN		        npm install axios --legacy-peer-deps
 COPY            ./web/ ./
+
 # FIXME: avoid having those ARGs, make the runtime dynamic.
-ARG		NODE_ENV=developmment
-ARG		API_URL
-ARG		GITHUB_CLIENT_ID
-ARG		DEFAULT_TARGETS=moul/depviz-test
+ARG		        NODE_ENV=development
+ARG		        API_URL
+ARG		        GITHUB_CLIENT_ID
+ARG		        DEFAULT_TARGETS=moul/depviz-test
 RUN             GITHUB_CLIENT_ID=$GITHUB_CLIENT_ID API_URL=$API_URL NODE_ENV=$NODE_ENV DEFAULT_TARGETS=$DEFAULT_TARGETS npm run build
 
 # go build
