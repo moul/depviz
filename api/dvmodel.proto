@@ -145,8 +145,9 @@ message Topic {
 enum Driver {
   UnknownDriver = 0;
   GitHub = 1;
+  Trello = 2;
   //GitLab = 2;
-  //Trello = 3;
+  
   //Jira = 4;
 }
 

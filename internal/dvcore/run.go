@@ -15,6 +15,7 @@ import (
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/depviz/v3/internal/dvstore"
 	"moul.io/depviz/v3/internal/githubprovider"
+	"moul.io/depviz/v3/internal/trelloprovider"
 	"moul.io/graphman"
 	"moul.io/graphman/viz"
 	"moul.io/multipmuri"
@@ -30,9 +31,10 @@ type RunOpts struct {
 
 	// pull
 
-	GitHubToken string
+	GitHubToken  string
+	TrelloToken  string
+	TrelloApiKey string
 	// GitLabToken string
-	// TrelloToken string
 	// JiraToken string
 	Resync bool
 
@@ -61,7 +63,7 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	}
 
 	if !opts.NoPull {
-		_, err := PullAndSave(targets, h, opts.Schema, opts.GitHubToken, opts.Resync, opts.Logger)
+		_, err := PullAndSave(targets, h, opts.Schema, opts.GitHubToken, opts.TrelloToken, opts.TrelloApiKey, opts.Resync, opts.Logger)
 		if err != nil {
 			return fmt.Errorf("pull: %w", err)
 		}
@@ -76,7 +78,7 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 			WithoutPRs:          opts.HidePRs,
 			WithoutExternalDeps: opts.HideExternalDeps,
 		}
-		tasks, err := dvstore.LoadTasks(h, opts.Schema, filters, opts.Logger)
+		tasks, err := dvstore.LoadTasks(h, opts.Schema, opts.TrelloToken, opts.TrelloApiKey, filters, opts.Logger)
 		if err != nil {
 			return fmt.Errorf("load tasks: %w", err)
 		}
@@ -152,8 +154,8 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	return nil
 }
 
-func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.Config, githubToken string, resync bool, logger *zap.Logger) (bool, error) {
-	batches := pullBatches(targets, h, githubToken, resync, logger)
+func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.Config, githubToken string, trelloToken string, trelloApiKey string,resync bool, logger *zap.Logger) (bool, error) {
+	batches := pullBatches(targets, h, githubToken, trelloToken, trelloApiKey, resync, logger)
 	if len(batches) > 0 {
 		err := saveBatches(h, schema, batches)
 		if err != nil {
@@ -164,7 +166,7 @@ func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.C
 	return false, nil
 }
 
-func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken string, resync bool, logger *zap.Logger) []dvmodel.Batch {
+func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken string, trelloToken string, trelloApiKey string, resync bool, logger *zap.Logger) []dvmodel.Batch {
 	// FIXME: handle the special '@me' target
 	var (
 		wg      sync.WaitGroup
@@ -198,6 +200,11 @@ func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken stri
 
 				githubprovider.FetchRepo(ctx, repo, githubToken, out, ghOpts)
 			}(target)
+			case multipmuri.TrelloProvider:
+				go func(board multipmuri.Entity) {
+					defer wg.Done()
+					trelloprovider.FetchCard(ctx, board, trelloToken, trelloApiKey, target.LocalID()[1:], out)
+				}(target)
 		default:
 			// FIXME: clean context-based exit
 			panic(fmt.Sprintf("unsupported provider: %v", provider))
@@ -296,6 +303,18 @@ func graphmanPertConfig(tasks []dvmodel.Task, opts RunOpts) *graphman.PertConfig
 				},
 			)
 		case dvmodel.Task_Milestone:
+			config.States = append(
+				config.States,
+				graphman.PertState{
+					ID:        string(task.ID),
+					Title:     task.Title,
+					DependsOn: dependsOn,
+					// FIXME: auto estimate (PERT)
+					// FIXME: DependsOn: milestone.DependsOn
+					// FIXME: styling
+				},
+			)
+		case dvmodel.Task_Card:
 			config.States = append(
 				config.States,
 				graphman.PertState{
