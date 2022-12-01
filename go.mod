@@ -25,7 +25,7 @@ require (
 	github.com/tailscale/depaware v0.0.0-20210622194025-720c4b409502
 	github.com/treastech/logger v0.0.0-20180705232552-e381e9ecf2e3
 	github.com/xhit/go-str2duration/v2 v2.0.0
-	go.uber.org/zap v1.17.0
+	go.uber.org/zap v1.24.0
 	golang.org/x/oauth2 v0.0.0-20210402161424-2e8d93401602
 	golang.org/x/tools v0.1.12
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
