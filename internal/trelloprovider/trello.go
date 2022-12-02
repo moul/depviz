@@ -19,11 +19,6 @@ func FetchCard(ctx context.Context, entity multipmuri.Entity, token string, apik
 	  fmt.Println()
 	}
 	cards, _ := board.GetCards()
-	size := len(cards)
-	allcards := make([]string, size)
-	for i := range cards {
-		allcards[i] = cards[i].Name +  ": " + cards[i].Desc
-	}
 	batch := fromCards(cards)
 	out <- batch
 }
