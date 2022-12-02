@@ -40,8 +40,8 @@ func GetCardsId(BoardId string, token string, apikey string) ([]string, error) {
 	}
 
 	defer BoardGetResponse.Body.Close()
+	
 	resp, err := ioutil.ReadAll(BoardGetResponse.Body)
-
 	if err != nil {
 		return nil, err
 	}
