@@ -35,7 +35,6 @@ func GetCardsId(BoardId string, token string, apikey string) ([]string, error) {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 	BoardGetResponse, err := http.DefaultClient.Do(req)
-
 	if err != nil {
 		return nil, err
 	}
