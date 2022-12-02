@@ -146,7 +146,7 @@ enum Driver {
   UnknownDriver = 0;
   GitHub = 1;
   Trello = 2;
-  //GitLab = 2;
+  //GitLab = 3;
   
   //Jira = 4;
 }
