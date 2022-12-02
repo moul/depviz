@@ -44,13 +44,13 @@ func fromCard(batch *dvmodel.Batch, input *trello.Card) error {
 		ID:          quad.IRI(entity.String()),
 		LocalID:     entity.LocalID(),
 		Kind:        dvmodel.Owner_User,
-		FullName:    "bob t",
-		ShortName:   "bob",
+		// FullName:    "bob t",
+		// ShortName:   "bob",
 		Driver:      dvmodel.Driver_Trello,
-		Homepage:    "homepage",
-		AvatarURL:   "avatar-url",
+		// Homepage:    "homepage",
+		// AvatarURL:   "avatar-url",
 		ForkStatus:  dvmodel.Owner_UnknownForkStatus,
-		Description: "description_owner",
+		// Description: "description_owner",
 	}
 
 	topic := dvmodel.Topic{
