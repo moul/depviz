@@ -28,7 +28,7 @@ func GetCardsId(BoardId string, token string, apikey string) ([]string, error) {
 	var cardsId []string
 	req, err := http.NewRequest("GET", url, nil)
 
-	if (err != nil) {
+	if err != nil {
 		return nil, err
 	}
 
