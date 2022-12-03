@@ -203,7 +203,11 @@ func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken stri
 			case multipmuri.TrelloProvider:
 				go func(board multipmuri.Entity) {
 					defer wg.Done()
-					trelloprovider.FetchCard(ctx, board, trelloToken, trelloApiKey, target.LocalID()[1:], out)
+					ghOpts := trelloprovider.Opts{
+						Logger: logger.Named("trello"),
+					}
+					
+					trelloprovider.FetchCard(ctx, board, trelloToken, trelloApiKey, target.LocalID()[1:], out, ghOpts)
 				}(target)
 		default:
 			// FIXME: clean context-based exit

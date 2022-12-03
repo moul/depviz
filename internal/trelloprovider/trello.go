@@ -6,24 +6,34 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-
+	"time"
 	"github.com/adlio/trello"
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/multipmuri"
+	"go.uber.org/zap"
 )
 
 type Card struct {
 	ShortLink string
 }
 
-func FetchCard(ctx context.Context, entity multipmuri.Entity, token string, apikey string, boardid string, out chan<- dvmodel.Batch) {
+type Opts struct {
+	Since  *time.Time  `json:"since"`
+	Logger *zap.Logger `json:"-"`
+}
+
+func FetchCard(ctx context.Context, entity multipmuri.Entity, token string, apikey string, boardid string, out chan<- dvmodel.Batch, opts Opts) {
 	client := trello.NewClient(apikey, token)
 	board, err := client.GetBoard(boardid)
 	if err != nil {
 	  fmt.Println()
 	}
-	cards, _ := board.GetCards()
-	batch := fromCards(cards)
+	cards, err := board.GetCards()
+	if err != nil {
+		opts.Logger.Error(err.Error(), zap.Error(err))
+		return
+	}
+	batch := fromCards(cards, opts.Logger)
 	out <- batch
 }
 

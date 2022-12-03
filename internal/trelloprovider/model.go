@@ -1,19 +1,19 @@
 package trelloprovider
 
 import (
-	"fmt"
 	"github.com/cayleygraph/quad"
 	"github.com/adlio/trello"
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/depviz/v3/internal/dvparser"
+	"go.uber.org/zap"
 )
 
-func fromCards(cards []*trello.Card) dvmodel.Batch {
+func fromCards(cards []*trello.Card, logger *zap.Logger) dvmodel.Batch {
 	batch := dvmodel.Batch{}
-	for _, issue := range cards {
-		err := fromCard(&batch, issue)
+	for _, card := range cards {
+		err := fromCard(&batch, card)
 		if err != nil {
-			fmt.Println("error")
+			logger.Warn("parse card", zap.String("url", card.URL), zap.Error(err))
 			continue
 		}
 	}
@@ -24,7 +24,7 @@ func fromCard(batch *dvmodel.Batch, input *trello.Card) error {
 	
 	entity, err := dvparser.ParseTarget(input.URL)
 	if err != nil {
-		return fmt.Errorf("parse target: %w", err)
+		return err
 	}
 
 	card := dvmodel.Task{
