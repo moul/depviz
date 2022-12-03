@@ -3,7 +3,6 @@ package trelloprovider
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"

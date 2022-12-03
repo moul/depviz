@@ -154,7 +154,7 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	return nil
 }
 
-func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.Config, githubToken string, trelloToken string, trelloApiKey string,resync bool, logger *zap.Logger) (bool, error) {
+func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.Config, githubToken string, trelloToken string, trelloApiKey string, resync bool, logger *zap.Logger) (bool, error) {
 	batches := pullBatches(targets, h, githubToken, trelloToken, trelloApiKey, resync, logger)
 	if len(batches) > 0 {
 		err := saveBatches(h, schema, batches)
@@ -200,15 +200,16 @@ func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken stri
 
 				githubprovider.FetchRepo(ctx, repo, githubToken, out, ghOpts)
 			}(target)
-			case multipmuri.TrelloProvider:
-				go func(board multipmuri.Entity) {
-					defer wg.Done()
-					ghOpts := trelloprovider.Opts{
-						Logger: logger.Named("trello"),
-					}
-					
-					trelloprovider.FetchCard(ctx, board, trelloToken, trelloApiKey, target.LocalID()[1:], out, ghOpts)
-				}(target)
+		case multipmuri.TrelloProvider:
+			go func(board multipmuri.Entity) {
+				defer wg.Done()
+				
+				ghOpts := trelloprovider.Opts{
+					Logger: logger.Named("trello"),
+				}
+
+				trelloprovider.FetchCard(ctx, board, trelloToken, trelloApiKey, target.LocalID()[1:], out, ghOpts)
+			}(target)
 		default:
 			// FIXME: clean context-based exit
 			panic(fmt.Sprintf("unsupported provider: %v", provider))
