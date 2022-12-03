@@ -48,14 +48,14 @@ func GetCardsId(BoardId string, token string, apikey string) ([]string, error) {
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	BoardGetResponse, err := http.DefaultClient.Do(req)
+	response, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	defer BoardGetResponse.Body.Close()
+	defer response.Body.Close()
 	
-	resp, err := ioutil.ReadAll(BoardGetResponse.Body)
+	resp, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
