@@ -26,7 +26,8 @@ func FetchCard(ctx context.Context, entity multipmuri.Entity, token string, apik
 	client := trello.NewClient(apikey, token)
 	board, err := client.GetBoard(boardid)
 	if err != nil {
-	  fmt.Println()
+		opts.Logger.Error(err.Error(), zap.Error(err))
+		return
 	}
 	cards, err := board.GetCards()
 	if err != nil {
