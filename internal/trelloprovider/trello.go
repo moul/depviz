@@ -2,15 +2,19 @@ package trelloprovider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/adlio/trello"
-	"moul.io/multipmuri"
-	"moul.io/depviz/v3/internal/dvmodel"
-	"net/http"
 	"io/ioutil"
-	"strconv"
-	"github.com/tidwall/gjson"
+	"net/http"
+
+	"github.com/adlio/trello"
+	"moul.io/depviz/v3/internal/dvmodel"
+	"moul.io/multipmuri"
 )
+
+type Card struct {
+	ShortLink string
+}
 
 func FetchCard(ctx context.Context, entity multipmuri.Entity, token string, apikey string, boardid string, out chan<- dvmodel.Batch) {
 	client := trello.NewClient(apikey, token)
@@ -45,15 +49,20 @@ func GetCardsId(BoardId string, token string, apikey string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	i := 0
-	var value gjson.Result
-	for {
-		value = gjson.Get(string(resp), strconv.Itoa(i) + `.shortLink`)
-		if value.String() == "" {
+
+	var allCards []Card
+	err = json.Unmarshal(resp, &allCards)
+	if err != nil {
+		return nil, err
+	}
+	
+	var value string
+	for i := 0; i < len(allCards); i++ {
+		value = allCards[i].ShortLink
+		if value == "" {
 			break
 		}
-		cardsId = append(cardsId, value.String())
-		i++
+		cardsId = append(cardsId, value)
 	}
 	return cardsId, nil
 }
