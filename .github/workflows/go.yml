@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v3.2.0
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
@@ -57,7 +57,7 @@ jobs:
       matrix:
         golangci_lint: [v1.47]
     steps:
-      - uses: actions/checkout@v3.0.2
+      - uses: actions/checkout@v3.2.0
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2.5.2
         with:
@@ -73,7 +73,7 @@ jobs:
       matrix:
         golang: [1.18.x]
     steps:
-      - uses: actions/checkout@v3.0.2
+      - uses: actions/checkout@v3.2.0
       - name: Install Go
         uses: actions/setup-go@v3
         with:
@@ -91,7 +91,7 @@ jobs:
       OS: macos-latest
       GOLANG: ${{ matrix.golang }}
     steps:
-      - uses: actions/checkout@v3.0.2
+      - uses: actions/checkout@v3.2.0
       - name: Install Go
         uses: actions/setup-go@v3
         with:
@@ -131,7 +131,7 @@ jobs:
       OS: ubuntu-latest
       GOLANG: ${{ matrix.golang }}
     steps:
-      - uses: actions/checkout@v3.0.2
+      - uses: actions/checkout@v3.2.0
       - name: Install Go
         uses: actions/setup-go@v3
         with:
