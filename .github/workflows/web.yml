@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     working_directory: web
     steps:
-      - uses: actions/checkout@v3.0.2
+      - uses: actions/checkout@v3.3.0
       - name: Use Node.js ${{ matrix.node }}
         uses: actions/setup-node@v3.5.0
         with:
