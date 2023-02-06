@@ -6,10 +6,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
 	"github.com/adlio/trello"
+	"go.uber.org/zap"
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/multipmuri"
-	"go.uber.org/zap"
 )
 
 type Card struct {
@@ -21,7 +22,7 @@ type Opts struct {
 	Logger *zap.Logger `json:"-"`
 }
 
-func FetchCard(ctx context.Context, entity multipmuri.Entity, token string, apikey string, boardid string, out chan<- dvmodel.Batch, opts Opts) {
+func FetchCard(ctx context.Context, entity multipmuri.Entity, token string, apikey string, boardid string, out chan<- dvmodel.Batch, opts Opts) { 
 	client := trello.NewClient(apikey, token)
 	board, err := client.GetBoard(boardid)
 	if err != nil {
