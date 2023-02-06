@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/multipmuri"
+	trello "moul.io/depviz/v3/internal/trelloprovider"
 )
 
 func LastUpdatedIssueInRepo(ctx context.Context, h *cayley.Handle, entity multipmuri.Entity) (time.Time, error) { // nolint:interfacer
@@ -62,7 +63,7 @@ type LoadTasksFilters struct {
 	WithFetch           bool
 }
 
-func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters, logger *zap.Logger) (dvmodel.Tasks, error) {
+func LoadTasks(h *cayley.Handle, schema *schema.Config, trelloToken string, trelloApiKey string, filters LoadTasksFilters, logger *zap.Logger) (dvmodel.Tasks, error) {
 	if (filters.Targets == nil || len(filters.Targets) == 0) && !filters.TheWorld {
 		return nil, fmt.Errorf("missing filter.targets")
 	}
@@ -75,13 +76,30 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters
 		paths = append(paths, path.StartPath(h))
 	} else {
 		for _, target := range filters.Targets {
-			// FIXME: handle different target types (for now only repo)
-			p := path.StartPath(h, quad.IRI(target.String())).
-				Both().
-				Has(quad.IRI("rdf:type"), quad.IRI("dv:Task"))
+			switch target.Provider() {
+			case multipmuri.GitHubProvider:
+				// FIXME: handle different target types (for now only repo)
+				p := path.StartPath(h, quad.IRI(target.String())).
+					Both().
+					Has(quad.IRI("rdf:type"), quad.IRI("dv:Task"))
 
-			// FIXME: reverse depends/blocks
-			paths = append(paths, p)
+				// FIXME: reverse depends/blocks
+				paths = append(paths, p)
+			
+			case multipmuri.TrelloProvider:
+				cardsId, err := trello.GetCardsId(target.LocalID()[1:], trelloToken, trelloApiKey)
+				if err != nil {
+					return nil, fmt.Errorf("load cards id failed: %w", err)
+				}
+				for _, id := range cardsId {
+					p := path.StartPath(h, quad.IRI("https://trello.com/c/" + id)).
+					Both().
+					Has(quad.IRI("rdf:type"), quad.IRI("dv:Task"))
+
+					// FIXME: reverse depends/blocks
+					paths = append(paths, p)
+				} 
+			}
 		}
 	}
 	p := paths[0]

@@ -15,7 +15,7 @@ const gitHubClientId = process.env.GITHUB_CLIENT_ID
 const baseURL = process.env.API_URL
 
 const Menu = ({
-  authToken, handleShowToken, urlParams = {},
+  authToken, trelloApiKey, trelloAuthToken, handleShowToken, urlParams = {},
 }) => {
   const {
     updateApiData, updateLayout, updateLoadingGraph, layout, setShowInfoBox, updateUrlData,
@@ -316,13 +316,13 @@ const Menu = ({
                 </a>
                 <div className={showDropdown ? 'dropdown-menu show' : 'dropdown-menu'} aria-labelledby="dropdownMenuLink">
                   <a className="dropdown-item" href="#" onClick={saveGraph('png')}>Save as PNG</a>
-                  <a className="dropdown-item" href="#" onClick={saveGraph('jpg')}>Save as JPG</a>
+                  <a className="dropdown-iztem" href="#" onClick={saveGraph('jpg')}>Save as JPG</a>
                   <a className="dropdown-item" href="#" onClick={saveGraph('svg')}>Save as SVG (beta)</a>
                 </div>
               </div>
 
               <button onClick={handleShowToken} className="btn">
-                {authToken ? 'Change token' : '+ Add token'}
+                {[authToken, trelloApiKey, trelloAuthToken]  ? 'Change token' : '+ Add token'}
               </button>
               <a href={`https://github.com/login/oauth/authorize?client_id=${gitHubClientId}&redirect_uri=${baseURL}/githubOAuth`}>github</a>
             </div>

@@ -53,6 +53,8 @@ var (
 	serverShutdownTimeout    = serverFlags.Duration("shutdowm-timeout", 6*time.Second, "shutdown timeout") // nolint:gomnd
 	serverCORSAllowedOrigins = serverFlags.String("cors-allowed-origins", "*", "allowed CORS origins")
 	serverGitHubToken        = serverFlags.String("github-token", "", "GitHub token")
+	serverTrelloToken        = serverFlags.String("trello-token", "", "Trello token")
+	serverTrelloApiKey       = serverFlags.String("trello-apikey", "", "Trello ApiKey")
 	serverNoAutoUpdate       = serverFlags.Bool("no-auto-update", false, "don't auto-update projects in background")
 	serverGodmode            = serverFlags.Bool("godmode", false, "enable dangerous API calls")
 	serverWithPprof          = serverFlags.Bool("with-pprof", false, "enable pprof endpoints")
@@ -69,6 +71,8 @@ var (
 	runNoGraph          = runFlags.Bool("no-graph", false, "don't generate graph (pull only)")
 	runResync           = runFlags.Bool("resync", false, "resync already synced content")
 	runGitHubToken      = runFlags.String("github-token", "", "GitHub token")
+	runTrelloToken      = runFlags.String("trello-token", "", "Trello token")
+	runTrelloApikey     = runFlags.String("trello-apikey", "", "Trello ApiKey")
 	runNoPert           = runFlags.Bool("no-pert", false, "disable PERT computing")
 	runFormat           = runFlags.String("format", "dot", "output format")
 	runVertical         = runFlags.Bool("vertical", false, "vertical mode")
@@ -270,6 +274,8 @@ func execRun(ctx context.Context, args []string) error {
 		NoPull:           *runNoPull,
 		Format:           *runFormat,
 		Resync:           *runResync,
+		TrelloToken:      *runTrelloToken,
+		TrelloApiKey:     *runTrelloApikey,
 		GitHubToken:      *runGitHubToken,
 		ShowClosed:       *runShowClosed,
 		HideIsolated:     *runHideIsolated,
@@ -314,6 +320,8 @@ func execServer(ctx context.Context, args []string) error {
 			Realm:              *serverRealm,
 			Godmode:            *serverGodmode,
 			GitHubToken:        *serverGitHubToken,
+			TrelloToken:        *serverTrelloToken,
+			TrelloApiKey:       *serverTrelloApiKey,
 			NoAutoUpdate:       *serverNoAutoUpdate,
 			AutoUpdateTargets:  targets,
 			AutoUpdateInterval: *serverAutoUpdateInterval,

@@ -21,6 +21,9 @@ const defaultTargets = process.env.DEFAULT_TARGETS
 const App = () => {
   const [showAuthModal, setShowAuthModal] = useState(false) // !store.getItem('auth_token'))
   const [authToken, setAuthToken] = useState(store.getItem('auth_token') || '')
+  const [trelloApiKey, setTrelloApiKey] = useState(store.getItem('trello_api_key') || '')
+  const [trelloAuthToken, setTrelloAuthToken] = useState(store.getItem('trello_auth_token') || '')
+
   const searchParams = new URLSearchParams(window.location.search)
   let targets = ''
   if (defaultTargets) {
@@ -35,11 +38,27 @@ const App = () => {
     layout: searchParams.get('layout') || '',
   }
 
-  const handleChange = (e) => {
+  const handleChangeGit = (e) => {
     e.preventDefault()
     const token = event.target.value || ''
     store.setItem('auth_token', token)
     setAuthToken(token)
+    // setShowAuthModal(!token)
+  }
+
+  const handleChangeTrelloApi = (e) => {
+    e.preventDefault()
+    const trelloApiToken = event.target.value || ''
+    store.setItem('trello_api_key', trelloApiToken)
+    setTrelloApiKey(trelloApiToken)
+    // setShowAuthModal(!token)
+  }
+
+  const handleChangeTrelloAuth = (e) => {
+    e.preventDefault()
+    const trelloToken = event.target.value || ''
+    store.setItem('trello_auth_token', trelloToken)
+    setTrelloAuthToken(trelloToken)
     // setShowAuthModal(!token)
   }
 
@@ -53,7 +72,8 @@ const App = () => {
     <StoreProvider context={{ layout: computeLayoutConfig(urlData.layout), urlData }}>
       <div className="page">
         <div className="flex-fill">
-          <Menu authToken={authToken} handleShowToken={() => setShowAuthModal(true)} urlParams={urlData} />
+          <Menu authToken={authToken} trelloApiKey={trelloApiKey} trelloAuthToken={trelloAuthToken}  handleShowToken={() => setShowAuthModal(true)} urlParams={urlData} />
+          
           <Router>
             <Switch>
               <Route exact path="/" component={HomePage} />
@@ -82,9 +102,13 @@ const App = () => {
             </button>
           </div>
           <div className="modal-body">
-            <p>Enter your auth token below.</p>
+            <p>Enter your auth tokens below.</p>
             <form onSubmit={handleClose}>
-              <input type="text" name="authToken" id="authToken" placeholder="Auth token" className="form-control" value={authToken} onChange={handleChange} />
+              <input type="text" name="authToken" id="authToken" placeholder="Github Auth token" className="form-control" value={authToken} onChange={handleChangeGit} />
+              <br />
+              <input type="text" name="TrelloApiKey" id="TrelloApiKey" placeholder="Trello Api Key" className="form-control" value={trelloApiKey} onChange={handleChangeTrelloApi} />
+              <br />
+              <input type="text" name="TrelloAuthToken" id="TrelloAuthToken" placeholder="Trello Auth token" className="form-control" value={trelloAuthToken} onChange={handleChangeTrelloAuth} />
               <br />
               <button type="submit" className="btn btn-primary" data-dismiss="modal">Save auth token</button>
             </form>
