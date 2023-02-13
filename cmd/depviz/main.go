@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"time"
 
-	bearer "github.com/Bearer/bearer-go"
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
 	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
@@ -33,11 +32,10 @@ var (
 	logger       *zap.Logger
 	schemaConfig *schema.Config
 
-	globalFlags           = flag.NewFlagSet("depviz", flag.ExitOnError)
-	globalStorePath       = globalFlags.String("store-path", os.Getenv("HOME")+"/.depviz", "store path")
-	globalDebug           = globalFlags.Bool("debug", false, "debug mode")
-	globalWithStacktrace  = globalFlags.Bool("with-stacktrace", false, "show stacktrace on warns, errors and worse")
-	globalBearerSecretKey = globalFlags.String("bearer-secretkey", "", "optional bearer.sh secret key")
+	globalFlags          = flag.NewFlagSet("depviz", flag.ExitOnError)
+	globalStorePath      = globalFlags.String("store-path", os.Getenv("HOME")+"/.depviz", "store path")
+	globalDebug          = globalFlags.Bool("debug", false, "debug mode")
+	globalWithStacktrace = globalFlags.Bool("with-stacktrace", false, "show stacktrace on warns, errors and worse")
 
 	airtableFlags     = flag.NewFlagSet("airtable", flag.ExitOnError)
 	airtableToken     = airtableFlags.String("token", "", "airtable token")
@@ -144,10 +142,6 @@ func Main(args []string) error {
 
 func globalPreRun() error {
 	rand.Seed(srand.MustSecure())
-
-	if *globalBearerSecretKey != "" {
-		bearer.ReplaceGlobals(bearer.Init(*globalBearerSecretKey))
-	}
 
 	config := zapconfig.Configurator{}
 	if *globalDebug {

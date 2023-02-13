@@ -5,7 +5,6 @@ go 1.17
 replace github.com/brianloveswords/airtable => github.com/moul/brianloveswords-airtable v0.0.0-20191014120838-8b07ee6d33b2
 
 require (
-	github.com/Bearer/bearer-go v1.2.1
 	github.com/cayleygraph/cayley v0.7.7
 	github.com/cayleygraph/quad v1.2.4
 	github.com/go-chi/chi v4.1.2+incompatible
