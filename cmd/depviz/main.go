@@ -1,4 +1,4 @@
-package main // import "moul.io/depviz"
+package main // import "moul.io/depviz/cmd/depviz"
 
 import (
 	"context"
