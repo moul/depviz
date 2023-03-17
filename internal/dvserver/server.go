@@ -25,6 +25,7 @@ import (
 	chilogger "github.com/treastech/logger"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"moul.io/depviz/v3/internal/dvcore"
 	"moul.io/depviz/v3/pkg/chiutil"
 	"moul.io/multipmuri"
@@ -184,7 +185,7 @@ func New(ctx context.Context, h *cayley.Handle, schema *schema.Config, opts Opts
 				}
 			}),
 		)
-		grpcOpts := []grpc.DialOption{grpc.WithInsecure()}
+		grpcOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 		if err := RegisterDepvizServiceHandlerFromEndpoint(ctx, gwmux, svc.grpcListenerAddr, grpcOpts); err != nil {
 			return nil, fmt.Errorf("register service on gateway: %w", err)
 		}

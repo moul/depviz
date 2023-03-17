@@ -8,26 +8,19 @@ import (
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
-
 	// required by cayley
 	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
 	"github.com/cayleygraph/quad"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/gml"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/graphml"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/json"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/jsonld"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/nquads"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/pquads"
 	"github.com/stretchr/testify/assert"
