@@ -1,7 +1,6 @@
 package dvstore
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,7 +77,7 @@ func TestingGoldenStore(t *testing.T, name string) (*cayley.Handle, func()) {
 func TestingStore(t *testing.T) (*cayley.Handle, func()) {
 	t.Helper()
 
-	dir, err := ioutil.TempDir("", "depviz")
+	dir, err := os.MkdirTemp("", "depviz")
 	require.NoError(t, err)
 
 	err = graph.InitQuadStore("bolt", dir, nil)

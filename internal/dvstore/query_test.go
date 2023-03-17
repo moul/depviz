@@ -2,16 +2,17 @@ package dvstore
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
-	_ "github.com/cayleygraph/quad/json"
-	"github.com/stretchr/testify/assert"
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/depviz/v3/internal/testutil"
 	"moul.io/godev"
 	"moul.io/multipmuri"
+
+	_ "github.com/cayleygraph/quad/json"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadTasks(t *testing.T) {
@@ -62,7 +63,7 @@ func TestLoadTasks(t *testing.T) {
 
 			if testutil.UpdateGolden() {
 				t.Logf("update golden file: %s", gp)
-				err := ioutil.WriteFile(gp, []byte(actual), 0644)
+				err := os.WriteFile(gp, []byte(actual), 0644)
 				assert.NoError(t, err, name)
 			}
 
@@ -82,7 +83,7 @@ func TestLoadTasks(t *testing.T) {
 				}
 			}
 
-			g, err := ioutil.ReadFile(gp)
+			g, err := os.ReadFile(gp)
 			assert.NoError(t, err, name)
 			assert.Equal(t, len(string(g)), len(actual), gp)
 		})

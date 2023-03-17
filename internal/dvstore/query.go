@@ -6,13 +6,14 @@ import (
 	"sort"
 	"time"
 
+	"go.uber.org/zap"
+	"moul.io/depviz/v3/internal/dvmodel"
+	"moul.io/multipmuri"
+
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph/path"
 	"github.com/cayleygraph/cayley/schema"
 	"github.com/cayleygraph/quad"
-	"go.uber.org/zap"
-	"moul.io/depviz/v3/internal/dvmodel"
-	"moul.io/multipmuri"
 )
 
 func LastUpdatedIssueInRepo(ctx context.Context, h *cayley.Handle, entity multipmuri.Entity) (time.Time, error) { // nolint:interfacer

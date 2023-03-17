@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -24,7 +24,7 @@ func gitHubOAuth(opts Opts, httpLogger *zap.Logger) http.HandlerFunc {
 			return
 		}
 
-		code, err := ioutil.ReadAll(r.Body)
+		code, err := io.ReadAll(r.Body)
 		if err != nil {
 			httpLogger.Error("get body", zap.Error(err))
 			http.Error(w, "failed to retrieve body", http.StatusInternalServerError)
@@ -63,7 +63,7 @@ func gitHubOAuth(opts Opts, httpLogger *zap.Logger) http.HandlerFunc {
 
 		defer gitHubResponse.Body.Close()
 
-		token, err := ioutil.ReadAll(gitHubResponse.Body)
+		token, err := io.ReadAll(gitHubResponse.Body)
 		if err != nil {
 			httpLogger.Error("get body", zap.Error(err))
 			http.Error(w, "internal server error", http.StatusInternalServerError)
