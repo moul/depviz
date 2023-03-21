@@ -2,7 +2,6 @@ package dvcore
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -82,11 +81,11 @@ func TestPullAndSave(t *testing.T) {
 		gp := dvstore.TestingGoldenDumpPath(t, test.name)
 		if testutil.UpdateGolden() {
 			t.Logf("update golden file: %s", gp)
-			err := ioutil.WriteFile(gp, b.Bytes(), 0644)
+			err := os.WriteFile(gp, b.Bytes(), 0644)
 			assert.NoError(t, err, test.name)
 		}
 
-		g, err := ioutil.ReadFile(gp)
+		g, err := os.ReadFile(gp)
 		assert.NoError(t, err, test.name)
 		assert.Equal(t, string(g), b.String())
 	}

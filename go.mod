@@ -3,7 +3,6 @@ module moul.io/depviz/v3
 go 1.19
 
 require (
-	github.com/Bearer/bearer-go v1.2.1
 	github.com/cayleygraph/cayley v0.7.7
 	github.com/cayleygraph/quad v1.2.4
 	github.com/go-chi/chi v1.5.4

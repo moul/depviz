@@ -2,7 +2,7 @@ package dvstore
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -62,7 +62,7 @@ func TestLoadTasks(t *testing.T) {
 
 			if testutil.UpdateGolden() {
 				t.Logf("update golden file: %s", gp)
-				err := ioutil.WriteFile(gp, []byte(actual), 0644)
+				err := os.WriteFile(gp, []byte(actual), 0644)
 				assert.NoError(t, err, name)
 			}
 
@@ -82,7 +82,7 @@ func TestLoadTasks(t *testing.T) {
 				}
 			}
 
-			g, err := ioutil.ReadFile(gp)
+			g, err := os.ReadFile(gp)
 			assert.NoError(t, err, name)
 			assert.Equal(t, len(string(g)), len(actual), gp)
 		})

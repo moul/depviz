@@ -1,7 +1,6 @@
 package dvstore
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,26 +8,19 @@ import (
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
-
 	// required by cayley
 	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
 	"github.com/cayleygraph/quad"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/gml"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/graphml"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/json"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/jsonld"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/nquads"
-
 	// required by cayley
 	_ "github.com/cayleygraph/quad/pquads"
 	"github.com/stretchr/testify/assert"
@@ -78,7 +70,7 @@ func TestingGoldenStore(t *testing.T, name string) (*cayley.Handle, func()) {
 func TestingStore(t *testing.T) (*cayley.Handle, func()) {
 	t.Helper()
 
-	dir, err := ioutil.TempDir("", "depviz")
+	dir, err := os.MkdirTemp("", "depviz")
 	require.NoError(t, err)
 
 	err = graph.InitQuadStore("bolt", dir, nil)
