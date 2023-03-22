@@ -62,7 +62,7 @@ func TestLoadTasks(t *testing.T) {
 
 			if testutil.UpdateGolden() {
 				t.Logf("update golden file: %s", gp)
-				err := os.WriteFile(gp, []byte(actual), 0644)
+				err := os.WriteFile(gp, []byte(actual), 0o644)
 				assert.NoError(t, err, name)
 			}
 

@@ -81,7 +81,7 @@ func TestPullAndSave(t *testing.T) {
 		gp := dvstore.TestingGoldenDumpPath(t, test.name)
 		if testutil.UpdateGolden() {
 			t.Logf("update golden file: %s", gp)
-			err := os.WriteFile(gp, b.Bytes(), 0644)
+			err := os.WriteFile(gp, b.Bytes(), 0o644)
 			assert.NoError(t, err, test.name)
 		}
 
