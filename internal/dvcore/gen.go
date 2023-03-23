@@ -8,6 +8,9 @@ import (
 	"os"
 	"sync"
 
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/graph"
+	"github.com/cayleygraph/cayley/schema"
 	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 	"moul.io/depviz/v3/internal/dvmodel"
@@ -17,27 +20,14 @@ import (
 	"moul.io/graphman"
 	"moul.io/graphman/viz"
 	"moul.io/multipmuri"
-
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/schema"
 )
 
-type RunOpts struct {
+type GenOpts struct {
 	// global
 
-	// NoPull  bool
 	NoGraph bool
 	Logger  *zap.Logger
 	Schema  *schema.Config
-
-	// pull
-
-	// GitHubToken string
-	// GitLabToken string
-	// TrelloToken string
-	// JiraToken string
-	// Resync bool
 
 	// graph
 
@@ -50,11 +40,11 @@ type RunOpts struct {
 	HideExternalDeps bool
 }
 
-func Run(h *cayley.Handle, args []string, opts RunOpts) error {
+func Gen(h *cayley.Handle, args []string, opts GenOpts) error {
 	if opts.Logger == nil {
 		opts.Logger = zap.NewNop()
 	}
-	opts.Logger.Debug("Run called", zap.Strings("args", args), zap.Any("opts", opts))
+	opts.Logger.Debug("Gen called", zap.Strings("args", args), zap.Any("opts", opts))
 
 	// FIXME: support the world
 
@@ -82,9 +72,9 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 
 		switch opts.Format {
 		case "json":
-			return genJson(tasks)
+			return genJSON(tasks)
 		case "csv":
-			return genCsv(tasks)
+			return genCSV(tasks)
 		case "graphman-pert":
 			out, err := yaml.Marshal(pertConfig)
 			if err != nil {
@@ -245,7 +235,7 @@ func saveBatches(h *cayley.Handle, schema *schema.Config, batches []dvmodel.Batc
 	return nil
 }
 
-func graphmanPertConfig(tasks []dvmodel.Task, opts RunOpts) *graphman.PertConfig {
+func graphmanPertConfig(tasks []dvmodel.Task, opts GenOpts) *graphman.PertConfig {
 	opts.Logger.Debug("graphTargets", zap.Int("tasks", len(tasks)), zap.Any("opts", opts))
 
 	// initialize graph config
@@ -297,7 +287,7 @@ func graphmanPertConfig(tasks []dvmodel.Task, opts RunOpts) *graphman.PertConfig
 	return &config
 }
 
-func genJson(tasks []dvmodel.Task) error {
+func genJSON(tasks []dvmodel.Task) error {
 	out, err := json.MarshalIndent(tasks, "", "  ")
 	if err != nil {
 		return err
@@ -306,14 +296,11 @@ func genJson(tasks []dvmodel.Task) error {
 	return nil
 }
 
-func genCsv(tasks []dvmodel.Task) error {
-	var csvTasks [][]string
+func genCSV(tasks []dvmodel.Task) error {
+	csvTasks := make([][]string, len(tasks))
 	for _, task := range tasks {
 		csvTasks = append(csvTasks, task.MarshalCSV())
 	}
 	w := csv.NewWriter(os.Stdout)
-	if err := w.WriteAll(csvTasks); err != nil {
-		return err
-	}
-	return nil
+	return w.WriteAll(csvTasks)
 }

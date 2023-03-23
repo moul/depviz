@@ -62,18 +62,14 @@ var (
 	serverGitHubClientID     = serverFlags.String("github-client-id", "", "GitHub client ID")
 	serverGitHubClientSecret = serverFlags.String("github-client-secret", "", "GitHub client secret")
 
-	runFlags = flag.NewFlagSet("run", flag.ExitOnError)
-	// runNoPull           = runFlags.Bool("no-pull", false, "don't pull providers (graph only)")
-	runNoGraph = runFlags.Bool("no-graph", false, "don't generate graph (pull only)")
-	// runResync           = runFlags.Bool("resync", false, "resync already synced content")
-	// runGitHubToken      = runFlags.String("github-token", "", "GitHub token")
-	runNoPert           = runFlags.Bool("no-pert", false, "disable PERT computing")
-	runFormat           = runFlags.String("format", "dot", "output format")
-	runVertical         = runFlags.Bool("vertical", false, "vertical mode")
-	runHidePRs          = runFlags.Bool("hide-prs", false, "hide PRs")
-	runHideExternalDeps = runFlags.Bool("hide-external-deps", false, "hide dependencies outside of the specified targets")
-	runHideIsolated     = runFlags.Bool("hide-isolated", false, "hide isolated tasks")
-	runShowClosed       = runFlags.Bool("show-closed", false, "show closed tasks")
+	genFlags            = flag.NewFlagSet("gen", flag.ExitOnError)
+	genNoGraph          = genFlags.Bool("no-graph", false, "don't generate graph (pull only)")
+	genNoPert           = genFlags.Bool("no-pert", false, "disable PERT computing")
+	genVertical         = genFlags.Bool("vertical", false, "vertical mode")
+	genHidePRs          = genFlags.Bool("hide-prs", false, "hide PRs")
+	genHideExternalDeps = genFlags.Bool("hide-external-deps", false, "hide dependencies outside of the specified targets")
+	genHideIsolated     = genFlags.Bool("hide-isolated", false, "hide isolated tasks")
+	genShowClosed       = genFlags.Bool("show-closed", false, "show closed tasks")
 
 	fetchFlags       = flag.NewFlagSet("fetch", flag.ExitOnError)
 	fetchGitHubToken = fetchFlags.String("github-token", "", "GitHub token")
@@ -126,12 +122,6 @@ func Main(args []string) error {
 				},
 				Exec: func(context.Context, []string) error { return flag.ErrHelp },
 			}, {
-				Name:       "run",
-				ShortHelp:  "sync target urls and draw a graph",
-				ShortUsage: "run [flags] [url...]",
-				Exec:       execRun,
-				FlagSet:    runFlags,
-			}, {
 				Name:      "server",
 				ShortHelp: "start a depviz server with depviz API",
 				FlagSet:   serverFlags,
@@ -144,7 +134,7 @@ func Main(args []string) error {
 					{Name: "json", Exec: execGenJSON, ShortHelp: "generate JSON output"},
 					{Name: "csv", Exec: execGenCSV, ShortHelp: "generate CSV output"},
 				},
-				FlagSet: runFlags,
+				FlagSet: genFlags,
 			}, {
 				Name:      "fetch",
 				ShortHelp: "fetch data from providers",
@@ -263,34 +253,6 @@ func execStoreInfo(ctx context.Context, args []string) error {
 	return dvcore.StoreInfo(store)
 }
 
-func execRun(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
-		return err
-	}
-
-	store, err := storeFromArgs()
-	if err != nil {
-		return fmt.Errorf("init store: %w", err)
-	}
-
-	opts := dvcore.RunOpts{
-		Logger:   logger,
-		Schema:   schemaConfig,
-		Vertical: *runVertical,
-		NoPert:   *runNoPert,
-		NoGraph:  *runNoGraph,
-		// NoPull:           *runNoPull,
-		Format: *runFormat,
-		// Resync:           *runResync,
-		// GitHubToken:      *runGitHubToken,
-		ShowClosed:       *runShowClosed,
-		HideIsolated:     *runHideIsolated,
-		HidePRs:          *runHidePRs,
-		HideExternalDeps: *runHideExternalDeps,
-	}
-	return dvcore.Run(store, args, opts)
-}
-
 func execServer(ctx context.Context, args []string) error {
 	if err := globalPreRun(); err != nil {
 		return err
@@ -398,24 +360,20 @@ func execGenJSON(ctx context.Context, args []string) error {
 		return fmt.Errorf("init store: %w", err)
 	}
 
-	opts := dvcore.RunOpts{
-		Logger:   logger,
-		Schema:   schemaConfig,
-		Vertical: *runVertical,
-		NoPert:   *runNoPert,
-		NoGraph:  *runNoGraph,
-		// NoPull:           *runNoPull,
-		Format: *runFormat,
-		// Resync: *runResync,
-		// GitHubToken:      *runGitHubToken,
-		ShowClosed:       *runShowClosed,
-		HideIsolated:     *runHideIsolated,
-		HidePRs:          *runHidePRs,
-		HideExternalDeps: *runHideExternalDeps,
+	opts := dvcore.GenOpts{
+		Logger:           logger,
+		Schema:           schemaConfig,
+		Vertical:         *genVertical,
+		NoPert:           *genNoPert,
+		NoGraph:          *genNoGraph,
+		ShowClosed:       *genShowClosed,
+		HideIsolated:     *genHideIsolated,
+		HidePRs:          *genHidePRs,
+		HideExternalDeps: *genHideExternalDeps,
+		Format:           "json",
 	}
-	opts.Format = "json"
 
-	return dvcore.Run(store, args, opts)
+	return dvcore.Gen(store, args, opts)
 }
 
 func execGenCSV(ctx context.Context, args []string) error {
@@ -428,24 +386,20 @@ func execGenCSV(ctx context.Context, args []string) error {
 		return fmt.Errorf("init store: %w", err)
 	}
 
-	opts := dvcore.RunOpts{
-		Logger:   logger,
-		Schema:   schemaConfig,
-		Vertical: *runVertical,
-		NoPert:   *runNoPert,
-		NoGraph:  *runNoGraph,
-		// NoPull:           *runNoPull,
-		Format: *runFormat,
-		// Resync: *runResync,
-		// GitHubToken:      *runGitHubToken,
-		ShowClosed:       *runShowClosed,
-		HideIsolated:     *runHideIsolated,
-		HidePRs:          *runHidePRs,
-		HideExternalDeps: *runHideExternalDeps,
+	opts := dvcore.GenOpts{
+		Logger:           logger,
+		Schema:           schemaConfig,
+		Vertical:         *genVertical,
+		NoPert:           *genNoPert,
+		NoGraph:          *genNoGraph,
+		ShowClosed:       *genShowClosed,
+		HideIsolated:     *genHideIsolated,
+		HidePRs:          *genHidePRs,
+		HideExternalDeps: *genHideExternalDeps,
+		Format:           "csv",
 	}
-	opts.Format = "csv"
 
-	return dvcore.Run(store, args, opts)
+	return dvcore.Gen(store, args, opts)
 }
 
 func execFetch(ctx context.Context, args []string) error {

@@ -3,12 +3,11 @@ package dvcore
 import (
 	"fmt"
 
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/schema"
 	"go.uber.org/zap"
 	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/multipmuri"
-
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/schema"
 )
 
 type FetchOpts struct {
