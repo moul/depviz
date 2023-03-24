@@ -59,3 +59,25 @@ func FilterIsolatedTasks(in []Task, logger *zap.Logger) []Task {
 
 	return out
 }
+
+func (t *Task) MarshalCSV() []string {
+	if t == nil {
+		return nil
+	}
+	return []string{
+		t.ID.String(),
+		t.CreatedAt.String(),
+		t.UpdatedAt.String(),
+		t.LocalID,
+		t.Kind.String(),
+		t.Title,
+		t.Description,
+		t.Driver.String(),
+		t.State.String(),
+		t.EstimatedDuration,
+		t.HasAuthor.String(),
+		t.HasOwner.String(),
+		// t.IsDependingOn,
+		// t.IsBlocking,
+	}
+}

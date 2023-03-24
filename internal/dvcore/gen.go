@@ -2,8 +2,10 @@ package dvcore
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/cayleygraph/cayley"
@@ -20,21 +22,12 @@ import (
 	"moul.io/multipmuri"
 )
 
-type RunOpts struct {
+type GenOpts struct {
 	// global
 
-	NoPull  bool
 	NoGraph bool
 	Logger  *zap.Logger
 	Schema  *schema.Config
-
-	// pull
-
-	GitHubToken string
-	// GitLabToken string
-	// TrelloToken string
-	// JiraToken string
-	Resync bool
 
 	// graph
 
@@ -47,24 +40,17 @@ type RunOpts struct {
 	HideExternalDeps bool
 }
 
-func Run(h *cayley.Handle, args []string, opts RunOpts) error {
+func Gen(h *cayley.Handle, args []string, opts GenOpts) error {
 	if opts.Logger == nil {
 		opts.Logger = zap.NewNop()
 	}
-	opts.Logger.Debug("Run called", zap.Strings("args", args), zap.Any("opts", opts))
+	opts.Logger.Debug("Gen called", zap.Strings("args", args), zap.Any("opts", opts))
 
 	// FIXME: support the world
 
 	targets, err := dvparser.ParseTargets(args)
 	if err != nil {
 		return fmt.Errorf("parse targets: %w", err)
-	}
-
-	if !opts.NoPull {
-		_, err := PullAndSave(targets, h, opts.Schema, opts.GitHubToken, opts.Resync, opts.Logger)
-		if err != nil {
-			return fmt.Errorf("pull: %w", err)
-		}
 	}
 
 	if !opts.NoGraph { // nolint:nestif
@@ -86,12 +72,9 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 
 		switch opts.Format {
 		case "json":
-			out, err := json.MarshalIndent(tasks, "", "  ")
-			if err != nil {
-				return err
-			}
-			fmt.Println(string(out))
-			return nil
+			return genJSON(tasks)
+		case "csv":
+			return genCSV(tasks)
 		case "graphman-pert":
 			out, err := yaml.Marshal(pertConfig)
 			if err != nil {
@@ -150,18 +133,6 @@ func Run(h *cayley.Handle, args []string, opts RunOpts) error {
 	}
 
 	return nil
-}
-
-func PullAndSave(targets []multipmuri.Entity, h *cayley.Handle, schema *schema.Config, githubToken string, resync bool, logger *zap.Logger) (bool, error) {
-	batches := pullBatches(targets, h, githubToken, resync, logger)
-	if len(batches) > 0 {
-		err := saveBatches(h, schema, batches)
-		if err != nil {
-			return false, fmt.Errorf("save batches: %w", err)
-		}
-		return true, nil
-	}
-	return false, nil
 }
 
 func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken string, resync bool, logger *zap.Logger) []dvmodel.Batch {
@@ -264,7 +235,7 @@ func saveBatches(h *cayley.Handle, schema *schema.Config, batches []dvmodel.Batc
 	return nil
 }
 
-func graphmanPertConfig(tasks []dvmodel.Task, opts RunOpts) *graphman.PertConfig {
+func graphmanPertConfig(tasks []dvmodel.Task, opts GenOpts) *graphman.PertConfig {
 	opts.Logger.Debug("graphTargets", zap.Int("tasks", len(tasks)), zap.Any("opts", opts))
 
 	// initialize graph config
@@ -314,4 +285,22 @@ func graphmanPertConfig(tasks []dvmodel.Task, opts RunOpts) *graphman.PertConfig
 	// FIXME: if len(unique(repos)) > 1 -> add PertState for each repo with DependsOn
 
 	return &config
+}
+
+func genJSON(tasks []dvmodel.Task) error {
+	out, err := json.MarshalIndent(tasks, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
+}
+
+func genCSV(tasks []dvmodel.Task) error {
+	csvTasks := make([][]string, len(tasks))
+	for _, task := range tasks {
+		csvTasks = append(csvTasks, task.MarshalCSV())
+	}
+	w := csv.NewWriter(os.Stdout)
+	return w.WriteAll(csvTasks)
 }
