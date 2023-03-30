@@ -11,12 +11,6 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/graph"
-	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
-	"github.com/cayleygraph/cayley/schema"
-	"github.com/oklog/run"
-	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
 	"moul.io/banner"
 	"moul.io/depviz/v3/internal/dvcore"
@@ -26,6 +20,13 @@ import (
 	"moul.io/srand"
 	"moul.io/u"
 	"moul.io/zapconfig"
+
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/graph"
+	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
+	"github.com/cayleygraph/cayley/schema"
+	"github.com/oklog/run"
+	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
 var (
@@ -74,6 +75,8 @@ var (
 	fetchFlags       = flag.NewFlagSet("fetch", flag.ExitOnError)
 	fetchGitHubToken = fetchFlags.String("github-token", "", "GitHub token")
 	fetchResync      = fetchFlags.Bool("resync", false, "resync already synced content")
+
+	//dbFlags = flag.NewFlagSet("db", flag.ExitOnError)
 )
 
 func main() {
@@ -140,6 +143,12 @@ func Main(args []string) error {
 				ShortHelp: "fetch data from providers",
 				Exec:      execFetch,
 				FlagSet:   fetchFlags,
+			}, {
+				Name:      "db",
+				ShortHelp: "manage the database",
+				Subcommands: []*ffcli.Command{
+					{Name: "cleanup", Exec: execDBCleanup, ShortHelp: "cleanup the database"},
+				},
 			},
 		},
 		Exec: func(context.Context, []string) error { return flag.ErrHelp },
@@ -419,4 +428,14 @@ func execFetch(ctx context.Context, args []string) error {
 		Resync:      *fetchResync,
 	}
 	return dvcore.Fetch(store, args, opts)
+}
+
+func execDBCleanup(ctx context.Context, args []string) error {
+	err := os.RemoveAll(*globalStorePath)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("DB cleanup successfully.")
+	return nil
 }
