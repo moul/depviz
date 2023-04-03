@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/go-github/v30/github"
+	"github.com/moul/depviz/v3/internal/dvmodel"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
-	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/multipmuri"
 )
 

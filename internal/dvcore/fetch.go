@@ -5,8 +5,8 @@ import (
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/schema"
+	"github.com/moul/depviz/v3/internal/dvparser"
 	"go.uber.org/zap"
-	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/multipmuri"
 )
 

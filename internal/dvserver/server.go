@@ -19,6 +19,8 @@ import (
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/moul/depviz/v3/internal/dvcore"
+	"github.com/moul/depviz/v3/pkg/chiutil"
 	"github.com/oklog/run"
 	cache "github.com/patrickmn/go-cache"
 	"github.com/rs/cors"
@@ -26,8 +28,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"moul.io/depviz/v3/internal/dvcore"
-	"moul.io/depviz/v3/pkg/chiutil"
 	"moul.io/multipmuri"
 )
 

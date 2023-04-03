@@ -1,4 +1,4 @@
-module moul.io/depviz/v3
+module github.com/moul/depviz/v3
 
 go 1.19
 

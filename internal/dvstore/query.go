@@ -10,8 +10,8 @@ import (
 	"github.com/cayleygraph/cayley/graph/path"
 	"github.com/cayleygraph/cayley/schema"
 	"github.com/cayleygraph/quad"
+	"github.com/moul/depviz/v3/internal/dvmodel"
 	"go.uber.org/zap"
-	"moul.io/depviz/v3/internal/dvmodel"
 	"moul.io/multipmuri"
 )
 

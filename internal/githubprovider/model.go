@@ -6,10 +6,10 @@ import (
 
 	"github.com/cayleygraph/quad"
 	"github.com/google/go-github/v30/github"
+	"github.com/moul/depviz/v3/internal/dvmodel"
+	"github.com/moul/depviz/v3/internal/dvparser"
 	"github.com/xhit/go-str2duration/v2"
 	"go.uber.org/zap"
-	"moul.io/depviz/v3/internal/dvmodel"
-	"moul.io/depviz/v3/internal/dvparser"
 	"moul.io/multipmuri"
 	"moul.io/multipmuri/pmbodyparser"
 )

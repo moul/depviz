@@ -8,12 +8,12 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/moul/depviz/v3/internal/dvcore"
+	"github.com/moul/depviz/v3/internal/dvmodel"
+	"github.com/moul/depviz/v3/internal/dvparser"
+	"github.com/moul/depviz/v3/internal/dvstore"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
-	"moul.io/depviz/v3/internal/dvcore"
-	"moul.io/depviz/v3/internal/dvmodel"
-	"moul.io/depviz/v3/internal/dvparser"
-	"moul.io/depviz/v3/internal/dvstore"
 )
 
 func gitHubOAuth(opts Opts, httpLogger *zap.Logger) http.HandlerFunc {
