@@ -26,8 +26,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"moul.io/depviz/v3/internal/dvcore"
 	"moul.io/depviz/v3/pkg/chiutil"
+	"moul.io/depviz/v3/pkg/dvcore"
 	"moul.io/multipmuri"
 )
 

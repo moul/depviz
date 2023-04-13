@@ -31,7 +31,7 @@ update_examples:
 ##
 
 
-PROTOS_SRC := $(wildcard ./api/*.proto) $(wildcard ./api/internal/*.proto)
+PROTOS_SRC := $(wildcard ./api/*.proto) $(wildcard ./api/pkg/*.proto)
 GEN_DEPS := $(PROTOS_SRC) Makefile go.sum
 .PHONY: generate
 generate: gen.sum
@@ -66,9 +66,9 @@ generate_local:
 	); done
 	@# CUSTOM CHANGE
 	@# due to go module versionning (currently) incompatible with automatic protobuf generated imports
-	sed -i s@moul.io/depviz/@moul.io/depviz/v3/@g internal/dvserver/dvserver.pb.go
+	sed -i s@moul.io/depviz/@moul.io/depviz/v3/@g pkg/dvserver/dvserver.pb.go
 	@# END OF CUSTOM CHANGE
-	go run golang.org/x/tools/cmd/goimports -w ./pkg ./cmd ./internal
+	go run golang.org/x/tools/cmd/goimports -w ./pkg ./cmd ./pkg
 	shasum $(GEN_DEPS) | sort > gen.sum.tmp
 	mv gen.sum.tmp gen.sum
 
@@ -80,4 +80,4 @@ clean:
 
 .PHONY: packr
 packr:
-	cd internal/dvserver && go run github.com/gobuffalo/packr/v2/packr2 build && ls -la *-packr.go packrd/packed-packr.go
+	cd pkg/dvserver && go run github.com/gobuffalo/packr/v2/packr2 build && ls -la *-packr.go packrd/packed-packr.go

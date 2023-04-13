@@ -8,7 +8,7 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 import "dvmodel.proto";
 
-option go_package = "moul.io/depviz/internal/dvserver";
+option go_package = "moul.io/depviz/pkg/dvserver";
 option (gogoproto.sizer_all) = true;
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.unmarshaler_all) = true;

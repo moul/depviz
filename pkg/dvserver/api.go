@@ -10,10 +10,10 @@ import (
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
-	"moul.io/depviz/v3/internal/dvcore"
-	"moul.io/depviz/v3/internal/dvmodel"
-	"moul.io/depviz/v3/internal/dvparser"
-	"moul.io/depviz/v3/internal/dvstore"
+	"moul.io/depviz/v3/pkg/dvcore"
+	"moul.io/depviz/v3/pkg/dvmodel"
+	"moul.io/depviz/v3/pkg/dvparser"
+	"moul.io/depviz/v3/pkg/dvstore"
 )
 
 func gitHubOAuth(opts Opts, httpLogger *zap.Logger) http.HandlerFunc {

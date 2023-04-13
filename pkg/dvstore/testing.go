@@ -8,9 +8,11 @@ import (
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
+
 	// required by cayley
 	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
 	"github.com/cayleygraph/quad"
+
 	// required by cayley
 	_ "github.com/cayleygraph/quad/gml"
 	// required by cayley
