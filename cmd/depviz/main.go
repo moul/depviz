@@ -78,6 +78,7 @@ var (
 	graphvizFlags = flag.NewFlagSet("graphviz", flag.ExitOnError)
 	graphvizLabel = graphvizFlags.String("label", "", "label to use for the graph")
 	graphvizType  = graphvizFlags.String("type", "svg", "output type (svg, png, dot)")
+	graphvizFile  = graphvizFlags.String("file", "", "output file (default: stdout)")
 )
 
 func main() {
@@ -376,6 +377,7 @@ func execGenGraphviz(ctx context.Context, args []string) error {
 		GenOpts: genOpts,
 		Label:   *graphvizLabel,
 		Type:    *graphvizType,
+		File:    *graphvizFile,
 	}
 
 	return dvcore.GenGraphviz(store, args, opts)

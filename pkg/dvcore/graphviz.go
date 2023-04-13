@@ -2,6 +2,7 @@ package dvcore
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/cayleygraph/cayley"
@@ -20,6 +21,7 @@ type GraphvizOpts struct {
 	// graphviz
 	Label string
 	Type  string
+	File  string
 }
 
 func GenGraphviz(h *cayley.Handle, args []string, opts GraphvizOpts) error {
@@ -106,7 +108,10 @@ func GenGraphviz(h *cayley.Handle, args []string, opts GraphvizOpts) error {
 			_ = edge
 		}
 	}
-	return g.RenderFilename(graph, graphviz.Format(opts.Type), "graph."+opts.Type)
+	if opts.File == "" {
+		return g.Render(graph, graphviz.Format(opts.Type), os.Stdout)
+	}
+	return g.RenderFilename(graph, graphviz.Format(opts.Type), opts.File)
 }
 
 func fmtIRI(s quad.IRI) string {
