@@ -5,7 +5,7 @@ package depviz.model;
 import "google/protobuf/timestamp.proto";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
-option go_package = "moul.io/depviz/internal/dvmodel";
+option go_package = "moul.io/depviz/pkg/dvmodel";
 
 option (gogoproto.goproto_getters_all) = false;
 option (gogoproto.marshaler_all) = true;

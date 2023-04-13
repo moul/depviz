@@ -8,8 +8,8 @@ import (
 	"github.com/google/go-github/v30/github"
 	"github.com/xhit/go-str2duration/v2"
 	"go.uber.org/zap"
-	"moul.io/depviz/v3/internal/dvmodel"
-	"moul.io/depviz/v3/internal/dvparser"
+	"moul.io/depviz/v3/pkg/dvmodel"
+	"moul.io/depviz/v3/pkg/dvparser"
 	"moul.io/multipmuri"
 	"moul.io/multipmuri/pmbodyparser"
 )
