@@ -1,8 +1,12 @@
 package dvmodel
 
 import (
-	"github.com/cayleygraph/quad"
+	"strings"
+
 	"go.uber.org/zap"
+
+	"github.com/cayleygraph/quad"
+	"github.com/goccy/go-graphviz/cgraph"
 )
 
 func (t *Task) AllDeps() []quad.IRI {
@@ -79,5 +83,34 @@ func (t *Task) MarshalCSV() []string {
 		t.HasOwner.String(),
 		// t.IsDependingOn,
 		// t.IsBlocking,
+	}
+}
+
+type fmtLabel struct {
+	label string
+	style string
+	color string
+}
+
+// special depviz labels, used to colorize nodes in the graphviz generation
+// TODO: determine a way to create 'themes' with custom config with the following format
+var depvizLabels = [...]fmtLabel{
+	{"focus", "filled,bold,rounded", "#ffeeee"},
+	{"vision", "filled,rounded", "#eeeeee"},
+}
+
+// ApplyLabel apply modifications to the Node based on the label of the task
+func (t Task) ApplyLabel(node *cgraph.Node) {
+	if t.Driver == Driver_GitHub {
+		for _, label := range t.HasLabel {
+			s, _ := strings.CutPrefix(label.String(), t.HasOwner.String()+"/labels/")
+			for _, dl := range depvizLabels {
+				if s == dl.label {
+					node.SetStyle(cgraph.NodeStyle(dl.style))
+					node.SetColor(dl.color)
+					return
+				}
+			}
+		}
 	}
 }

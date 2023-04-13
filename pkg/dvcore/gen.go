@@ -7,9 +7,6 @@ import (
 	"os"
 	"sync"
 
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/schema"
 	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 	"moul.io/depviz/v3/pkg/dvmodel"
@@ -18,19 +15,20 @@ import (
 	"moul.io/depviz/v3/pkg/githubprovider"
 	"moul.io/godev"
 	"moul.io/graphman"
-	"moul.io/graphman/viz"
 	"moul.io/multipmuri"
+
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/graph"
+	"github.com/cayleygraph/cayley/schema"
 )
 
 type GenOpts struct {
 	// global
-
 	NoGraph bool
 	Logger  *zap.Logger
 	Schema  *schema.Config
 
 	// graph
-
 	Format           string
 	Vertical         bool
 	NoPert           bool
@@ -82,49 +80,50 @@ func Gen(h *cayley.Handle, args []string, opts GenOpts) error {
 			}
 			fmt.Println(string(out))
 			return nil
-		case "dot":
-			// graph from PERT config
-			graph := graphman.FromPertConfig(*pertConfig)
-
-			// initialize graph from config
-			if !opts.NoPert {
-				result := graphman.ComputePert(graph)
-				shortestPath, distance := graph.FindShortestPath("Start", "Finish")
-				opts.Logger.Debug("pert result", zap.Any("result", result), zap.Int64("distance", distance))
-
-				for _, edge := range shortestPath {
-					edge.Dst().SetColor("red")
-					edge.SetColor("red")
-				}
-			}
-
-			// graph fine tuning
-			graph.GetVertex("Start").SetColor("blue")
-			graph.GetVertex("Finish").SetColor("blue")
-			if opts.Vertical {
-				graph.Attrs["rankdir"] = "TB"
-			}
-			graph.Attrs["overlap"] = "false"
-			graph.Attrs["pack"] = "true"
-			graph.Attrs["splines"] = "true"
-			graph.Attrs["sep"] = "0.1"
-			// graph.Attrs["layout"] = "neato"
-			// graph.Attrs["size"] = "\"11,11\""
-			// graph.Attrs["start"] = "random"
-			// FIXME: hightlight critical paths
-			// FIXME: highlight other infos
-			// FIXME: highlight target
-
-			// graphviz
-			s, err := viz.ToGraphviz(graph, &viz.Opts{
-				CommentsInLabel: true,
-			})
-			if err != nil {
-				return fmt.Errorf("graphviz: %w", err)
-			}
-
-			fmt.Println(s)
-			return nil
+		// TODO: fix many issues with generated dependencies
+		//case "dot":
+		//	// graph from PERT config
+		//	graph := graphman.FromPertConfig(*pertConfig)
+		//
+		//	// initialize graph from config
+		//	if !opts.NoPert {
+		//		result := graphman.ComputePert(graph)
+		//		shortestPath, distance := graph.FindShortestPath("Start", "Finish")
+		//		opts.Logger.Debug("pert result", zap.Any("result", result), zap.Int64("distance", distance))
+		//
+		//		for _, edge := range shortestPath {
+		//			edge.Dst().SetColor("red")
+		//			edge.SetColor("red")
+		//		}
+		//	}
+		//
+		//	// graph fine tuning
+		//	graph.GetVertex("Start").SetColor("blue")
+		//	graph.GetVertex("Finish").SetColor("blue")
+		//	if opts.Vertical {
+		//		graph.Attrs["rankdir"] = "TB"
+		//	}
+		//	graph.Attrs["overlap"] = "false"
+		//	graph.Attrs["pack"] = "true"
+		//	graph.Attrs["splines"] = "true"
+		//	graph.Attrs["sep"] = "0.1"
+		//	// graph.Attrs["layout"] = "neato"
+		//	// graph.Attrs["size"] = "\"11,11\""
+		//	// graph.Attrs["start"] = "random"
+		//	// FIXME: hightlight critical paths
+		//	// FIXME: highlight other infos
+		//	// FIXME: highlight target
+		//
+		//	// graphviz
+		//	s, err := viz.ToGraphviz(graph, &viz.Opts{
+		//		CommentsInLabel: true,
+		//	})
+		//	if err != nil {
+		//		return fmt.Errorf("graphviz: %w", err)
+		//	}
+		//
+		//	fmt.Println(s)
+		//	return nil
 		case "quads":
 			return fmt.Errorf("not implemented")
 		default:

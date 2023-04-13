@@ -11,12 +11,6 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/graph"
-	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
-	"github.com/cayleygraph/cayley/schema"
-	"github.com/oklog/run"
-	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
 	"moul.io/banner"
 	"moul.io/depviz/v3/pkg/dvcore"
@@ -26,6 +20,13 @@ import (
 	"moul.io/srand"
 	"moul.io/u"
 	"moul.io/zapconfig"
+
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/graph"
+	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
+	"github.com/cayleygraph/cayley/schema"
+	"github.com/oklog/run"
+	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
 var (
@@ -74,6 +75,10 @@ var (
 	fetchFlags       = flag.NewFlagSet("fetch", flag.ExitOnError)
 	fetchGitHubToken = fetchFlags.String("github-token", "", "GitHub token")
 	fetchResync      = fetchFlags.Bool("resync", false, "resync already synced content")
+
+	graphvizFlags = flag.NewFlagSet("graphviz", flag.ExitOnError)
+	graphvizLabel = graphvizFlags.String("label", "", "label to use for the graph")
+	graphvizType  = graphvizFlags.String("type", "svg", "output type (svg, png, dot)")
 )
 
 func main() {
@@ -130,7 +135,7 @@ func Main(args []string) error {
 				Name:      "gen",
 				ShortHelp: "use the db to generate outputs, without requiring any fetch",
 				Subcommands: []*ffcli.Command{
-					{Name: "graphviz", Exec: execGenGraphviz, ShortHelp: "generate graphviz output"},
+					{Name: "graphviz", Exec: execGenGraphviz, ShortHelp: "generate graphviz output", FlagSet: graphvizFlags},
 					{Name: "json", Exec: execGenJSON, ShortHelp: "generate JSON output"},
 					{Name: "csv", Exec: execGenCSV, ShortHelp: "generate CSV output"},
 				},
@@ -347,7 +352,34 @@ func storeFromArgs() (*cayley.Handle, error) {
 }
 
 func execGenGraphviz(ctx context.Context, args []string) error {
-	return fmt.Errorf("not implemented yet")
+	if err := globalPreRun(); err != nil {
+		return err
+	}
+
+	store, err := storeFromArgs()
+	if err != nil {
+		return fmt.Errorf("init store: %w", err)
+	}
+
+	genOpts := &dvcore.GenOpts{
+		Logger:           logger,
+		Schema:           schemaConfig,
+		Vertical:         *genVertical,
+		NoPert:           *genNoPert,
+		NoGraph:          *genNoGraph,
+		ShowClosed:       *genShowClosed,
+		HideIsolated:     *genHideIsolated,
+		HidePRs:          *genHidePRs,
+		HideExternalDeps: *genHideExternalDeps,
+	}
+
+	opts := dvcore.GraphvizOpts{
+		GenOpts: genOpts,
+		Label:   *graphvizLabel,
+		Type:    *graphvizType,
+	}
+
+	return dvcore.GenGraphviz(store, args, opts)
 }
 
 func execGenJSON(ctx context.Context, args []string) error {
