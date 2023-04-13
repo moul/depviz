@@ -3,7 +3,6 @@ package dvcore
 import (
 	"context"
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -17,6 +16,7 @@ import (
 	"moul.io/depviz/v3/pkg/dvparser"
 	"moul.io/depviz/v3/pkg/dvstore"
 	"moul.io/depviz/v3/pkg/githubprovider"
+	"moul.io/godev"
 	"moul.io/graphman"
 	"moul.io/graphman/viz"
 	"moul.io/multipmuri"
@@ -288,11 +288,13 @@ func graphmanPertConfig(tasks []dvmodel.Task, opts GenOpts) *graphman.PertConfig
 }
 
 func genJSON(tasks []dvmodel.Task) error {
-	out, err := json.MarshalIndent(tasks, "", "  ")
-	if err != nil {
-		return err
+	batch := &dvmodel.Batch{}
+	for _, task := range tasks {
+		t := task
+		batch.Tasks = append(batch.Tasks, &t)
 	}
-	fmt.Println(string(out))
+	out := godev.PrettyJSONPB(batch)
+	fmt.Println(out)
 	return nil
 }
 
