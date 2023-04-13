@@ -7,6 +7,9 @@ import (
 	"os"
 	"sync"
 
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/graph"
+	"github.com/cayleygraph/cayley/schema"
 	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 	"moul.io/depviz/v3/pkg/dvmodel"
@@ -16,10 +19,6 @@ import (
 	"moul.io/godev"
 	"moul.io/graphman"
 	"moul.io/multipmuri"
-
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/schema"
 )
 
 type GenOpts struct {

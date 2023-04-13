@@ -11,6 +11,12 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/graph"
+	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
+	"github.com/cayleygraph/cayley/schema"
+	"github.com/oklog/run"
+	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
 	"moul.io/banner"
 	"moul.io/depviz/v3/pkg/dvcore"
@@ -20,13 +26,6 @@ import (
 	"moul.io/srand"
 	"moul.io/u"
 	"moul.io/zapconfig"
-
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/graph"
-	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
-	"github.com/cayleygraph/cayley/schema"
-	"github.com/oklog/run"
-	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
 var (

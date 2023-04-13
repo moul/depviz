@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	"go.uber.org/zap"
-	"moul.io/depviz/v3/pkg/dvmodel"
-	"moul.io/depviz/v3/pkg/dvparser"
-	"moul.io/depviz/v3/pkg/dvstore"
-
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/quad"
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
+	"go.uber.org/zap"
+	"moul.io/depviz/v3/pkg/dvmodel"
+	"moul.io/depviz/v3/pkg/dvparser"
+	"moul.io/depviz/v3/pkg/dvstore"
 )
 
 type GraphvizOpts struct {

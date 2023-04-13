@@ -217,7 +217,8 @@ func (Topic_Kind) EnumDescriptor() ([]byte, []int) {
 // Owner is like a container of tasks or other containers.
 // It's something that is rarely deleted and cannot really "closed" or "due".
 // It's the entity used for Organizations, Teams, Groups, Users
-//   and for Projects, Workspaces, Repos, or a Provider.
+//
+//	and for Projects, Workspaces, Repos, or a Provider.
 type Owner struct {
 	ID          github_com_cayleygraph_quad.IRI `protobuf:"bytes,1,opt,name=id,proto3,casttype=github.com/cayleygraph/quad.IRI" json:"id,omitempty" quad:"@id"`
 	CreatedAt   *time.Time                      `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3,stdtime" json:"created_at,omitempty" quad:"schema:createdAt,optional"`

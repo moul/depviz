@@ -3,10 +3,9 @@ package dvmodel
 import (
 	"strings"
 
-	"go.uber.org/zap"
-
 	"github.com/cayleygraph/quad"
 	"github.com/goccy/go-graphviz/cgraph"
+	"go.uber.org/zap"
 )
 
 func (t *Task) AllDeps() []quad.IRI {
