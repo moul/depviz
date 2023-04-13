@@ -68,7 +68,7 @@ generate_local:
 	@# due to go module versionning (currently) incompatible with automatic protobuf generated imports
 	sed -i s@moul.io/depviz/@moul.io/depviz/v3/@g pkg/dvserver/dvserver.pb.go
 	@# END OF CUSTOM CHANGE
-	go run golang.org/x/tools/cmd/goimports -w ./pkg ./cmd ./internal
+	go run golang.org/x/tools/cmd/goimports -w ./pkg ./cmd ./pkg
 	shasum $(GEN_DEPS) | sort > gen.sum.tmp
 	mv gen.sum.tmp gen.sum
 
