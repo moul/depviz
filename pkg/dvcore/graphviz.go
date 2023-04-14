@@ -5,14 +5,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/quad"
-	"github.com/goccy/go-graphviz"
-	"github.com/goccy/go-graphviz/cgraph"
 	"go.uber.org/zap"
 	"moul.io/depviz/v3/pkg/dvmodel"
 	"moul.io/depviz/v3/pkg/dvparser"
 	"moul.io/depviz/v3/pkg/dvstore"
+
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/quad"
+	"github.com/goccy/go-graphviz"
+	"github.com/goccy/go-graphviz/cgraph"
 )
 
 type GraphvizOpts struct {
@@ -104,6 +105,21 @@ func GenGraphviz(h *cayley.Handle, args []string, opts GraphvizOpts) error {
 			edge, err := graph.CreateEdge(fmtIRI(name), nodes[fmtIRI(depending.ID)], nodes[fmtIRI(task.ID)])
 			if err != nil {
 				return fmt.Errorf("create depending edge: %w", err)
+			}
+			_ = edge
+		}
+		for _, relatedID := range task.IsRelatedWith {
+			related := roadmap[fmtIRI(relatedID)]
+			name := task.ID + related.ID
+			edge, err := graph.CreateEdge(fmtIRI(name), nodes[fmtIRI(task.ID)], nodes[fmtIRI(related.ID)])
+			if err != nil {
+				return fmt.Errorf("create related edge: %w", err)
+			}
+
+			name = related.ID + task.ID
+			edge, err = graph.CreateEdge(fmtIRI(name), nodes[fmtIRI(related.ID)], nodes[fmtIRI(task.ID)])
+			if err != nil {
+				return fmt.Errorf("create related edge: %w", err)
 			}
 			_ = edge
 		}

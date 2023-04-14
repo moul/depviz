@@ -3,9 +3,10 @@ package dvmodel
 import (
 	"strings"
 
+	"go.uber.org/zap"
+
 	"github.com/cayleygraph/quad"
 	"github.com/goccy/go-graphviz/cgraph"
-	"go.uber.org/zap"
 )
 
 func (t *Task) AllDeps() []quad.IRI {
@@ -26,20 +27,27 @@ func FilterIsolatedTasks(in []Task, logger *zap.Logger) []Task {
 
 	for _, task := range in {
 		for _, dep := range task.IsDependingOn {
+			uniqueDeps[task.ID] = nil
 			uniqueDeps[dep] = nil
 		}
 		for _, dep := range task.IsBlocking {
+			uniqueDeps[task.ID] = nil
 			uniqueDeps[dep] = nil
 		}
 		for _, dep := range task.IsRelatedWith {
+			uniqueDeps[task.ID] = nil
 			uniqueDeps[dep] = nil
 		}
-		for _, dep := range task.IsPartOf {
-			uniqueDeps[dep] = nil
-		}
-		for _, dep := range task.HasPart {
-			uniqueDeps[dep] = nil
-		}
+
+		// FIXME: need to determine the relationship between the two and print it decently
+		//for _, dep := range task.IsPartOf {
+		//	uniqueDeps[task.ID] = nil
+		//	uniqueDeps[dep] = nil
+		//}
+		//for _, dep := range task.HasPart {
+		//	uniqueDeps[task.ID] = nil
+		//	uniqueDeps[dep] = nil
+		//}
 	}
 
 	for _, task := range in {
