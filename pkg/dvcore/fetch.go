@@ -7,7 +7,7 @@ import (
 	"github.com/cayleygraph/cayley/schema"
 	"go.uber.org/zap"
 	"moul.io/depviz/v3/pkg/dvparser"
-	"moul.io/multipmuri"
+	"moul.io/depviz/v3/pkg/multipmuri"
 )
 
 type FetchOpts struct {

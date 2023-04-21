@@ -10,8 +10,8 @@ import (
 	"go.uber.org/zap"
 	"moul.io/depviz/v3/pkg/dvmodel"
 	"moul.io/depviz/v3/pkg/dvparser"
-	"moul.io/multipmuri"
-	"moul.io/multipmuri/pmbodyparser"
+	"moul.io/depviz/v3/pkg/multipmuri"
+	"moul.io/depviz/v3/pkg/multipmuri/pmbodyparser"
 )
 
 const (

@@ -9,9 +9,9 @@ import (
 	_ "github.com/cayleygraph/quad/json"
 	"github.com/stretchr/testify/assert"
 	"moul.io/depviz/v3/pkg/dvparser"
+	"moul.io/depviz/v3/pkg/multipmuri"
 	"moul.io/depviz/v3/pkg/testutil"
 	"moul.io/godev"
-	"moul.io/multipmuri"
 )
 
 func TestLoadTasks(t *testing.T) {

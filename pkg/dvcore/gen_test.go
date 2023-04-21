@@ -9,8 +9,8 @@ import (
 	"github.com/cayleygraph/quad"
 	"github.com/stretchr/testify/assert"
 	"moul.io/depviz/v3/pkg/dvstore"
+	"moul.io/depviz/v3/pkg/multipmuri"
 	"moul.io/depviz/v3/pkg/testutil"
-	"moul.io/multipmuri"
 )
 
 func TestPullAndSave(t *testing.T) {
