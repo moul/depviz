@@ -38,16 +38,14 @@ func FilterIsolatedTasks(in []Task, logger *zap.Logger) []Task {
 			uniqueDeps[task.ID] = nil
 			uniqueDeps[dep] = nil
 		}
-
-		// FIXME: need to determine the relationship between the two and print it decently
-		//for _, dep := range task.IsPartOf {
-		//	uniqueDeps[task.ID] = nil
-		//	uniqueDeps[dep] = nil
-		//}
-		//for _, dep := range task.HasPart {
-		//	uniqueDeps[task.ID] = nil
-		//	uniqueDeps[dep] = nil
-		//}
+		for _, dep := range task.IsPartOf {
+			uniqueDeps[task.ID] = nil
+			uniqueDeps[dep] = nil
+		}
+		for _, dep := range task.HasPart {
+			uniqueDeps[task.ID] = nil
+			uniqueDeps[dep] = nil
+		}
 	}
 
 	for _, task := range in {
