@@ -28,7 +28,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"moul.io/depviz/v3/pkg/chiutil"
 	"moul.io/depviz/v3/pkg/dvcore"
-	"moul.io/multipmuri"
+	"moul.io/depviz/v3/pkg/multipmuri"
 )
 
 const (

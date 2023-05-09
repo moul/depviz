@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"moul.io/depviz/v3/pkg/dvmodel"
-	"moul.io/multipmuri"
+	"moul.io/depviz/v3/pkg/multipmuri"
 )
 
 type Opts struct {

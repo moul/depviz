@@ -16,9 +16,9 @@ import (
 	"moul.io/depviz/v3/pkg/dvparser"
 	"moul.io/depviz/v3/pkg/dvstore"
 	"moul.io/depviz/v3/pkg/githubprovider"
+	"moul.io/depviz/v3/pkg/multipmuri"
 	"moul.io/godev"
 	"moul.io/graphman"
-	"moul.io/multipmuri"
 )
 
 type GenOpts struct {

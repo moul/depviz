@@ -1,6 +1,6 @@
 package dvparser
 
-import "moul.io/multipmuri"
+import "moul.io/depviz/v3/pkg/multipmuri"
 
 func ParseTargets(args []string) ([]multipmuri.Entity, error) {
 	targets := []multipmuri.Entity{}
