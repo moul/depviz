@@ -125,6 +125,7 @@ func fromIssue(batch *dvmodel.Batch, input *github.Issue) error {
 	relationships, errs := pmbodyparser.RelParseString(entity, issue.Description)
 	if len(errs) > 0 {
 		for _, err := range errs {
+			batch.Tasks = append(batch.Tasks, &issue)
 			return fmt.Errorf("pmbodyparser error: %w", err)
 		}
 	}

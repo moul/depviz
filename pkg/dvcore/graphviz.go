@@ -5,15 +5,14 @@ import (
 	"os"
 	"strings"
 
-	"go.uber.org/zap"
-	"moul.io/depviz/v3/pkg/dvmodel"
-	"moul.io/depviz/v3/pkg/dvparser"
-	"moul.io/depviz/v3/pkg/dvstore"
-
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/quad"
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
+	"go.uber.org/zap"
+	"moul.io/depviz/v3/pkg/dvmodel"
+	"moul.io/depviz/v3/pkg/dvparser"
+	"moul.io/depviz/v3/pkg/dvstore"
 )
 
 type GraphvizOpts struct {
@@ -36,7 +35,7 @@ func GenGraphviz(h *cayley.Handle, args []string, opts GraphvizOpts) error {
 		return fmt.Errorf("parse targets: %w", err)
 	}
 
-	filters := dvstore.LoadTasksFilters{
+	filters := dvmodel.Filters{
 		Targets:             targets,
 		WithClosed:          opts.ShowClosed,
 		WithoutIsolated:     opts.HideIsolated,
@@ -50,10 +49,10 @@ func GenGraphviz(h *cayley.Handle, args []string, opts GraphvizOpts) error {
 
 	roadmap := make(map[string]dvmodel.Task)
 	for _, t := range tasks {
-		if t.Kind != 1 {
-			continue
+		// TODO: handle more once implemented
+		if t.Kind == dvmodel.Task_Issue || t.Kind == dvmodel.Task_MergeRequest {
+			roadmap[fmtIRI(t.ID)] = t
 		}
-		roadmap[fmtIRI(t.ID)] = t
 	}
 
 	g := graphviz.New()
@@ -90,17 +89,11 @@ func GenGraphviz(h *cayley.Handle, args []string, opts GraphvizOpts) error {
 	}
 
 	for _, task := range roadmap {
-		for _, dependentID := range task.IsBlocking {
-			dependent := roadmap[fmtIRI(dependentID)]
-			name := task.ID + dependent.ID
-			edge, err := graph.CreateEdge(fmtIRI(name), nodes[fmtIRI(task.ID)], nodes[fmtIRI(dependent.ID)])
-			if err != nil {
-				return fmt.Errorf("create dependent edge: %w", err)
-			}
-			_ = edge
-		}
 		for _, dependingID := range task.IsDependingOn {
-			depending := roadmap[fmtIRI(dependingID)]
+			depending, ok := roadmap[fmtIRI(dependingID)]
+			if !ok {
+				continue
+			}
 			name := depending.ID + task.ID
 			edge, err := graph.CreateEdge(fmtIRI(name), nodes[fmtIRI(depending.ID)], nodes[fmtIRI(task.ID)])
 			if err != nil {
@@ -108,8 +101,23 @@ func GenGraphviz(h *cayley.Handle, args []string, opts GraphvizOpts) error {
 			}
 			_ = edge
 		}
+		for _, dependentID := range task.IsBlocking {
+			dependent, ok := roadmap[fmtIRI(dependentID)]
+			if !ok {
+				continue
+			}
+			name := task.ID + dependent.ID
+			edge, err := graph.CreateEdge(fmtIRI(name), nodes[fmtIRI(task.ID)], nodes[fmtIRI(dependent.ID)])
+			if err != nil {
+				return fmt.Errorf("create dependent edge: %w", err)
+			}
+			_ = edge
+		}
 		for _, relatedID := range task.IsRelatedWith {
-			related := roadmap[fmtIRI(relatedID)]
+			related, ok := roadmap[fmtIRI(relatedID)]
+			if !ok {
+				continue
+			}
 			name := task.ID + related.ID
 			edge, err := graph.CreateEdge(fmtIRI(name), nodes[fmtIRI(task.ID)], nodes[fmtIRI(related.ID)])
 			if err != nil {
@@ -120,6 +128,31 @@ func GenGraphviz(h *cayley.Handle, args []string, opts GraphvizOpts) error {
 			edge, err = graph.CreateEdge(fmtIRI(name), nodes[fmtIRI(related.ID)], nodes[fmtIRI(task.ID)])
 			if err != nil {
 				return fmt.Errorf("create related edge: %w", err)
+			}
+			_ = edge
+		}
+		// TODO: define best relationship for both following
+		for _, partID := range task.IsPartOf {
+			part, ok := roadmap[fmtIRI(partID)]
+			if !ok {
+				continue
+			}
+			name := task.ID + part.ID
+			edge, err := graph.CreateEdge(fmtIRI(name), nodes[fmtIRI(task.ID)], nodes[fmtIRI(part.ID)])
+			if err != nil {
+				return fmt.Errorf("create dependent edge: %w", err)
+			}
+			_ = edge
+		}
+		for _, partID := range task.HasPart {
+			part, ok := roadmap[fmtIRI(partID)]
+			if !ok {
+				continue
+			}
+			name := part.ID + task.ID
+			edge, err := graph.CreateEdge(fmtIRI(name), nodes[fmtIRI(part.ID)], nodes[fmtIRI(task.ID)])
+			if err != nil {
+				return fmt.Errorf("create dependent edge: %w", err)
 			}
 			_ = edge
 		}

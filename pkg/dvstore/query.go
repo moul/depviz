@@ -52,17 +52,7 @@ func LastUpdatedIssueInRepo(ctx context.Context, h *cayley.Handle, entity multip
 	return since, nil
 }
 
-type LoadTasksFilters struct {
-	Targets             []multipmuri.Entity
-	TheWorld            bool
-	WithClosed          bool
-	WithoutIsolated     bool
-	WithoutPRs          bool
-	WithoutExternalDeps bool
-	WithFetch           bool
-}
-
-func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters, logger *zap.Logger) (dvmodel.Tasks, error) {
+func LoadTasks(h *cayley.Handle, schema *schema.Config, filters dvmodel.Filters, logger *zap.Logger) (dvmodel.Tasks, error) {
 	if (filters.Targets == nil || len(filters.Targets) == 0) && !filters.TheWorld {
 		return nil, fmt.Errorf("missing filter.targets")
 	}
@@ -101,6 +91,8 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters
 		kinds = append(kinds, quad.Int(dvmodel.Task_MergeRequest))
 	}
 	p = p.Has(quad.IRI("schema:kind"), kinds...)
+
+	// TODO: fix this, seems to be break some rare times on MRs
 	if !filters.WithClosed {
 		p = p.Has(quad.IRI("schema:state"), quad.Int(dvmodel.Task_Open))
 	}
@@ -116,14 +108,14 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters LoadTasksFilters
 	}
 
 	tasks := dvmodel.Tasks{}
-	p = p.Limit(300) // nolint:gomnd
+	p = p.Limit(3000) // nolint:gomnd
 	err := schema.LoadPathTo(ctx, h, &tasks, p)
 	if err != nil {
 		return nil, fmt.Errorf("load tasks: %w", err)
 	}
 
 	if filters.WithoutIsolated {
-		tasks = dvmodel.FilterIsolatedTasks(tasks, logger)
+		tasks = dvmodel.FilterIsolatedTasks(tasks, logger, filters)
 	}
 
 	{ // remove duplicates
