@@ -119,7 +119,7 @@ func (s *service) Graph(ctx context.Context, in *Graph_Input) (*Graph_Output, er
 		return nil, fmt.Errorf("targets is required")
 	}
 
-	filters := dvstore.LoadTasksFilters{
+	filters := dvmodel.Filters{
 		WithClosed:          in.WithClosed,
 		WithoutIsolated:     in.WithoutIsolated,
 		WithoutPRs:          in.WithoutPRs,

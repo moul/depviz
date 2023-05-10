@@ -533,7 +533,9 @@ func gitHubRelDecodeString(hostname, owner, repo, input string, force bool) (Ent
 		return NewGitHubIssueOrPullRequest(hostname, owner, repo, u.Fragment), nil
 	}
 	if u.Path == "" && u.Fragment == "" {
-		return NewGitHubService(hostname), nil
+		//return NewGitHubService(hostname), nil
+		// TODO: replace by real handling of service once defined
+		return nil, fmt.Errorf("failed to parse %q", input)
 	}
 	if u.Path != "" && u.Fragment != "" { // user/repo#42
 		u.Path += "/issue-or-pull-request/" + u.Fragment

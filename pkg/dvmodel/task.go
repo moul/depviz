@@ -21,23 +21,48 @@ func (t *Task) AllDeps() []quad.IRI {
 	return allDeps
 }
 
-func FilterIsolatedTasks(in []Task, logger *zap.Logger) []Task {
+func FilterIsolatedTasks(in []Task, logger *zap.Logger, filters Filters) []Task {
+	tasks := map[quad.IRI]Task{}
 	uniqueDeps := map[quad.IRI]*Task{}
 
 	for _, task := range in {
+		tasks[task.ID] = task
+	}
+
+	for _, task := range in {
 		for _, dep := range task.IsDependingOn {
+			if isFiltered(tasks[dep], filters) {
+				continue
+			}
+			uniqueDeps[task.ID] = nil
 			uniqueDeps[dep] = nil
 		}
 		for _, dep := range task.IsBlocking {
+			if isFiltered(tasks[dep], filters) {
+				continue
+			}
+			uniqueDeps[task.ID] = nil
 			uniqueDeps[dep] = nil
 		}
 		for _, dep := range task.IsRelatedWith {
+			if isFiltered(tasks[dep], filters) {
+				continue
+			}
+			uniqueDeps[task.ID] = nil
 			uniqueDeps[dep] = nil
 		}
 		for _, dep := range task.IsPartOf {
+			if isFiltered(tasks[dep], filters) {
+				continue
+			}
+			uniqueDeps[task.ID] = nil
 			uniqueDeps[dep] = nil
 		}
 		for _, dep := range task.HasPart {
+			if isFiltered(tasks[dep], filters) {
+				continue
+			}
+			uniqueDeps[task.ID] = nil
 			uniqueDeps[dep] = nil
 		}
 	}
@@ -61,6 +86,20 @@ func FilterIsolatedTasks(in []Task, logger *zap.Logger) []Task {
 	}
 
 	return out
+}
+
+func isFiltered(task Task, filters Filters) bool {
+	if filters.WithoutPRs && task.Kind == Task_MergeRequest {
+		return true
+	}
+	// TODO: catch external deps
+	//if filters.WithoutExternalDeps && task. {
+	//	return true
+	//}
+	if !filters.WithClosed && task.State == Task_Closed {
+		return true
+	}
+	return false
 }
 
 func (t *Task) MarshalCSV() []string {

@@ -52,7 +52,7 @@ func Gen(h *cayley.Handle, args []string, opts GenOpts) error {
 
 	if !opts.NoGraph { // nolint:nestif
 		// load tasks
-		filters := dvstore.LoadTasksFilters{
+		filters := dvmodel.Filters{
 			Targets:             targets,
 			WithClosed:          opts.ShowClosed,
 			WithoutIsolated:     opts.HideIsolated,
