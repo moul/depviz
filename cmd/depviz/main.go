@@ -11,12 +11,6 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/graph"
-	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
-	"github.com/cayleygraph/cayley/schema"
-	"github.com/oklog/run"
-	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
 	"moul.io/banner"
 	"moul.io/depviz/v3/pkg/dvcore"
@@ -26,6 +20,13 @@ import (
 	"moul.io/srand"
 	"moul.io/u"
 	"moul.io/zapconfig"
+
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/graph"
+	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
+	"github.com/cayleygraph/cayley/schema"
+	"github.com/oklog/run"
+	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
 var (
@@ -70,6 +71,8 @@ var (
 	genHideExternalDeps = genFlags.Bool("hide-external-deps", false, "hide dependencies outside of the specified targets")
 	genHideIsolated     = genFlags.Bool("hide-isolated", false, "hide isolated tasks")
 	genShowClosed       = genFlags.Bool("show-closed", false, "show closed tasks")
+	genScope            = genFlags.String("scope", "", "target scope")
+	genScopeSize        = genFlags.Int("scope-size", 1, "scope size")
 
 	fetchFlags       = flag.NewFlagSet("fetch", flag.ExitOnError)
 	fetchGitHubToken = fetchFlags.String("github-token", "", "GitHub token")
@@ -371,6 +374,8 @@ func execGenGraphviz(ctx context.Context, args []string) error {
 		HideIsolated:     *genHideIsolated,
 		HidePRs:          *genHidePRs,
 		HideExternalDeps: *genHideExternalDeps,
+		Scope:            *genScope,
+		ScopeSize:        *genScopeSize,
 	}
 
 	opts := dvcore.GraphvizOpts{
@@ -403,6 +408,8 @@ func execGenJSON(ctx context.Context, args []string) error {
 		HideIsolated:     *genHideIsolated,
 		HidePRs:          *genHidePRs,
 		HideExternalDeps: *genHideExternalDeps,
+		Scope:            *genScope,
+		ScopeSize:        *genScopeSize,
 		Format:           "json",
 	}
 

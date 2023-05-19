@@ -6,13 +6,14 @@ import (
 	"sort"
 	"time"
 
+	"go.uber.org/zap"
+	"moul.io/depviz/v3/pkg/dvmodel"
+	"moul.io/depviz/v3/pkg/multipmuri"
+
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph/path"
 	"github.com/cayleygraph/cayley/schema"
 	"github.com/cayleygraph/quad"
-	"go.uber.org/zap"
-	"moul.io/depviz/v3/pkg/dvmodel"
-	"moul.io/depviz/v3/pkg/multipmuri"
 )
 
 func LastUpdatedIssueInRepo(ctx context.Context, h *cayley.Handle, entity multipmuri.Entity) (time.Time, error) { // nolint:interfacer
@@ -60,51 +61,63 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters dvmodel.Filters,
 	ctx := context.TODO()
 
 	// fetch targets
-	paths := []*path.Path{}
-	if filters.TheWorld {
-		paths = append(paths, path.StartPath(h))
-	} else {
-		for _, target := range filters.Targets {
-			// FIXME: handle different target types (for now only repo)
-			p := path.StartPath(h, quad.IRI(target.String())).
-				Both().
-				Has(quad.IRI("rdf:type"), quad.IRI("dv:Task"))
+	var p *path.Path
+	if filters.Scope == nil {
+		paths := []*path.Path{}
+		if filters.TheWorld {
+			paths = append(paths, path.StartPath(h))
+		} else {
+			for _, target := range filters.Targets {
+				// FIXME: handle different target types (for now only repo)
+				p := path.StartPath(h, quad.IRI(target.String())).
+					Both().
+					Has(quad.IRI("rdf:type"), quad.IRI("dv:Task"))
 
-			// FIXME: reverse depends/blocks
-			paths = append(paths, p)
+				// FIXME: reverse depends/blocks
+				paths = append(paths, p)
+			}
 		}
-	}
-	p := paths[0]
-	for _, path := range paths[1:] {
-		p = p.Or(path)
-	}
+		p = paths[0]
+		for _, path := range paths[1:] {
+			p = p.Or(path)
+		}
 
-	// filters
-	kinds := []quad.Value{
-		quad.Int(dvmodel.Task_Issue),
-		quad.Int(dvmodel.Task_Milestone),
-		quad.Int(dvmodel.Task_Epic),
-		quad.Int(dvmodel.Task_Story),
-		quad.Int(dvmodel.Task_Card),
-	}
-	if !filters.WithoutPRs {
-		kinds = append(kinds, quad.Int(dvmodel.Task_MergeRequest))
-	}
-	p = p.Has(quad.IRI("schema:kind"), kinds...)
+		// filters
+		kinds := []quad.Value{
+			quad.Int(dvmodel.Task_Issue),
+			quad.Int(dvmodel.Task_Milestone),
+			quad.Int(dvmodel.Task_Epic),
+			quad.Int(dvmodel.Task_Story),
+			quad.Int(dvmodel.Task_Card),
+		}
+		if !filters.WithoutPRs {
+			kinds = append(kinds, quad.Int(dvmodel.Task_MergeRequest))
+		}
+		p = p.Has(quad.IRI("schema:kind"), kinds...)
 
-	// TODO: fix this, seems to be break some rare times on MRs
-	if !filters.WithClosed {
-		p = p.Has(quad.IRI("schema:state"), quad.Int(dvmodel.Task_Open))
-	}
+		// TODO: fix this, seems to be break some rare times on MRs
+		if !filters.WithClosed {
+			p = p.Has(quad.IRI("schema:state"), quad.Int(dvmodel.Task_Open))
+		}
 
-	if !filters.WithoutExternalDeps {
-		p = p.Or(p.Both(
-			quad.IRI("isDependingOn"),
-			quad.IRI("isBlocking"),
-			quad.IRI("IsRelatedWith"),
-			quad.IRI("IsPartOf"),
-			quad.IRI("HasPart"),
-		))
+		if !filters.WithoutExternalDeps {
+			p = p.Or(p.Both(
+				quad.IRI("isDependingOn"),
+				quad.IRI("isBlocking"),
+				quad.IRI("IsRelatedWith"),
+				quad.IRI("IsPartOf"),
+				quad.IRI("HasPart"),
+			))
+		}
+	} else {
+		p = path.StartPath(h, quad.IRI(filters.Scope.String())).Is(quad.IRI(filters.Scope.String()))
+		p = scopeIssue(p, filters.ScopeSize, []quad.IRI{
+			"isDependingOn",
+			"isBlocking",
+			//"IsRelatedWith",
+			//"IsPartOf",
+			//"HasPart",
+		})
 	}
 
 	tasks := dvmodel.Tasks{}
