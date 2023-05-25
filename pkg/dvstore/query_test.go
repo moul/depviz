@@ -6,31 +6,32 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/cayleygraph/quad/json"
-	"github.com/stretchr/testify/assert"
+	"moul.io/depviz/v3/pkg/dvmodel"
 	"moul.io/depviz/v3/pkg/dvparser"
 	"moul.io/depviz/v3/pkg/multipmuri"
 	"moul.io/depviz/v3/pkg/testutil"
 	"moul.io/godev"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadTasks(t *testing.T) {
 	tests := []struct {
 		golden      string
 		name        string
-		filters     LoadTasksFilters
+		filters     dvmodel.Filters
 		expectedErr error
 	}{
-		{"all-depviz-test", "theworld", LoadTasksFilters{TheWorld: true}, nil},
-		{"all-depviz-test", "theworld-light", LoadTasksFilters{TheWorld: true, WithoutPRs: true, WithClosed: false, WithoutExternalDeps: true}, nil},
-		{"all-depviz-test", "theworld-with-closed", LoadTasksFilters{TheWorld: true, WithClosed: true}, nil},
-		{"all-depviz-test", "theworld-without-prs", LoadTasksFilters{TheWorld: true, WithoutPRs: true}, nil},
-		{"all-depviz-test", "theworld-without-isolated", LoadTasksFilters{TheWorld: true, WithoutIsolated: true}, nil},
-		{"all-depviz-test", "theworld-without-external-deps", LoadTasksFilters{TheWorld: true, WithoutExternalDeps: true}, nil},
-		{"all-depviz-test", "theworld-all-flags", LoadTasksFilters{TheWorld: true, WithClosed: true, WithoutPRs: true, WithoutIsolated: true, WithoutExternalDeps: true}, nil},
-		{"all-depviz-test", "moul-depviz-test", LoadTasksFilters{Targets: parseTargets(t, "moul/depviz-test")}, nil},
-		{"all-depviz-test", "moulbot-depviz-test", LoadTasksFilters{Targets: parseTargets(t, "moul-bot/depviz-test")}, nil},
-		{"all-depviz-test", "moul-and-moulbot-depviz-test", LoadTasksFilters{Targets: parseTargets(t, "moul/depviz-test, moul-bot/depviz-test")}, nil},
+		{"all-depviz-test", "theworld", dvmodel.Filters{TheWorld: true}, nil},
+		{"all-depviz-test", "theworld-light", dvmodel.Filters{TheWorld: true, WithoutPRs: true, WithClosed: false, WithoutExternalDeps: true}, nil},
+		{"all-depviz-test", "theworld-with-closed", dvmodel.Filters{TheWorld: true, WithClosed: true}, nil},
+		{"all-depviz-test", "theworld-without-prs", dvmodel.Filters{TheWorld: true, WithoutPRs: true}, nil},
+		{"all-depviz-test", "theworld-without-isolated", dvmodel.Filters{TheWorld: true, WithoutIsolated: true}, nil},
+		{"all-depviz-test", "theworld-without-external-deps", dvmodel.Filters{TheWorld: true, WithoutExternalDeps: true}, nil},
+		{"all-depviz-test", "theworld-all-flags", dvmodel.Filters{TheWorld: true, WithClosed: true, WithoutPRs: true, WithoutIsolated: true, WithoutExternalDeps: true}, nil},
+		{"all-depviz-test", "moul-depviz-test", dvmodel.Filters{Targets: parseTargets(t, "moul/depviz-test")}, nil},
+		{"all-depviz-test", "moulbot-depviz-test", dvmodel.Filters{Targets: parseTargets(t, "moul-bot/depviz-test")}, nil},
+		{"all-depviz-test", "moul-and-moulbot-depviz-test", dvmodel.Filters{Targets: parseTargets(t, "moul/depviz-test, moul-bot/depviz-test")}, nil},
 	}
 	alreadySeen := map[string]bool{}
 	for _, testptr := range tests {

@@ -81,34 +81,6 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters dvmodel.Filters,
 		for _, path := range paths[1:] {
 			p = p.Or(path)
 		}
-
-		// filters
-		kinds := []quad.Value{
-			quad.Int(dvmodel.Task_Issue),
-			quad.Int(dvmodel.Task_Milestone),
-			quad.Int(dvmodel.Task_Epic),
-			quad.Int(dvmodel.Task_Story),
-			quad.Int(dvmodel.Task_Card),
-		}
-		if !filters.WithoutPRs {
-			kinds = append(kinds, quad.Int(dvmodel.Task_MergeRequest))
-		}
-		p = p.Has(quad.IRI("schema:kind"), kinds...)
-
-		// TODO: fix this, seems to be break some rare times on MRs
-		if !filters.WithClosed {
-			p = p.Has(quad.IRI("schema:state"), quad.Int(dvmodel.Task_Open))
-		}
-
-		if !filters.WithoutExternalDeps {
-			p = p.Or(p.Both(
-				quad.IRI("isDependingOn"),
-				quad.IRI("isBlocking"),
-				quad.IRI("IsRelatedWith"),
-				quad.IRI("IsPartOf"),
-				quad.IRI("HasPart"),
-			))
-		}
 	} else {
 		p = path.StartPath(h, quad.IRI(filters.Scope.String())).Is(quad.IRI(filters.Scope.String()))
 		p = scopeIssue(p, filters.ScopeSize, []quad.IRI{
@@ -118,6 +90,34 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters dvmodel.Filters,
 			//"IsPartOf",
 			//"HasPart",
 		})
+	}
+
+	// filters
+	kinds := []quad.Value{
+		quad.Int(dvmodel.Task_Issue),
+		quad.Int(dvmodel.Task_Milestone),
+		quad.Int(dvmodel.Task_Epic),
+		quad.Int(dvmodel.Task_Story),
+		quad.Int(dvmodel.Task_Card),
+	}
+	if !filters.WithoutPRs {
+		kinds = append(kinds, quad.Int(dvmodel.Task_MergeRequest))
+	}
+	p = p.Has(quad.IRI("schema:kind"), kinds...)
+
+	// TODO: fix this, seems to be break some rare times on MRs
+	if !filters.WithClosed {
+		p = p.Has(quad.IRI("schema:state"), quad.Int(dvmodel.Task_Open))
+	}
+
+	if !filters.WithoutExternalDeps {
+		p = p.Or(p.Both(
+			quad.IRI("isDependingOn"),
+			quad.IRI("isBlocking"),
+			quad.IRI("IsRelatedWith"),
+			quad.IRI("IsPartOf"),
+			quad.IRI("HasPart"),
+		))
 	}
 
 	tasks := dvmodel.Tasks{}

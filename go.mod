@@ -24,6 +24,7 @@ require (
 	github.com/treastech/logger v0.0.0-20180705232552-e381e9ecf2e3
 	github.com/xhit/go-str2duration/v2 v2.1.0
 	go.uber.org/zap v1.24.0
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/oauth2 v0.6.0
 	golang.org/x/tools v0.6.0
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4
