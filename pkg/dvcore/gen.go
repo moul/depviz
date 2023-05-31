@@ -7,6 +7,9 @@ import (
 	"os"
 	"sync"
 
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/graph"
+	"github.com/cayleygraph/cayley/schema"
 	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 	"moul.io/depviz/v3/pkg/dvmodel"
@@ -16,10 +19,6 @@ import (
 	"moul.io/depviz/v3/pkg/multipmuri"
 	"moul.io/godev"
 	"moul.io/graphman"
-
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/schema"
 )
 
 type GenOpts struct {
@@ -57,7 +56,7 @@ func Gen(h *cayley.Handle, args []string, opts GenOpts) error {
 	if opts.Scope != "" {
 		scope, err = dvparser.ParseTarget(opts.Scope)
 		if err != nil {
-			return fmt.Errorf("parse scope: %w", err)
+			return fmt.Errorf("load tasks: %w", err)
 		}
 	}
 

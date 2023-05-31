@@ -3,25 +3,24 @@ package dvstore
 import (
 	"testing"
 
-	"moul.io/depviz/v3/pkg/dvparser"
-
-	"github.com/stretchr/testify/assert"
+	"github.com/Doozers/gl/pkg/funct"
+	"github.com/cayleygraph/quad"
 	"golang.org/x/exp/slices"
-
 	"moul.io/depviz/v3/pkg/dvmodel"
+	"moul.io/depviz/v3/pkg/dvparser"
 	"moul.io/depviz/v3/pkg/testutil"
 )
+
+type recFunc func(task dvmodel.Task, remaining uint8, target string) bool
 
 func TestScopeIssue(t *testing.T) {
 
 	tests := []struct {
-		target             string
-		golden             string
-		name               string
-		filters            dvmodel.Filters
-		expectedDependency []string
+		target  string
+		golden  string
+		name    string
+		filters dvmodel.Filters
 	}{
-
 		{
 			"https://github.com/moul/depviz-test/issues/6",
 			"all-depviz-test",
@@ -36,21 +35,14 @@ func TestScopeIssue(t *testing.T) {
 				WithFetch:           false,
 				ScopeSize:           1,
 			},
-			[]string{
-				"<https://github.com/moul/depviz-test/issues/2>",
-				"<https://github.com/moul/depviz-test/issues/3>",
-				"<https://github.com/moul/depviz-test/issues/5>",
-				"<https://github.com/moul/depviz-test/issues/6>",
-				"<https://github.com/moul/depviz-test/issues/7>",
-				"<https://github.com/moul/depviz-test/issues/10>",
-			}},
+		},
 	}
 
 	logger := testutil.Logger(t)
 	for _, testptr := range tests {
 		test := testptr
-		store, close := TestingGoldenStore(t, test.golden)
-		defer close()
+		store, closeFunc := TestingGoldenStore(t, test.golden)
+		defer closeFunc()
 		targetEntity, err := dvparser.ParseTarget(test.target)
 		if err != nil {
 			t.Fatal(err)
@@ -63,8 +55,43 @@ func TestScopeIssue(t *testing.T) {
 			return
 		}
 
+		mtasks := map[string]dvmodel.Task{}
 		for _, task := range tasks {
-			assert.Equal(t, true, slices.Contains(test.expectedDependency, task.ID.String()), "unexpected dependency %q", task.ID.String())
+			mtasks[task.ID.String()] = task
+		}
+
+		var rec recFunc
+		rec = func(_task dvmodel.Task, _remaining uint8, _target string) bool {
+			if _task.ID.String() == _target {
+				return true
+			}
+
+			if _remaining == 0 {
+				return false
+			}
+
+			if slices.Contains(funct.Map(_task.IsDependingOn, func(t quad.IRI) string {
+				return t.String()
+			}), _target) {
+				return true
+			}
+			for _, dep := range _task.IsDependingOn {
+				if t, ok := mtasks[dep.String()]; ok {
+					if rec(t, _remaining-1, _target) {
+						return true
+					}
+				}
+			}
+			return false
+		}
+
+		for _, task := range tasks {
+			rec1 := rec(task, uint8(test.filters.ScopeSize), "<"+test.target+">")
+			rec2 := rec(mtasks["<"+test.target+">"], uint8(test.filters.ScopeSize), task.ID.String())
+
+			if rec1 == false && rec2 == false {
+				t.Errorf("task %s should be in the scope of %s", task.ID.String(), test.target)
+			}
 		}
 	}
 }

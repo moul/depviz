@@ -5,13 +5,13 @@ import (
 	"github.com/cayleygraph/quad"
 )
 
-func generateCombinationsWithRepetition[T interface{}](n int, elements []T, currentCombination []T, combinations *[][]T) {
+func genCombWithRep[T interface{}](n int, elements []T, currentCombination []T, combinations *[][]T) {
 	if n == 0 {
 		*combinations = append(*combinations, append([]T(nil), currentCombination...))
 	} else {
 		for _, element := range elements {
 			currentCombination = append(currentCombination, element)
-			generateCombinationsWithRepetition(n-1, elements, currentCombination, combinations)
+			genCombWithRep(n-1, elements, currentCombination, combinations)
 			currentCombination = currentCombination[:len(currentCombination)-1]
 		}
 	}
@@ -30,7 +30,7 @@ func scopeIssue(p *path.Path, scopeSize int, possibilities []quad.IRI) *path.Pat
 	}
 	var perms [][]quad.IRI
 	var currentPerms []quad.IRI
-	generateCombinationsWithRepetition(scopeSize, possibilities, currentPerms, &perms)
+	genCombWithRep(scopeSize, possibilities, currentPerms, &perms)
 
 	for _, perm := range perms {
 		p = p.Or(fold(p, perm, func(_path *path.Path, _link quad.IRI) *path.Path { return _path.Both(_link) }))
