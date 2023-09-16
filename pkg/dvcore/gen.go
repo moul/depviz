@@ -35,6 +35,8 @@ type GenOpts struct {
 	HideIsolated     bool
 	HidePRs          bool
 	HideExternalDeps bool
+	Scope            string
+	ScopeSize        int
 }
 
 func Gen(h *cayley.Handle, args []string, opts GenOpts) error {
@@ -50,87 +52,97 @@ func Gen(h *cayley.Handle, args []string, opts GenOpts) error {
 		return fmt.Errorf("parse targets: %w", err)
 	}
 
-	if !opts.NoGraph { // nolint:nestif
-		// load tasks
-		filters := dvmodel.Filters{
-			Targets:             targets,
-			WithClosed:          opts.ShowClosed,
-			WithoutIsolated:     opts.HideIsolated,
-			WithoutPRs:          opts.HidePRs,
-			WithoutExternalDeps: opts.HideExternalDeps,
-		}
-		tasks, err := dvstore.LoadTasks(h, opts.Schema, filters, opts.Logger)
+	var scope multipmuri.Entity
+	if opts.Scope != "" {
+		scope, err = dvparser.ParseTarget(opts.Scope)
 		if err != nil {
 			return fmt.Errorf("load tasks: %w", err)
 		}
-
-		// graph
-		pertConfig := graphmanPertConfig(tasks, opts)
-
-		switch opts.Format {
-		case "json":
-			return genJSON(tasks)
-		case "csv":
-			return genCSV(tasks)
-		case "graphman-pert":
-			out, err := yaml.Marshal(pertConfig)
-			if err != nil {
-				return err
-			}
-			fmt.Println(string(out))
-			return nil
-		// TODO: fix many issues with generated dependencies
-		//case "dot":
-		//	// graph from PERT config
-		//	graph := graphman.FromPertConfig(*pertConfig)
-		//
-		//	// initialize graph from config
-		//	if !opts.NoPert {
-		//		result := graphman.ComputePert(graph)
-		//		shortestPath, distance := graph.FindShortestPath("Start", "Finish")
-		//		opts.Logger.Debug("pert result", zap.Any("result", result), zap.Int64("distance", distance))
-		//
-		//		for _, edge := range shortestPath {
-		//			edge.Dst().SetColor("red")
-		//			edge.SetColor("red")
-		//		}
-		//	}
-		//
-		//	// graph fine tuning
-		//	graph.GetVertex("Start").SetColor("blue")
-		//	graph.GetVertex("Finish").SetColor("blue")
-		//	if opts.Vertical {
-		//		graph.Attrs["rankdir"] = "TB"
-		//	}
-		//	graph.Attrs["overlap"] = "false"
-		//	graph.Attrs["pack"] = "true"
-		//	graph.Attrs["splines"] = "true"
-		//	graph.Attrs["sep"] = "0.1"
-		//	// graph.Attrs["layout"] = "neato"
-		//	// graph.Attrs["size"] = "\"11,11\""
-		//	// graph.Attrs["start"] = "random"
-		//	// FIXME: hightlight critical paths
-		//	// FIXME: highlight other infos
-		//	// FIXME: highlight target
-		//
-		//	// graphviz
-		//	s, err := viz.ToGraphviz(graph, &viz.Opts{
-		//		CommentsInLabel: true,
-		//	})
-		//	if err != nil {
-		//		return fmt.Errorf("graphviz: %w", err)
-		//	}
-		//
-		//	fmt.Println(s)
-		//	return nil
-		case "quads":
-			return fmt.Errorf("not implemented")
-		default:
-			return fmt.Errorf("unsupported graph format: %q", opts.Format)
-		}
 	}
 
-	return nil
+	if opts.NoGraph { // nolint:nestif
+		return nil
+	}
+
+	// load tasks
+	filters := dvmodel.Filters{
+		Targets:             targets,
+		WithClosed:          opts.ShowClosed,
+		WithoutIsolated:     opts.HideIsolated,
+		WithoutPRs:          opts.HidePRs,
+		WithoutExternalDeps: opts.HideExternalDeps,
+		Scope:               scope,
+		ScopeSize:           opts.ScopeSize,
+	}
+	tasks, err := dvstore.LoadTasks(h, opts.Schema, filters, opts.Logger)
+	if err != nil {
+		return fmt.Errorf("load tasks: %w", err)
+	}
+
+	// graph
+	pertConfig := graphmanPertConfig(tasks, opts)
+
+	switch opts.Format {
+	case "json":
+		return genJSON(tasks)
+	case "csv":
+		return genCSV(tasks)
+	case "graphman-pert":
+		out, err := yaml.Marshal(pertConfig)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(out))
+		return nil
+	// TODO: fix many issues with generated dependencies
+	//case "dot":
+	//	// graph from PERT config
+	//	graph := graphman.FromPertConfig(*pertConfig)
+	//
+	//	// initialize graph from config
+	//	if !opts.NoPert {
+	//		result := graphman.ComputePert(graph)
+	//		shortestPath, distance := graph.FindShortestPath("Start", "Finish")
+	//		opts.Logger.Debug("pert result", zap.Any("result", result), zap.Int64("distance", distance))
+	//
+	//		for _, edge := range shortestPath {
+	//			edge.Dst().SetColor("red")
+	//			edge.SetColor("red")
+	//		}
+	//	}
+	//
+	//	// graph fine tuning
+	//	graph.GetVertex("Start").SetColor("blue")
+	//	graph.GetVertex("Finish").SetColor("blue")
+	//	if opts.Vertical {
+	//		graph.Attrs["rankdir"] = "TB"
+	//	}
+	//	graph.Attrs["overlap"] = "false"
+	//	graph.Attrs["pack"] = "true"
+	//	graph.Attrs["splines"] = "true"
+	//	graph.Attrs["sep"] = "0.1"
+	//	// graph.Attrs["layout"] = "neato"
+	//	// graph.Attrs["size"] = "\"11,11\""
+	//	// graph.Attrs["start"] = "random"
+	//	// FIXME: hightlight critical paths
+	//	// FIXME: highlight other infos
+	//	// FIXME: highlight target
+	//
+	//	// graphviz
+	//	s, err := viz.ToGraphviz(graph, &viz.Opts{
+	//		CommentsInLabel: true,
+	//	})
+	//	if err != nil {
+	//		return fmt.Errorf("graphviz: %w", err)
+	//	}
+	//
+	//	fmt.Println(s)
+	//	return nil
+	case "quads":
+		return fmt.Errorf("not implemented")
+	default:
+		return fmt.Errorf("unsupported graph format: %q", opts.Format)
+	}
 }
 
 func pullBatches(targets []multipmuri.Entity, h *cayley.Handle, githubToken string, resync bool, logger *zap.Logger) []dvmodel.Batch {

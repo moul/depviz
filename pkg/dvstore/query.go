@@ -60,23 +60,35 @@ func LoadTasks(h *cayley.Handle, schema *schema.Config, filters dvmodel.Filters,
 	ctx := context.TODO()
 
 	// fetch targets
-	paths := []*path.Path{}
-	if filters.TheWorld {
-		paths = append(paths, path.StartPath(h))
-	} else {
-		for _, target := range filters.Targets {
-			// FIXME: handle different target types (for now only repo)
-			p := path.StartPath(h, quad.IRI(target.String())).
-				Both().
-				Has(quad.IRI("rdf:type"), quad.IRI("dv:Task"))
+	var p *path.Path
+	if filters.Scope == nil {
+		paths := []*path.Path{}
+		if filters.TheWorld {
+			paths = append(paths, path.StartPath(h))
+		} else {
+			for _, target := range filters.Targets {
+				// FIXME: handle different target types (for now only repo)
+				p := path.StartPath(h, quad.IRI(target.String())).
+					Both().
+					Has(quad.IRI("rdf:type"), quad.IRI("dv:Task"))
 
-			// FIXME: reverse depends/blocks
-			paths = append(paths, p)
+				// FIXME: reverse depends/blocks
+				paths = append(paths, p)
+			}
 		}
-	}
-	p := paths[0]
-	for _, path := range paths[1:] {
-		p = p.Or(path)
+		p = paths[0]
+		for _, path := range paths[1:] {
+			p = p.Or(path)
+		}
+	} else {
+		p = path.StartPath(h, quad.IRI(filters.Scope.String())).Is(quad.IRI(filters.Scope.String()))
+		p = scopeIssue(p, filters.ScopeSize, []quad.IRI{
+			"isDependingOn",
+			"isBlocking",
+			//"IsRelatedWith",
+			//"IsPartOf",
+			//"HasPart",
+		})
 	}
 
 	// filters

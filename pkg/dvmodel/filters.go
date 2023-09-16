@@ -12,4 +12,6 @@ type Filters struct {
 	WithoutPRs          bool
 	WithoutExternalDeps bool
 	WithFetch           bool
+	Scope               multipmuri.Entity
+	ScopeSize           int
 }
