@@ -4,7 +4,7 @@ ARG             VCS_REF
 ARG             VERSION
 
 # web build
-FROM            node:12-alpine as web-build
+FROM            node:19-alpine as web-build
 RUN             npm i -g npm@8
 RUN             apk add --no-cache python2 g++ make
 WORKDIR         /app
