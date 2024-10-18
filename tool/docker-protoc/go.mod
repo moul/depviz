@@ -1,10 +1,13 @@
 module moul.io/depviz/tool/docker-protoc
 
-go 1.17
+go 1.21
+
+toolchain go1.23.2
 
 require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0
 	github.com/simplealpine/json2yaml v0.0.0-20180418090621-b643a2b42865
 	golang.org/x/tools v0.0.0-20210106214847-113979e3529a
 )
