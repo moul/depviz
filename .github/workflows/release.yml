@@ -14,7 +14,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v3.6.0
       -
         name: Unshallow
         run: git fetch --prune --unshallow
@@ -33,7 +33,7 @@ jobs:
       -
         name: Cache Go modules
         if: steps.semantic.outputs.new-release-published == 'true'
-        uses: actions/cache@v3.0.6
+        uses: actions/cache@v3.3.3
         with:
           path: ~/go/pkg/mod
           key:          ${{ runner.os }}-go-${{ matrix.golang }}-v1-${{ hashFiles('**/go.sum') }}
@@ -41,7 +41,7 @@ jobs:
       -
         name: Run GoReleaser
         if: steps.semantic.outputs.new-release-published == 'true'
-        uses: goreleaser/goreleaser-action@v2.6.1
+        uses: goreleaser/goreleaser-action@v2.9.1
         with:
           version: latest
           args: release --rm-dist
