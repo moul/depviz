@@ -20,7 +20,7 @@ ARG		        DEFAULT_TARGETS=moul/depviz-test
 RUN             GITHUB_CLIENT_ID=$GITHUB_CLIENT_ID API_URL=$API_URL NODE_ENV=$NODE_ENV DEFAULT_TARGETS=$DEFAULT_TARGETS npm run build
 
 # go build
-FROM            golang:1.19.0-alpine as go-build
+FROM            golang:1.23.2-alpine as go-build
 RUN             apk add --update --no-cache git gcc musl-dev make
 WORKDIR         /go/src/moul.io/depviz
 ENV             GO111MODULE=on \
@@ -35,7 +35,7 @@ RUN             make install
 
 
 # minimalist runtime
-FROM            alpine:3.16
+FROM            alpine:3.20
 LABEL           org.label-schema.build-date=$BUILD_DATE \
                 org.label-schema.name="depviz" \
                 org.label-schema.description="" \
