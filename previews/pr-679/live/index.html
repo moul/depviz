@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DepViz Live</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <strong>DepViz Live</strong>
+      <span id="status">stateless work graph</span>
+    </div>
+    <div class="actions">
+      <button id="sampleBtn" type="button">Load sample</button>
+      <button id="shareBtn" type="button">Share link</button>
+      <button id="exportBtn" type="button">Export JSON</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="inputPane" aria-label="Input">
+      <div class="paneHeader">
+        <h1>Input</h1>
+        <label class="filePick">
+          <input id="fileInput" type="file" accept=".json,.jsonl,application/json,text/plain">
+          Open file
+        </label>
+      </div>
+      <textarea id="sourceInput" spellcheck="false" aria-label="DepViz JSONL or export JSON"></textarea>
+      <div class="inputMeta">
+        <span id="lineCount">0 lines</span>
+        <span id="errorText"></span>
+      </div>
+    </section>
+
+    <section class="workPane" aria-label="Board">
+      <div class="boardHeader">
+        <div>
+          <h2 id="boardTitle">Default</h2>
+          <div class="meta" id="boardMeta"></div>
+        </div>
+        <div class="viewTabs" role="tablist" aria-label="View">
+          <button class="active" data-view="brief" type="button">Brief</button>
+          <button data-view="graph" type="button">Graph</button>
+          <button data-view="table" type="button">Table</button>
+        </div>
+      </div>
+
+      <div class="filters">
+        <input id="filterInput" type="search" placeholder="Filter id, title, state, label" aria-label="Filter cards">
+        <label><input id="showExternal" type="checkbox" checked> External</label>
+        <label><input id="showLocal" type="checkbox" checked> Local</label>
+        <label><input id="showClosed" type="checkbox"> Closed</label>
+      </div>
+
+      <div class="stats" id="stats"></div>
+      <div id="briefView" class="view"></div>
+      <div id="graphView" class="view hidden">
+        <div id="graphCanvas" class="graphCanvas"></div>
+      </div>
+      <div id="tableView" class="view hidden"></div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
