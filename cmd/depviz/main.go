@@ -5,11 +5,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"moul.io/depviz/v4/internal/core"
+	"moul.io/depviz/v4/live"
 )
 
 func main() {
@@ -56,6 +58,8 @@ func run(ctx context.Context, args []string) error {
 		return runGen(ctx, dbPath, args)
 	case "sync":
 		return runSync(ctx, dbPath, args)
+	case "live":
+		return runLive(ctx, args)
 	default:
 		return fmt.Errorf("unknown command %q", cmd)
 	}
@@ -204,15 +208,26 @@ func runBrief(ctx context.Context, dbPath string, args []string) error {
 }
 
 func runGen(ctx context.Context, dbPath string, args []string) error {
-	if len(args) == 0 || args[0] != "html" {
-		return errors.New("usage: depviz gen html --board default --view graph --out dist/depviz.html")
+	if len(args) == 0 {
+		return errors.New("usage: depviz gen html|json --board default --out dist/depviz.html")
 	}
+	switch args[0] {
+	case "html":
+		return runGenHTML(ctx, dbPath, args[1:])
+	case "json":
+		return runGenJSON(ctx, dbPath, args[1:])
+	default:
+		return fmt.Errorf("unknown gen target %q", args[0])
+	}
+}
+
+func runGenHTML(ctx context.Context, dbPath string, args []string) error {
 	fs := flag.NewFlagSet("gen html", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	board := fs.String("board", core.DefaultBoardID, "board id")
 	view := fs.String("view", "graph", "initial view")
 	out := fs.String("out", "dist/depviz.html", "output file")
-	if err := fs.Parse(args[1:]); err != nil {
+	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *view != "graph" && *view != "table" {
@@ -232,6 +247,34 @@ func runGen(ctx context.Context, dbPath string, args []string) error {
 	}
 	defer f.Close()
 	if err := s.RenderHTML(ctx, *board, f); err != nil {
+		return err
+	}
+	fmt.Printf("wrote %s\n", *out)
+	return nil
+}
+
+func runGenJSON(ctx context.Context, dbPath string, args []string) error {
+	fs := flag.NewFlagSet("gen json", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	board := fs.String("board", core.DefaultBoardID, "board id")
+	out := fs.String("out", "dist/depviz.json", "output file")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	s, err := core.OpenStore(ctx, dbPath)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	if err := os.MkdirAll(filepath.Dir(*out), 0o755); err != nil {
+		return err
+	}
+	f, err := os.Create(*out)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := s.RenderJSON(ctx, *board, f); err != nil {
 		return err
 	}
 	fmt.Printf("wrote %s\n", *out)
@@ -261,6 +304,18 @@ func runSync(ctx context.Context, dbPath string, args []string) error {
 	return nil
 }
 
+func runLive(ctx context.Context, args []string) error {
+	_ = ctx
+	fs := flag.NewFlagSet("live", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	addr := fs.String("addr", "127.0.0.1:8686", "listen address")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	fmt.Printf("serving DepViz Live at http://%s\n", *addr)
+	return http.ListenAndServe(*addr, http.FileServer(http.FS(live.AppFS())))
+}
+
 func usage() {
 	fmt.Println(`depviz - local-first work graph
 
@@ -274,6 +329,8 @@ Usage:
   depviz query ready|blockers
   depviz brief
   depviz gen html --board default --view graph --out dist/depviz.html
+  depviz gen json --board default --out dist/depviz.json
+  depviz live --addr 127.0.0.1:8686
 
 Environment:
   DEPVIZ_DB   override .depviz/state.db`)

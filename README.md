@@ -38,7 +38,9 @@ It currently supports:
 - GitHub sync through `gh`
 - ready/blocker queries
 - morning `depviz brief`
+- JSON export for tools and live mode
 - single-file static HTML export
+- stateless `depviz live` web app
 
 The point of the POC is not a pretty graph. The point is a useful daily answer.
 
@@ -62,7 +64,9 @@ depviz ingest events testdata/simple/events.jsonl
 depviz board note default "Define POC scope"
 depviz edge add note:define-poc-scope gh:moul/depviz2#47 --kind blocks
 depviz brief
+depviz gen json --out dist/depviz.json
 depviz gen html --out dist/depviz.html
+depviz live
 ```
 
 For real GitHub data:
@@ -88,7 +92,25 @@ depviz query ready
 depviz query blockers
 depviz brief
 depviz gen html --board default --view graph --out dist/depviz.html
+depviz gen json --board default --out dist/depviz.json
+depviz live --addr 127.0.0.1:8686
 ```
+
+## Live Mode
+
+`depviz live` serves a stateless browser app from the Go binary:
+
+```text
+make live
+```
+
+It accepts either:
+
+- the JSONL event format used by `depviz ingest events`
+- the JSON export produced by `depviz gen json`
+
+The static files live under `live/app/` and are deployable as-is through
+GitHub Pages. No Node.js build is required.
 
 ## Local State
 
@@ -123,6 +145,7 @@ tmpdir=$(mktemp -d)
 DEPVIZ_DB="$tmpdir/state.db" depviz init
 DEPVIZ_DB="$tmpdir/state.db" depviz ingest events testdata/simple/events.jsonl
 DEPVIZ_DB="$tmpdir/state.db" depviz brief
+DEPVIZ_DB="$tmpdir/state.db" depviz gen json --out "$tmpdir/depviz.json"
 DEPVIZ_DB="$tmpdir/state.db" depviz gen html --out "$tmpdir/depviz.html"
 ```
 

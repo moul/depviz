@@ -1,4 +1,4 @@
-.PHONY: test run install
+.PHONY: test run install live
 
 test:
 	go test ./...
@@ -8,3 +8,6 @@ run:
 
 install:
 	go install ./cmd/depviz
+
+live:
+	go run ./cmd/depviz live

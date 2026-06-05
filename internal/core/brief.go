@@ -128,24 +128,28 @@ func RenderBrief(w io.Writer, b Brief) error {
 		writeItem(w, *b.NextMove, true)
 		write("\n")
 	}
-	writeSection(w, "Ready now", b.Ready, false)
-	writeSection(w, "Blocking most work", b.Blockers, true)
-	writeSection(w, "Local-only", b.LocalOnly, false)
-	writeSection(w, "Stale external state", b.Stale, false)
+	writeSection(w, "Ready now", b.Ready, false, true)
+	writeSection(w, "Blocking most work", b.Blockers, true, true)
+	writeSection(w, "Local-only", b.LocalOnly, false, true)
+	writeSection(w, "Stale external state", b.Stale, false, false)
 	return nil
 }
 
-func writeSection(w io.Writer, title string, items []BriefItem, showImpact bool) {
+func writeSection(w io.Writer, title string, items []BriefItem, showImpact bool, trailingBlank bool) {
 	_, _ = fmt.Fprintf(w, "%s\n", title)
 	if len(items) == 0 {
 		_, _ = fmt.Fprintln(w, "  none")
-		_, _ = fmt.Fprintln(w)
+		if trailingBlank {
+			_, _ = fmt.Fprintln(w)
+		}
 		return
 	}
 	for _, item := range items {
 		writeItem(w, item, showImpact)
 	}
-	_, _ = fmt.Fprintln(w)
+	if trailingBlank {
+		_, _ = fmt.Fprintln(w)
+	}
 }
 
 func writeItem(w io.Writer, item BriefItem, showImpact bool) {
@@ -217,6 +221,9 @@ func plural(n int) string {
 }
 
 func limitItems(items []BriefItem, n int) []BriefItem {
+	if items == nil {
+		return []BriefItem{}
+	}
 	if len(items) <= n {
 		return items
 	}

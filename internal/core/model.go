@@ -65,6 +65,11 @@ type Snapshot struct {
 	Edges []Edge `json:"edges"`
 }
 
+type Export struct {
+	Snapshot Snapshot `json:"snapshot"`
+	Brief    Brief    `json:"brief"`
+}
+
 type Brief struct {
 	BoardName string      `json:"board_name"`
 	NextMove  *BriefItem  `json:"next_move"`

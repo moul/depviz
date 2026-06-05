@@ -9,7 +9,9 @@ It proves that DepViz can be useful locally before becoming a hosted product:
 - keep dependency edges board-scoped
 - compute ready work and blockers
 - print a morning brief
+- export JSON for tools and live mode
 - export one static HTML file
+- serve a stateless Live v1 app without a Node.js build
 
 ## Success Criteria
 
@@ -20,7 +22,10 @@ The POC succeeds if:
 - `depviz sync github owner/repo` imports real cards through `gh`
 - `depviz board note default "..."` creates a local-only card
 - `depviz brief` is worth reading on a real repo
+- `depviz gen json` creates a stable machine-readable export
 - `depviz gen html` creates an inspectable static file
+- `depviz live` serves a browser app that accepts JSONL or exported JSON
+- fixture output is covered by golden tests
 
 The POC fails if the first impressive artifact is only a graph screenshot.
 
@@ -28,6 +33,6 @@ The POC fails if the first impressive artifact is only a graph screenshot.
 
 1. Improve GitHub dependency extraction and stale detection.
 2. Add saved board/view config files under `.depviz/`.
-3. Add `depviz.io/live` as a GitHub Pages static app.
+3. Publish `live/app` to `depviz.io/live` through GitHub Pages.
 4. Add PR previews for `depviz.io/live` using GitHub Actions, with cleanup.
 5. Add local `depviz mcp`.

@@ -1,0 +1,22 @@
+DepViz brief: Default
+Nodes: 4 - edges: 3 - ready: 1 - blocked: 3 - local: 1
+
+Next move
+  gh:moul/depviz2#60 JSONL fixture ingestion (no active blockers, unlocks 2 cards)
+    https://github.com/moul/depviz2/issues/60
+
+Ready now
+  gh:moul/depviz2#60 JSONL fixture ingestion - no active blockers, unlocks 2 cards
+    https://github.com/moul/depviz2/issues/60
+
+Blocking most work
+  gh:moul/depviz2#60 JSONL fixture ingestion (blocks 2 active cards)
+    https://github.com/moul/depviz2/issues/60
+  gh:moul/depviz2#47 Bootstrap SQLite work graph (blocks 1 active card)
+    https://github.com/moul/depviz2/issues/47
+
+Local-only
+  note:decide-live-input-format Decide Live input format - local-only planning card
+
+Stale external state
+  none

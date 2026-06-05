@@ -8,18 +8,11 @@ import (
 )
 
 func (s *Store) RenderHTML(ctx context.Context, boardID string, w io.Writer) error {
-	snap, err := s.Snapshot(ctx, boardID)
+	payload, err := s.BuildExport(ctx, boardID)
 	if err != nil {
 		return err
 	}
-	brief, err := s.BuildBrief(ctx, boardID)
-	if err != nil {
-		return err
-	}
-	payload, err := json.Marshal(struct {
-		Snapshot Snapshot `json:"snapshot"`
-		Brief    Brief    `json:"brief"`
-	}{Snapshot: snap, Brief: brief})
+	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
@@ -27,8 +20,8 @@ func (s *Store) RenderHTML(ctx context.Context, boardID string, w io.Writer) err
 		Title string
 		Data  template.JS
 	}{
-		Title: "DepViz: " + snap.Board.Name,
-		Data:  template.JS(payload),
+		Title: "DepViz: " + payload.Snapshot.Board.Name,
+		Data:  template.JS(data),
 	})
 }
 
