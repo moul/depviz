@@ -112,6 +112,13 @@ It accepts either:
 The static files live under `live/app/` and are deployable as-is through
 GitHub Pages. No Node.js build is required.
 
+The Pages workflow publishes:
+
+- `master` to `/live/`
+- each open PR to `/previews/pr-N/live/`
+
+PR previews are removed when the PR closes.
+
 ## Local State
 
 Runtime state is ignored:

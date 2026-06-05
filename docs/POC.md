@@ -25,6 +25,7 @@ The POC succeeds if:
 - `depviz gen json` creates a stable machine-readable export
 - `depviz gen html` creates an inspectable static file
 - `depviz live` serves a browser app that accepts JSONL or exported JSON
+- every same-repo PR can publish a `/previews/pr-N/live/` Pages preview
 - fixture output is covered by golden tests
 
 The POC fails if the first impressive artifact is only a graph screenshot.
@@ -33,6 +34,5 @@ The POC fails if the first impressive artifact is only a graph screenshot.
 
 1. Improve GitHub dependency extraction and stale detection.
 2. Add saved board/view config files under `.depviz/`.
-3. Publish `live/app` to `depviz.io/live` through GitHub Pages.
-4. Add PR previews for `depviz.io/live` using GitHub Actions, with cleanup.
-5. Add local `depviz mcp`.
+3. Point `depviz.io/live` at the GitHub Pages live route.
+4. Add local `depviz mcp`.

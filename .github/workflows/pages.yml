@@ -3,33 +3,113 @@ name: Pages
 on:
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
+  issues: write
+  pull-requests: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  publish:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - name: Stage live app
+
+      - name: Prepare gh-pages branch
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          mkdir -p _site
+          git -C _site init
+          git -C _site checkout --orphan gh-pages
+          git -C _site remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git -C _site fetch origin gh-pages
+            git -C _site reset --hard origin/gh-pages
+          fi
+
+          touch _site/.nojekyll
+
+      - name: Stage live app
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+
+          rm -rf _site/live
           mkdir -p _site/live
           cp -R live/app/. _site/live/
           printf '<!doctype html><meta http-equiv="refresh" content="0; url=./live/"><a href="./live/">DepViz Live</a>\n' > _site/index.html
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - id: deployment
-        uses: actions/deploy-pages@v4
+
+      - name: Stage pull request preview
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        run: |
+          set -euo pipefail
+
+          preview_dir="_site/previews/pr-${{ github.event.pull_request.number }}"
+          rm -rf "$preview_dir"
+          mkdir -p "$preview_dir/live"
+          cp -R live/app/. "$preview_dir/live/"
+          printf '<!doctype html><meta http-equiv="refresh" content="0; url=./live/"><a href="./live/">DepViz Live preview</a>\n' > "$preview_dir/index.html"
+
+      - name: Remove pull request preview
+        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+        run: |
+          set -euo pipefail
+
+          rm -rf "_site/previews/pr-${{ github.event.pull_request.number }}"
+
+      - name: Commit and push Pages site
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+        run: |
+          set -euo pipefail
+
+          git -C _site add -A
+          if git -C _site diff --cached --quiet; then
+            echo "No Pages changes to publish."
+            exit 0
+          fi
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            if [ "$EVENT_ACTION" = "closed" ]; then
+              msg="docs: remove depviz live preview for pr-${PR_NUMBER}"
+            else
+              msg="docs: publish depviz live preview for pr-${PR_NUMBER}"
+            fi
+          else
+            msg="docs: publish depviz live"
+          fi
+
+          git -C _site commit -m "$msg"
+          git -C _site push origin gh-pages
+
+      - name: Comment preview URL
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/previews/pr-${PR_NUMBER}/live/"
+          body="<!-- depviz-live-preview -->
+          DepViz Live preview: ${url}"
+          gh pr comment "$PR_NUMBER" --body "$body" --edit-last || gh pr comment "$PR_NUMBER" --body "$body"
