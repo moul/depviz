@@ -1,463 +1,280 @@
-package main // import "moul.io/depviz/cmd/depviz"
+package main
 
 import (
 	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"log"
-	"math/rand"
 	"os"
-	"os/signal"
-	"time"
+	"path/filepath"
+	"strings"
 
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/graph"
-	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
-	"github.com/cayleygraph/cayley/schema"
-	"github.com/oklog/run"
-	"github.com/peterbourgon/ff/v3/ffcli"
-	"go.uber.org/zap"
-	"moul.io/banner"
-	"moul.io/depviz/v3/pkg/dvcore"
-	"moul.io/depviz/v3/pkg/dvparser"
-	"moul.io/depviz/v3/pkg/dvserver"
-	"moul.io/depviz/v3/pkg/dvstore"
-	"moul.io/srand"
-	"moul.io/u"
-	"moul.io/zapconfig"
-)
-
-var (
-	logger       *zap.Logger
-	schemaConfig *schema.Config
-
-	globalFlags          = flag.NewFlagSet("depviz", flag.ExitOnError)
-	globalStorePath      = globalFlags.String("store-path", os.Getenv("HOME")+"/.depviz", "store path")
-	globalDebug          = globalFlags.Bool("debug", false, "debug mode")
-	globalWithStacktrace = globalFlags.Bool("with-stacktrace", false, "show stacktrace on warns, errors and worse")
-
-	airtableFlags     = flag.NewFlagSet("airtable", flag.ExitOnError)
-	airtableToken     = airtableFlags.String("token", "", "airtable token")
-	airtableBaseID    = airtableFlags.String("base-id", "", "base ID")
-	airtableOwnersTab = airtableFlags.String("owners", "Owners", `"Owners" tab name`)
-	airtableTasksTab  = airtableFlags.String("tasks", "Tasks", `"Tasks" tab name`)
-	airtableTopicsTab = airtableFlags.String("topics", "Topics", `"Topics" tab name`)
-
-	serverFlags              = flag.NewFlagSet("server", flag.ExitOnError)
-	serverHTTPBind           = serverFlags.String("http-bind", ":8000", "HTTP bind address")
-	serverGRPCBInd           = serverFlags.String("grpc-bind", ":9000", "gRPC bind address")
-	serverRequestTimeout     = serverFlags.Duration("request-timeout", 5*time.Second, "request timeout")   // nolint:gomnd
-	serverShutdownTimeout    = serverFlags.Duration("shutdowm-timeout", 6*time.Second, "shutdown timeout") // nolint:gomnd
-	serverCORSAllowedOrigins = serverFlags.String("cors-allowed-origins", "*", "allowed CORS origins")
-	serverGitHubToken        = serverFlags.String("github-token", "", "GitHub token")
-	serverNoAutoUpdate       = serverFlags.Bool("no-auto-update", false, "don't auto-update projects in background")
-	serverGodmode            = serverFlags.Bool("godmode", false, "enable dangerous API calls")
-	serverWithPprof          = serverFlags.Bool("with-pprof", false, "enable pprof endpoints")
-	serverWithoutRecovery    = serverFlags.Bool("without-recovery", false, "disable panic recovery (dev)")
-	serverWithoutCache       = serverFlags.Bool("without-cache", false, "disable HTTP caching")
-	serverAuth               = serverFlags.String("auth", "", "authentication password")
-	serverRealm              = serverFlags.String("realm", "DepViz", "server Realm")
-	serverAutoUpdateInterval = serverFlags.Duration("auto-update-interval", 2*time.Minute, "time between two auto-updates") // nolint:gomnd
-	serverGitHubClientID     = serverFlags.String("github-client-id", "", "GitHub client ID")
-	serverGitHubClientSecret = serverFlags.String("github-client-secret", "", "GitHub client secret")
-
-	genFlags            = flag.NewFlagSet("gen", flag.ExitOnError)
-	genNoGraph          = genFlags.Bool("no-graph", false, "don't generate graph (pull only)")
-	genNoPert           = genFlags.Bool("no-pert", false, "disable PERT computing")
-	genVertical         = genFlags.Bool("vertical", false, "vertical mode")
-	genHidePRs          = genFlags.Bool("hide-prs", false, "hide PRs")
-	genHideExternalDeps = genFlags.Bool("hide-external-deps", false, "hide dependencies outside of the specified targets")
-	genHideIsolated     = genFlags.Bool("hide-isolated", false, "hide isolated tasks")
-	genShowClosed       = genFlags.Bool("show-closed", false, "show closed tasks")
-	genScope            = genFlags.String("scope", "", "target scope")
-	genScopeSize        = genFlags.Int("scope-size", 1, "scope size")
-
-	fetchFlags       = flag.NewFlagSet("fetch", flag.ExitOnError)
-	fetchGitHubToken = fetchFlags.String("github-token", "", "GitHub token")
-	fetchResync      = fetchFlags.Bool("resync", false, "resync already synced content")
-
-	graphvizFlags = flag.NewFlagSet("graphviz", flag.ExitOnError)
-	graphvizLabel = graphvizFlags.String("label", "", "label to use for the graph")
-	graphvizType  = graphvizFlags.String("type", "svg", "output type (svg, png, dot)")
-	graphvizFile  = graphvizFlags.String("file", "", "output file (default: stdout)")
+	"moul.io/depviz/v4/internal/core"
 )
 
 func main() {
-	err := Main(os.Args)
-	if err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return
-		}
-		log.Fatalf("fatal: %+v", err)
+	if err := run(context.Background(), os.Args[1:]); err != nil {
+		fmt.Fprintf(os.Stderr, "depviz: %v\n", err)
+		os.Exit(1)
 	}
 }
 
-func Main(args []string) error {
-	log.SetFlags(0)
-
-	defer func() {
-		if logger != nil {
-			_ = logger.Sync()
-		}
-	}()
-
-	root := &ffcli.Command{
-		ShortUsage: "depviz [global flags] <subcommand> [flags] [args...]",
-		FlagSet:    globalFlags,
-		LongHelp:   "More info here: https://moul.io/depviz",
-		Subcommands: []*ffcli.Command{
-			{
-				Name:       "airtable",
-				ShortHelp:  "manage airtable sync",
-				ShortUsage: "airtable [flags] <subcommand>",
-				FlagSet:    airtableFlags,
-				Subcommands: []*ffcli.Command{
-					{Name: "info", Exec: execAirtableInfo, ShortHelp: "get metrics"},
-					{Name: "sync", Exec: execAirtableSync, ShortHelp: "sync store with Airtable"},
-				},
-				Exec: func(context.Context, []string) error { return flag.ErrHelp },
-			}, {
-				Name:      "store",
-				ShortHelp: "manage the data store",
-				Subcommands: []*ffcli.Command{
-					{Name: "dump-quads", Exec: execStoreDumpQuads},
-					{Name: "dump-json", Exec: execStoreDumpJSON},
-					{Name: "info", Exec: execStoreInfo},
-					// restore-quads
-					// restore-json
-				},
-				Exec: func(context.Context, []string) error { return flag.ErrHelp },
-			}, {
-				Name:      "server",
-				ShortHelp: "start a depviz server with depviz API",
-				FlagSet:   serverFlags,
-				Exec:      execServer,
-			}, {
-				Name:      "gen",
-				ShortHelp: "use the db to generate outputs, without requiring any fetch",
-				Subcommands: []*ffcli.Command{
-					{Name: "graphviz", Exec: execGenGraphviz, ShortHelp: "generate graphviz output", FlagSet: graphvizFlags},
-					{Name: "json", Exec: execGenJSON, ShortHelp: "generate JSON output"},
-					{Name: "csv", Exec: execGenCSV, ShortHelp: "generate CSV output"},
-				},
-				FlagSet: genFlags,
-			}, {
-				Name:      "fetch",
-				ShortHelp: "fetch data from providers",
-				Exec:      execFetch,
-				FlagSet:   fetchFlags,
-			},
-		},
-		Exec: func(context.Context, []string) error { return flag.ErrHelp },
+func run(ctx context.Context, args []string) error {
+	if len(args) == 0 {
+		usage()
+		return nil
 	}
-
-	return root.ParseAndRun(context.Background(), args[1:])
+	dbPath := os.Getenv("DEPVIZ_DB")
+	if dbPath == "" {
+		dbPath = core.DefaultDBPath
+	}
+	cmd := args[0]
+	args = args[1:]
+	switch cmd {
+	case "help", "-h", "--help":
+		usage()
+		return nil
+	case "init":
+		s, err := core.OpenStore(ctx, dbPath)
+		if err != nil {
+			return err
+		}
+		defer s.Close()
+		fmt.Printf("initialized %s\n", s.Path())
+		return nil
+	case "ingest":
+		return runIngest(ctx, dbPath, args)
+	case "board":
+		return runBoard(ctx, dbPath, args)
+	case "edge":
+		return runEdge(ctx, dbPath, args)
+	case "query":
+		return runQuery(ctx, dbPath, args)
+	case "brief":
+		return runBrief(ctx, dbPath, args)
+	case "gen":
+		return runGen(ctx, dbPath, args)
+	case "sync":
+		return runSync(ctx, dbPath, args)
+	default:
+		return fmt.Errorf("unknown command %q", cmd)
+	}
 }
 
-func globalPreRun() error {
-	rand.Seed(srand.MustSecure())
-
-	config := zapconfig.Configurator{}
-	if *globalDebug {
-		config.SetLevel(zap.DebugLevel)
-	} else {
-		config.SetLevel(zap.InfoLevel)
+func runIngest(ctx context.Context, dbPath string, args []string) error {
+	if len(args) < 2 || args[0] != "events" {
+		return errors.New("usage: depviz ingest events <path> [--board default]")
 	}
-	if *globalWithStacktrace {
-		config.EnableStacktrace()
+	fs := flag.NewFlagSet("ingest events", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	board := fs.String("board", core.DefaultBoardID, "board id")
+	if err := fs.Parse(args[2:]); err != nil {
+		return err
 	}
-	var err error
-	logger, err = config.Build()
+	f, err := os.Open(args[1])
 	if err != nil {
-		return fmt.Errorf("init logger: %w", err)
+		return err
 	}
-	logger.Debug("logger initialized")
-
-	schemaConfig = dvstore.Schema()
+	defer f.Close()
+	s, err := core.OpenStore(ctx, dbPath)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	count, err := s.IngestEvents(ctx, f, *board)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("ingested %d events into board %s\n", count, *board)
 	return nil
 }
 
-func execAirtableSync(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
+func runBoard(ctx context.Context, dbPath string, args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: depviz board list | depviz board note <board> <text>")
+	}
+	s, err := core.OpenStore(ctx, dbPath)
+	if err != nil {
 		return err
 	}
-
-	store, err := storeFromArgs()
-	if err != nil {
-		return fmt.Errorf("init store: %w", err)
+	defer s.Close()
+	switch args[0] {
+	case "list":
+		boards, err := s.BoardList(ctx)
+		if err != nil {
+			return err
+		}
+		for _, b := range boards {
+			fmt.Printf("%s\t%s\n", b.ID, b.Name)
+		}
+		return nil
+	case "note":
+		if len(args) < 3 {
+			return errors.New("usage: depviz board note <board> <text>")
+		}
+		n, err := s.CreateNote(ctx, args[1], strings.Join(args[2:], " "))
+		if err != nil {
+			return err
+		}
+		fmt.Printf("created %s %s\n", n.ID, n.Title)
+		return nil
+	default:
+		return fmt.Errorf("unknown board command %q", args[0])
 	}
-
-	opts := dvcore.AirtableOpts{
-		Token:     *airtableToken,
-		BaseID:    *airtableBaseID,
-		OwnersTab: *airtableOwnersTab,
-		TasksTab:  *airtableTasksTab,
-		TopicsTab: *airtableTopicsTab,
-	}
-
-	return dvcore.AirtableSync(store, opts)
 }
 
-func execAirtableInfo(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
+func runEdge(ctx context.Context, dbPath string, args []string) error {
+	if len(args) == 0 || args[0] != "add" {
+		return errors.New("usage: depviz edge add <from> <to> --kind blocked_by [--board default]")
+	}
+	if len(args) < 3 {
+		return errors.New("usage: depviz edge add <from> <to> --kind blocked_by [--board default]")
+	}
+	fs := flag.NewFlagSet("edge add", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	kind := fs.String("kind", "blocked_by", "edge kind")
+	board := fs.String("board", core.DefaultBoardID, "board id")
+	if err := fs.Parse(args[3:]); err != nil {
 		return err
 	}
-
-	opts := dvcore.AirtableOpts{
-		Token:     *airtableToken,
-		BaseID:    *airtableBaseID,
-		OwnersTab: *airtableOwnersTab,
-		TasksTab:  *airtableTasksTab,
-		TopicsTab: *airtableTopicsTab,
-	}
-
-	return dvcore.AirtableInfo(opts)
-}
-
-func execStoreDumpQuads(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
+	s, err := core.OpenStore(ctx, dbPath)
+	if err != nil {
 		return err
 	}
-
-	store, err := storeFromArgs()
+	defer s.Close()
+	e, err := s.AddEdge(ctx, *board, args[1], args[2], *kind, "local", map[string]string{"created_by": "depviz edge add"})
 	if err != nil {
-		return fmt.Errorf("init store: %w", err)
-	}
-
-	return dvcore.StoreDumpQuads(store)
-}
-
-func execStoreDumpJSON(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
 		return err
 	}
-
-	store, err := storeFromArgs()
-	if err != nil {
-		return fmt.Errorf("init store: %w", err)
-	}
-
-	batch, err := dvcore.GetStoreDump(ctx, store, schemaConfig)
-	if err != nil {
-		return fmt.Errorf("get store dump: %w", err)
-	}
-
-	fmt.Println(u.PrettyJSON(batch))
+	fmt.Printf("created %s %s -> %s (%s)\n", e.ID, e.FromID, e.ToID, e.Kind)
 	return nil
 }
 
-func execStoreInfo(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
+func runQuery(ctx context.Context, dbPath string, args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: depviz query ready|blockers [--board default]")
+	}
+	fs := flag.NewFlagSet("query", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	board := fs.String("board", core.DefaultBoardID, "board id")
+	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
-
-	store, err := storeFromArgs()
+	s, err := core.OpenStore(ctx, dbPath)
 	if err != nil {
-		return fmt.Errorf("init store: %w", err)
-	}
-
-	return dvcore.StoreInfo(store)
-}
-
-func execServer(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
 		return err
 	}
-
-	var (
-		g   run.Group
-		svc dvserver.Service
-	)
-
-	{ // server
-		store, err := storeFromArgs()
-		if err != nil {
-			return fmt.Errorf("init store: %w", err)
-		}
-
-		targets, err := dvparser.ParseTargets(args)
-		if err != nil {
-			return fmt.Errorf("parse targets: %w", err)
-		}
-
-		opts := dvserver.Opts{
-			Logger:             logger,
-			HTTPBind:           *serverHTTPBind,
-			GRPCBind:           *serverGRPCBInd,
-			CORSAllowedOrigins: *serverCORSAllowedOrigins,
-			RequestTimeout:     *serverRequestTimeout,
-			ShutdownTimeout:    *serverShutdownTimeout,
-			WithPprof:          *serverWithPprof,
-			WithoutRecovery:    *serverWithoutRecovery,
-			WithoutCache:       *serverWithoutCache,
-			Auth:               *serverAuth,
-			Realm:              *serverRealm,
-			Godmode:            *serverGodmode,
-			GitHubToken:        *serverGitHubToken,
-			NoAutoUpdate:       *serverNoAutoUpdate,
-			AutoUpdateTargets:  targets,
-			AutoUpdateInterval: *serverAutoUpdateInterval,
-			GitHubClientID:     *serverGitHubClientID,
-			GitHubClientSecret: *serverGitHubClientSecret,
-		}
-		svc, err = dvserver.New(ctx, store, schemaConfig, opts)
-		if err != nil {
-			return fmt.Errorf("init server: %w", err)
-		}
-
-		g.Add(
-			svc.Run,
-			func(error) { svc.Close() },
-		)
+	defer s.Close()
+	brief, err := s.BuildBrief(ctx, *board)
+	if err != nil {
+		return err
 	}
-
-	{ // signal handling
-		ctx, cancel := context.WithCancel(ctx)
-		g.Add(func() error {
-			sigch := make(chan os.Signal, 1)
-			signal.Notify(sigch, os.Interrupt)
-			select {
-			case <-sigch:
-			case <-ctx.Done():
-			}
-			return nil
-		}, func(error) {
-			cancel()
-		})
-	}
-
-	fmt.Fprintln(os.Stderr, banner.Inline("depviz"))
-	logger.Info("server started",
-		zap.String("http-bind", svc.HTTPListenerAddr()),
-		zap.String("grpc-bind", svc.GRPCListenerAddr()),
-	)
-
-	if err := g.Run(); err != nil {
-		return fmt.Errorf("group terminated: %w", err)
+	switch args[0] {
+	case "ready":
+		for _, item := range brief.Ready {
+			fmt.Printf("%s\t%s\t%s\n", item.ID, item.State, item.Title)
+		}
+	case "blockers":
+		for _, item := range brief.Blockers {
+			fmt.Printf("%s\t%d\t%s\n", item.ID, item.Impact, item.Title)
+		}
+	default:
+		return fmt.Errorf("unknown query %q", args[0])
 	}
 	return nil
 }
 
-func storeFromArgs() (*cayley.Handle, error) {
-	if _, err := os.Stat(*globalStorePath); err != nil {
-		if err := graph.InitQuadStore("bolt", *globalStorePath, nil); err != nil {
-			return nil, fmt.Errorf("create quad store: %w", err)
-		}
-	}
-	store, err := cayley.NewGraph("bolt", *globalStorePath, nil)
-	if err != nil {
-		return nil, fmt.Errorf("load STORE: %w", err)
-	}
-
-	return store, nil
-}
-
-func execGenGraphviz(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
+func runBrief(ctx context.Context, dbPath string, args []string) error {
+	fs := flag.NewFlagSet("brief", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	board := fs.String("board", core.DefaultBoardID, "board id")
+	if err := fs.Parse(args); err != nil {
 		return err
 	}
-
-	store, err := storeFromArgs()
+	s, err := core.OpenStore(ctx, dbPath)
 	if err != nil {
-		return fmt.Errorf("init store: %w", err)
-	}
-
-	genOpts := &dvcore.GenOpts{
-		Logger:           logger,
-		Schema:           schemaConfig,
-		Vertical:         *genVertical,
-		NoPert:           *genNoPert,
-		NoGraph:          *genNoGraph,
-		ShowClosed:       *genShowClosed,
-		HideIsolated:     *genHideIsolated,
-		HidePRs:          *genHidePRs,
-		HideExternalDeps: *genHideExternalDeps,
-		Scope:            *genScope,
-		ScopeSize:        *genScopeSize,
-	}
-
-	opts := dvcore.GraphvizOpts{
-		GenOpts: genOpts,
-		Label:   *graphvizLabel,
-		Type:    *graphvizType,
-		File:    *graphvizFile,
-	}
-
-	return dvcore.GenGraphviz(store, args, opts)
-}
-
-func execGenJSON(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
 		return err
 	}
-
-	store, err := storeFromArgs()
+	defer s.Close()
+	brief, err := s.BuildBrief(ctx, *board)
 	if err != nil {
-		return fmt.Errorf("init store: %w", err)
-	}
-
-	opts := dvcore.GenOpts{
-		Logger:           logger,
-		Schema:           schemaConfig,
-		Vertical:         *genVertical,
-		NoPert:           *genNoPert,
-		NoGraph:          *genNoGraph,
-		ShowClosed:       *genShowClosed,
-		HideIsolated:     *genHideIsolated,
-		HidePRs:          *genHidePRs,
-		HideExternalDeps: *genHideExternalDeps,
-		Scope:            *genScope,
-		ScopeSize:        *genScopeSize,
-		Format:           "json",
-	}
-
-	return dvcore.Gen(store, args, opts)
-}
-
-func execGenCSV(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
 		return err
 	}
-
-	store, err := storeFromArgs()
-	if err != nil {
-		return fmt.Errorf("init store: %w", err)
-	}
-
-	opts := dvcore.GenOpts{
-		Logger:           logger,
-		Schema:           schemaConfig,
-		Vertical:         *genVertical,
-		NoPert:           *genNoPert,
-		NoGraph:          *genNoGraph,
-		ShowClosed:       *genShowClosed,
-		HideIsolated:     *genHideIsolated,
-		HidePRs:          *genHidePRs,
-		HideExternalDeps: *genHideExternalDeps,
-		Scope:            *genScope,
-		ScopeSize:        *genScopeSize,
-		Format:           "csv",
-	}
-
-	return dvcore.Gen(store, args, opts)
+	return core.RenderBrief(os.Stdout, brief)
 }
 
-func execFetch(ctx context.Context, args []string) error {
-	if err := globalPreRun(); err != nil {
+func runGen(ctx context.Context, dbPath string, args []string) error {
+	if len(args) == 0 || args[0] != "html" {
+		return errors.New("usage: depviz gen html --board default --view graph --out dist/depviz.html")
+	}
+	fs := flag.NewFlagSet("gen html", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	board := fs.String("board", core.DefaultBoardID, "board id")
+	view := fs.String("view", "graph", "initial view")
+	out := fs.String("out", "dist/depviz.html", "output file")
+	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
-
-	store, err := storeFromArgs()
+	if *view != "graph" && *view != "table" {
+		return fmt.Errorf("unsupported view %q", *view)
+	}
+	s, err := core.OpenStore(ctx, dbPath)
 	if err != nil {
-		return fmt.Errorf("init store: %w", err)
+		return err
 	}
+	defer s.Close()
+	if err := os.MkdirAll(filepath.Dir(*out), 0o755); err != nil {
+		return err
+	}
+	f, err := os.Create(*out)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := s.RenderHTML(ctx, *board, f); err != nil {
+		return err
+	}
+	fmt.Printf("wrote %s\n", *out)
+	return nil
+}
 
-	opts := dvcore.FetchOpts{
-		Logger:      logger,
-		Schema:      schemaConfig,
-		GitHubToken: *fetchGitHubToken,
-		Resync:      *fetchResync,
+func runSync(ctx context.Context, dbPath string, args []string) error {
+	if len(args) < 2 || args[0] != "github" {
+		return errors.New("usage: depviz sync github owner/repo [--limit 200]")
 	}
-	return dvcore.Fetch(store, args, opts)
+	fs := flag.NewFlagSet("sync github", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	limit := fs.Int("limit", 200, "max issues and PRs to import")
+	if err := fs.Parse(args[2:]); err != nil {
+		return err
+	}
+	s, err := core.OpenStore(ctx, dbPath)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	count, err := core.SyncGitHub(ctx, s, core.GitHubSyncOptions{Repo: args[1], Limit: *limit})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("synced %d GitHub cards from %s\n", count, args[1])
+	return nil
+}
+
+func usage() {
+	fmt.Println(`depviz - local-first work graph
+
+Usage:
+  depviz init
+  depviz ingest events <path>
+  depviz sync github owner/repo [--limit 200]
+  depviz board list
+  depviz board note <board> <text>
+  depviz edge add <from> <to> --kind blocked_by
+  depviz query ready|blockers
+  depviz brief
+  depviz gen html --board default --view graph --out dist/depviz.html
+
+Environment:
+  DEPVIZ_DB   override .depviz/state.db`)
 }
