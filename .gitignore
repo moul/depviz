@@ -6,6 +6,14 @@ coverage.txt
 *#
 .#*
 depviz.db
+.depviz/state.db
+.depviz/state.db-*
+.depviz/*.db
+.depviz/*.db-*
+.depviz/cache/
+.depviz/sync/
+.depviz/tmp/
+.depviz/secrets.*
 /vendor/
 packrd/
 *-packr.go

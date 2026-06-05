@@ -26,6 +26,29 @@ dependency visualizer (auto roadmap)
 
 _inspired by this discussion: [jbenet/random-ideas#37](https://github.com/jbenet/random-ideas/issues/37)_
 
+## v4 rewrite
+
+The active rewrite lives under [v4/](v4/).
+
+v3 remains the existing tagged product line. v4 is the new local-first work
+graph engine: SQLite state, JSONL/DepCrumb-style events, GitHub sync, local
+notes, board-scoped dependency edges, morning briefs, and static HTML output.
+
+The first v4 POC is **DepViz Board Brief**:
+
+```text
+cd v4
+make install
+depviz init
+depviz ingest events testdata/simple/events.jsonl
+depviz board note default "Define POC scope"
+depviz brief
+depviz gen html --out dist/depviz.html
+```
+
+When v4 is mature, it should become the main `depviz` implementation and the
+old v3 code can be retired or archived.
+
 ## Philosophy
 
 The ultimate goal of this tool is to allow the tech and the non-tech to collaborate seamlessly.
