@@ -1,17 +1,9 @@
-```depviz
-depviz LR
 board "DepViz v4 POC"
 
 repo moul/depviz
-repo moul/depviz2 as d2
 
-#679 "Bootstrap depviz v4 root" [open] @v4
-d2#60 "JSONL fixture ingestion" [open] @poc @ingest
-d2#47 "Bootstrap SQLite work graph" [open] @poc @core
-d2#51 "Static HTML export" [open] @poc @html
 note live-format "Decide Live input format"
 
-d2#60 -> #679
-d2#47 -> d2#51
-live-format -> #679
-```
+#679 depends on #80, #81 and blocks #85
+#156 depends on moul/depviz2#5252
+#679 addresses live-format
