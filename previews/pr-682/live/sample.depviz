@@ -1,0 +1,13 @@
+// Standalone Live demo: define nodes by hand so cards have titles and states.
+// Click Hydrate GitHub to refresh public refs directly from api.github.com.
+board "DepViz v4 POC"
+
+repo moul/depviz
+
+#681 "SQLite dependency bump" [open] @deps
+#680 "Checkout workflow bump" [open] @deps
+#649 "DepViz V2 follow-up" [open] @planning
+note live-format "Decide Live input format"
+
+#681 depends on #680 and addresses live-format
+#680 blocks #649
