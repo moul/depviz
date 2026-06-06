@@ -1,7 +1,8 @@
-const assetVersion = 'v4.1.4-dev';
+const assetVersion = 'v4.1.5-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
+const views = new Set(['brief', 'graph', 'table']);
 
 const dom = {
   input: document.getElementById('sourceInput'),
@@ -61,6 +62,7 @@ function boot() {
   dom.githubToken.value = sessionStorage.getItem(githubTokenStorageKey) || '';
   refreshGitHubAuthUI();
   wireEvents();
+  setView(readURLView(), { persist: false, renderNow: false });
   const hashed = readHash();
   if (hashed) {
     dom.input.value = hashed;
@@ -85,11 +87,7 @@ function wireEvents() {
   }
   for (const btn of document.querySelectorAll('[data-view]')) {
     btn.addEventListener('click', () => {
-      state.view = btn.dataset.view;
-      document.querySelectorAll('[data-view]').forEach((item) => {
-        item.classList.toggle('active', item === btn);
-      });
-      render();
+      setView(btn.dataset.view, { persist: true, renderNow: true });
     });
   }
   document.getElementById('sampleBtn').addEventListener('click', loadSample);
@@ -1109,9 +1107,33 @@ function visibleNodes(nodes) {
   });
 }
 
+function setView(view, options = {}) {
+  const next = views.has(view) ? view : 'brief';
+  state.view = next;
+  document.querySelectorAll('[data-view]').forEach((item) => {
+    item.classList.toggle('active', item.dataset.view === next);
+  });
+  if (options.persist !== false) writeURLView(next);
+  if (options.renderNow !== false) render();
+}
+
+function readURLView() {
+  const view = new URLSearchParams(location.search).get('view') || 'brief';
+  return views.has(view) ? view : 'brief';
+}
+
+function writeURLView(view) {
+  const url = new URL(location.href);
+  if (view === 'brief') url.searchParams.delete('view');
+  else url.searchParams.set('view', view);
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
 function shareLink() {
   const encoded = encodeBase64URL(dom.input.value);
-  history.replaceState(null, '', `#data=${encoded}`);
+  const url = new URL(location.href);
+  url.hash = `data=${encoded}`;
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   navigator.clipboard?.writeText(location.href);
   dom.status.textContent = 'share link copied';
 }
