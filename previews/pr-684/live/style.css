@@ -371,6 +371,14 @@ textarea::selection {
   overflow-wrap: anywhere;
 }
 
+.itemHead {
+  display: block;
+}
+
+.itemHead .badges {
+  margin-top: 5px;
+}
+
 .item a {
   color: var(--blue);
   text-decoration: none;
@@ -378,6 +386,91 @@ textarea::selection {
 
 .reason {
   color: var(--muted);
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border: 1px solid #d0d5dd;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #344054;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.badge.type-pr {
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+
+.badge.type-issue {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.badge.type-local,
+.badge.life-local {
+  border-color: #99f6e4;
+  background: #ecfeff;
+  color: #0f766e;
+}
+
+.badge.life-open,
+.badge.review-approved,
+.badge.ci-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.badge.life-merged {
+  border-color: #ddd6fe;
+  background: #faf5ff;
+  color: #6d28d9;
+}
+
+.badge.life-closed,
+.badge.ci-none,
+.badge.review-none {
+  border-color: #e5e7eb;
+  background: #f9fafb;
+  color: #667085;
+}
+
+.badge.life-draft,
+.badge.review-requested,
+.badge.review-commented,
+.badge.ci-pending {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.badge.review-changes,
+.badge.ci-failure {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.badge.auth-public {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #075985;
 }
 
 .graphCanvas {
@@ -432,6 +525,40 @@ textarea::selection {
   background: #f3f4f6;
 }
 
+.nodeCard.kind-pr {
+  border-top: 3px solid #8b5cf6;
+}
+
+.nodeCard.kind-issue {
+  border-top: 3px solid #3b82f6;
+}
+
+.nodeCard.life-merged {
+  background: #faf5ff;
+  border-color: #c4b5fd;
+}
+
+.nodeCard.life-draft {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.nodeCard.ci-failure {
+  box-shadow: inset 3px 0 0 #dc2626, 0 2px 12px rgba(16, 24, 40, 0.07);
+}
+
+.nodeCard.ci-success {
+  box-shadow: inset 3px 0 0 #16a34a, 0 2px 12px rgba(16, 24, 40, 0.07);
+}
+
+tr.ci-failure td:first-child {
+  box-shadow: inset 3px 0 0 #dc2626;
+}
+
+tr.ci-success td:first-child {
+  box-shadow: inset 3px 0 0 #16a34a;
+}
+
 .nodeId {
   color: var(--muted);
   font-size: 12px;
@@ -444,6 +571,7 @@ textarea::selection {
 .nodeTitle {
   font-weight: 650;
   overflow-wrap: anywhere;
+  margin-bottom: 8px;
 }
 
 .nodeState {
@@ -484,6 +612,10 @@ tr:last-child td {
   border-bottom: 0;
 }
 
+td .badges {
+  max-width: 320px;
+}
+
 @media (max-width: 920px) {
   .shell {
     grid-template-columns: 1fr;
@@ -506,6 +638,7 @@ tr:last-child td {
   .briefGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
 }
 
 @media (max-width: 560px) {

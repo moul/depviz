@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.5-dev';
+const assetVersion = 'v4.1.7-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -455,7 +455,7 @@ function summarizeGitHubReviews(reviews, pr) {
 
 function summarizeGitHubCI(checkRunsPayload, statusPayload) {
   const runs = checkRunsPayload?.check_runs || [];
-  const statusState = String(statusPayload?.state || '').toLowerCase();
+  const statusState = Number(statusPayload?.total_count || 0) > 0 ? String(statusPayload?.state || '').toLowerCase() : '';
   const failedConclusions = new Set(['failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure']);
   const okConclusions = new Set(['success', 'neutral', 'skipped']);
   let failed = 0;
@@ -487,12 +487,7 @@ function summarizeGitHubCI(checkRunsPayload, statusPayload) {
 }
 
 function githubRefreshItems(nodes) {
-  return nodes.map((node) => ({
-    id: node.id,
-    title: node.title,
-    kind: node.kind,
-    state: node.state,
-    url: node.url,
+  return nodes.map((node) => briefItem(node, {
     reason: `${node.kind} ${node.state}${isClosed(node) && !state.showClosed ? '; closed hidden by filter' : ''}`,
   })).slice(0, 12);
 }
@@ -1065,28 +1060,23 @@ function buildBrief(snapshot) {
     if (isClosed(node)) continue;
     const active = activeBlockers(node.id, nodes, blockersByNode);
     if (active.length === 0 && !isPlaceholder(node)) {
-      ready.push({
-        id: node.id,
-        title: node.title,
-        kind: node.kind,
-        state: node.state,
-        url: node.url,
+      ready.push(briefItem(node, {
         reason: readyReason(node, blockedByNode.get(node.id)),
         impact: activeBlockedCount(node.id, nodes, blockedByNode),
-      });
+      }));
     } else {
       blocked++;
     }
     if (isLocal(node)) {
-      localOnly.push({ id: node.id, title: node.title, kind: node.kind, state: node.state, reason: 'local-only planning card' });
+      localOnly.push(briefItem(node, { reason: 'local-only planning card' }));
     }
     if (isPlaceholder(node) && !isLocal(node)) {
-      stale.push({ id: node.id, title: node.title, kind: node.kind, state: node.state, url: node.url, reason: 'placeholder external ref; sync a wider scope' });
+      stale.push(briefItem(node, { reason: 'placeholder external ref; sync a wider scope' }));
       continue;
     }
     const updated = Date.parse(node.updated_at || '');
     if (!isLocal(node) && Number.isFinite(updated) && updated < cutoff) {
-      stale.push({ id: node.id, title: node.title, kind: node.kind, state: node.state, url: node.url, reason: 'not updated in 30+ days' });
+      stale.push(briefItem(node, { reason: 'not updated in 30+ days' }));
     }
   }
 
@@ -1095,15 +1085,10 @@ function buildBrief(snapshot) {
     if (!node || isClosed(node)) continue;
     const impact = activeBlockedCount(blockerID, nodes, blockedByNode);
     if (impact === 0) continue;
-    blockers.push({
-      id: node.id,
-      title: node.title,
-      kind: node.kind,
-      state: node.state,
-      url: node.url,
+    blockers.push(briefItem(node, {
       impact,
       reason: `blocks ${impact} active card${impact === 1 ? '' : 's'}`,
-    });
+    }));
   }
 
   sortItems(ready);
@@ -1126,6 +1111,18 @@ function buildBrief(snapshot) {
       local_only: localOnly.length,
       stale: stale.length,
     },
+  };
+}
+
+function briefItem(node, extra = {}) {
+  return {
+    id: node.id,
+    title: node.title,
+    kind: node.kind,
+    state: node.state,
+    url: node.url,
+    badges: nodeBadges(node),
+    ...extra,
   };
 }
 
@@ -1179,7 +1176,8 @@ function renderItem(item) {
   const url = item.url || item.URL || '';
   const reason = esc(item.reason || item.Reason || '');
   const label = url ? `<a href="${esc(url)}">${id}</a>` : id;
-  return `<div class="item"><strong>${label} ${title}</strong><div class="reason">${reason}</div></div>`;
+  const badges = badgesHTML(item.badges || plainBadges(item));
+  return `<div class="item"><div class="itemHead"><strong>${label} ${title}</strong>${badges}</div><div class="reason">${reason}</div></div>`;
 }
 
 function renderGraph(snapshot, nodes) {
@@ -1209,12 +1207,12 @@ function renderGraph(snapshot, nodes) {
   html += '</svg>';
   for (const node of nodes) {
     const pos = positions.get(node.id);
-    const klass = ['nodeCard', isLocal(node) ? 'note' : '', isClosed(node) ? 'closed' : '', isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
+    const klass = ['nodeCard', ...nodeCardClasses(node), isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
     html += `<article class="${klass}" style="transform:translate(${pos.x}px, ${pos.y}px)">
       <div class="nodeId">${id}</div>
       <div class="nodeTitle">${esc(node.title)}</div>
-      <div class="nodeState">${esc(node.kind)} - ${esc(node.state)}</div>
+      ${badgesHTML(nodeBadges(node))}
     </article>`;
   }
   html += '</div>';
@@ -1224,9 +1222,9 @@ function renderGraph(snapshot, nodes) {
 function renderTable(nodes) {
   const rows = nodes.map((node) => {
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
-    return `<tr><td>${id}</td><td>${esc(node.title)}</td><td>${esc(node.kind)}</td><td>${esc(node.state)}</td><td>${esc(labels(node).join(', '))}</td></tr>`;
+    return `<tr class="${nodeCardClasses(node).join(' ')}"><td>${id}</td><td>${badgesHTML(nodeBadges(node))}</td><td>${esc(node.title)}</td><td>${esc(labels(node).join(', '))}</td></tr>`;
   }).join('');
-  dom.table.innerHTML = `<table><thead><tr><th>ID</th><th>Title</th><th>Kind</th><th>State</th><th>Labels</th></tr></thead><tbody>${rows}</tbody></table>`;
+  dom.table.innerHTML = `<table><thead><tr><th>ID</th><th>Signals</th><th>Title</th><th>Labels</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function visibleNodes(nodes) {
@@ -1234,7 +1232,7 @@ function visibleNodes(nodes) {
     if (!state.showClosed && isClosed(node)) return false;
     if (!state.showLocal && isLocal(node)) return false;
     if (!state.showExternal && !isLocal(node)) return false;
-    const hay = [node.id, node.title, node.state, node.kind, labels(node).join(' ')].join(' ').toLowerCase();
+    const hay = [node.id, node.title, node.state, node.kind, badgeText(nodeBadges(node)), labels(node).join(' ')].join(' ').toLowerCase();
     return !state.filter || hay.includes(state.filter);
   });
 }
@@ -1306,6 +1304,96 @@ function decodeBase64URL(text) {
 function countLines(text) {
   if (!text) return 0;
   return text.split(/\r?\n/).length;
+}
+
+function nodeCardClasses(node) {
+  const data = nodeData(node);
+  const lifecycle = data.lifecycle?.state || node.state || 'unknown';
+  const ci = data.ci?.state || 'none';
+  const review = data.review?.state || 'none';
+  return [
+    isLocal(node) ? 'note' : '',
+    isClosed(node) ? 'closed' : '',
+    `kind-${badgeClass(node.kind || 'task')}`,
+    `life-${badgeClass(lifecycle)}`,
+    node.kind === 'pr' ? `ci-${badgeClass(ci)}` : '',
+    node.kind === 'pr' ? `review-${badgeClass(review)}` : '',
+  ];
+}
+
+function nodeBadges(node) {
+  const data = nodeData(node);
+  const badges = [];
+  if (isLocal(node)) {
+    badges.push(badge('type-local', '📝 note'));
+    return badges;
+  }
+  badges.push(typeBadge(node));
+  badges.push(lifecycleBadge(data.lifecycle?.state || node.state));
+  if (node.kind === 'pr') {
+    badges.push(reviewBadge(data.review || {}));
+    badges.push(ciBadge(data.ci || {}));
+  }
+  if (data.auth_fallback) badges.push(badge('auth-public', '🌐 public'));
+  return badges.filter(Boolean);
+}
+
+function plainBadges(item) {
+  const kind = item.kind || item.Kind || 'task';
+  const state = item.state || item.State || 'unknown';
+  return [typeBadge({ kind }), lifecycleBadge(state)].filter(Boolean);
+}
+
+function typeBadge(node) {
+  const kind = node.kind || 'task';
+  if (kind === 'pr') return badge('type-pr', '🔀 PR');
+  if (kind === 'issue') return badge('type-issue', '📌 issue');
+  if (kind === 'note') return badge('type-local', '📝 note');
+  return badge('type-task', '▣ task');
+}
+
+function lifecycleBadge(value) {
+  const lifecycle = String(value || 'unknown').toLowerCase();
+  if (lifecycle === 'merged') return badge('life-merged', '🟣 merged');
+  if (lifecycle === 'draft') return badge('life-draft', '🚧 draft');
+  if (lifecycle === 'open') return badge('life-open', '🟢 open');
+  if (isClosed({ state: lifecycle })) return badge('life-closed', '⚫ closed');
+  if (lifecycle === 'local') return badge('life-local', '📝 local');
+  return badge('life-unknown', '◇ unknown');
+}
+
+function reviewBadge(review) {
+  const reviewState = String(review.state || 'none').toLowerCase();
+  if (reviewState === 'approved') return badge('review-approved', `✅ review${review.approvals ? ` ${review.approvals}` : ''}`);
+  if (reviewState === 'changes_requested') return badge('review-changes', `✋ changes${review.changes_requested ? ` ${review.changes_requested}` : ''}`);
+  if (reviewState === 'requested') return badge('review-requested', '👀 review');
+  if (reviewState === 'commented') return badge('review-commented', '💬 comments');
+  return badge('review-none', '👀 no review');
+}
+
+function ciBadge(ci) {
+  const ciState = String(ci.state || 'none').toLowerCase();
+  if (ciState === 'success') return badge('ci-success', `🟢 ci ok${ci.total ? ` ${ci.total}` : ''}`);
+  if (ciState === 'failure') return badge('ci-failure', `🔴 ci fail${ci.failed ? ` ${ci.failed}` : ''}`);
+  if (ciState === 'pending') return badge('ci-pending', `🟡 ci wait${ci.pending ? ` ${ci.pending}` : ''}`);
+  return badge('ci-none', '⚪ no ci');
+}
+
+function badge(kind, text) {
+  return { kind, text };
+}
+
+function badgesHTML(badges) {
+  if (!badges || badges.length === 0) return '';
+  return `<div class="badges">${badges.map((item) => `<span class="badge ${esc(item.kind)}">${esc(item.text)}</span>`).join('')}</div>`;
+}
+
+function badgeText(badges) {
+  return (badges || []).map((item) => item.text || '').join(' ');
+}
+
+function badgeClass(value) {
+  return String(value || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'unknown';
 }
 
 function labels(node) {
