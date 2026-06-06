@@ -1,7 +1,15 @@
+// Standalone Live demo: define nodes by hand so cards have titles and states.
+// With GitHub sync/export, keep only the repo line and relations below.
 board "DepViz v4 POC"
 
 repo moul/depviz
 
+#679 "Bootstrap depviz v4" [open] @v4
+#80 "Choose Flow syntax" [open] @live
+#81 "Hydrate refs from GitHub" [open] @github
+#85 "Merge the v4 bootstrap" [open] @release
+#156 "Cross-repo board example" [open] @multirepo
+moul/depviz2#5252 "External dependency" [open]
 note live-format "Decide Live input format"
 
 #679 depends on #80, #81 and blocks #85
