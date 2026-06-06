@@ -168,7 +168,7 @@ function highlightJSON(text) {
 function highlightFlow(text) {
   return text.split(/(\r?\n)/).map((line) => {
     if (/^\s*#\s/.test(line)) return `<span class="tok-comment">${esc(line)}</span>`;
-    const tokenRE = /"(?:\\.|[^"\\])*"|(?:gh:)?[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+[#!]\d+|[A-Za-z][A-Za-z0-9_.-]*[#!]\d+|[#][0-9]+|![0-9]+|@[A-Za-z0-9_.:-]+|<-|->|~>|--|\b(?:depviz|repo|board|note|task|as)\b/g;
+    const tokenRE = /"(?:\\.|[^"\\])*"|(?:gh:)?[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+[#!]\d+|[A-Za-z][A-Za-z0-9_.-]*[#!]\d+|[#][0-9]+|![0-9]+|@[A-Za-z0-9_.:-]+|<-|->|~>|--|\b(?:depviz|repo|board|note|task|as|depends|on|blocks|addresses|and)\b/g;
     let out = '';
     let last = 0;
     let match;
@@ -179,7 +179,7 @@ function highlightFlow(text) {
       if (token.startsWith('"')) cls = 'tok-string';
       else if (token.startsWith('@')) cls = 'tok-tag';
       else if (['<-', '->', '~>', '--'].includes(token)) cls = 'tok-arrow';
-      else if (/^(depviz|repo|board|note|task|as)$/.test(token)) cls = 'tok-keyword';
+      else if (/^(depviz|repo|board|note|task|as|depends|on|blocks|addresses|and)$/.test(token)) cls = 'tok-keyword';
       out += `<span class="${cls}">${esc(token)}</span>`;
       last = tokenRE.lastIndex;
     }
@@ -217,7 +217,7 @@ function stripMarkdownFence(text) {
 function looksLikeFlow(text) {
   return text.split(/\r?\n/).some((line) => {
     const trimmed = line.trim();
-    return /^(depviz|repo|board|note|task)\b/.test(trimmed) || /(?:^|\s)(?:gh:)?[\w.-]+\/[\w.-]+[#!]\d+\b/.test(trimmed) || /\s(?:->|<-|~>)\s/.test(trimmed);
+    return /^(depviz|repo|board|note|task)\b/.test(trimmed) || /\b(depends\s+on|blocks|addresses)\b/i.test(trimmed) || /(?:^|\s)(?:gh:)?[\w.-]+\/[\w.-]+[#!]\d+\b/.test(trimmed) || /\s(?:->|<-|~>)\s/.test(trimmed);
   });
 }
 
@@ -258,6 +258,7 @@ function parseFlow(text) {
       parseFlowLocalNode(ctx, line, lineNo);
       continue;
     }
+    if (parseFlowRelation(ctx, line, lineNo)) continue;
     if (parseFlowEdge(ctx, line, lineNo)) continue;
     if (parseFlowGitHubNode(ctx, line, lineNo)) continue;
     throw new Error(`line ${lineNo}: unsupported DepViz Flow statement`);
@@ -315,7 +316,7 @@ function parseFlowGitHubNode(ctx, line, lineNo) {
     id: ref.id,
     kind: ref.kind,
     title,
-    state: readState(tail) || 'open',
+    state: readState(tail) || 'unknown',
     source: `github:${ref.repo}`,
     external_id: `${ref.marker}${ref.number}`,
     url: githubURL(ref.repo, ref.marker, ref.number),
@@ -340,6 +341,57 @@ function parseFlowEdge(ctx, line, lineNo) {
     ctx.events.push({ type: 'edge', from: left.id, to: right.id, kind: 'blocks', authority: arrow === '~>' ? 'flow-soft' : 'flow', confidence: arrow === '~>' ? 0.5 : 1, evidence: { line, note: readQuoted(tail, lineNo) || tail.trim() } });
   }
   return true;
+}
+
+function parseFlowRelation(ctx, line, lineNo) {
+  const match = /^(\S+)\s+(.+)$/.exec(line);
+  if (!match) return false;
+  const chunks = relationChunks(match[2]);
+  if (chunks.length === 0) return false;
+
+  const subject = resolveFlowRef(ctx, match[1], lineNo);
+  ensureFlowRefNode(ctx, subject);
+  for (const chunk of chunks) {
+    const targets = parseFlowRefList(ctx, chunk.refs, lineNo);
+    for (const target of targets) {
+      ensureFlowRefNode(ctx, target);
+      if (chunk.verb === 'depends_on') {
+        ctx.events.push({ type: 'edge', from: target.id, to: subject.id, kind: 'blocks', authority: 'flow', evidence: { line, relation: 'depends_on' } });
+        continue;
+      }
+      ctx.events.push({ type: 'edge', from: subject.id, to: target.id, kind: chunk.verb, authority: 'flow', evidence: { line, relation: chunk.verb } });
+    }
+  }
+  return true;
+}
+
+function relationChunks(text) {
+  const relationRE = /\b(depends\s+on|depends|blocks|addresses)\b/ig;
+  const matches = Array.from(text.matchAll(relationRE));
+  if (matches.length === 0 || matches[0].index !== 0) return [];
+  return matches.map((match, index) => {
+    const start = match.index + match[0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index : text.length;
+    const refs = text.slice(start, end).trim().replace(/\band\s*$/i, '').trim();
+    return { verb: normalizeRelationVerb(match[0]), refs };
+  });
+}
+
+function normalizeRelationVerb(verb) {
+  const normalized = verb.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (normalized === 'depends' || normalized === 'depends on') return 'depends_on';
+  return normalized;
+}
+
+function parseFlowRefList(ctx, text, lineNo) {
+  const refs = text
+    .replace(/\band\b/gi, ',')
+    .split(',')
+    .map((part) => part.trim().replace(/[.;]$/, ''))
+    .filter(Boolean)
+    .map((token) => resolveFlowRef(ctx, token, lineNo));
+  if (refs.length === 0) throw new Error(`line ${lineNo}: relation needs at least one ref`);
+  return refs;
 }
 
 function resolveFlowRef(ctx, token, lineNo) {
@@ -383,7 +435,7 @@ function ensureFlowRefNode(ctx, ref) {
     id: ref.id,
     kind: ref.kind,
     title: ref.id,
-    state: 'open',
+    state: 'unknown',
     source: `github:${ref.repo}`,
     external_id: `${ref.marker}${ref.number}`,
     url: githubURL(ref.repo, ref.marker, ref.number),
@@ -885,6 +937,7 @@ function isBlocked(nodeID, snapshot) {
 
 function edgeBlockedAndBlocker(edge) {
   const kind = String(edge.kind || '').toLowerCase().trim();
+  if (['addresses', 'mentions', 'relates_to'].includes(kind)) return ['', ''];
   if (['blocked_by', 'depends_on', 'depends', 'after'].includes(kind)) return [edge.from_id, edge.to_id];
   if (['blocks', 'unblocks', 'precedes'].includes(kind)) return [edge.to_id, edge.from_id];
   return [edge.from_id, edge.to_id];

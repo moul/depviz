@@ -113,22 +113,20 @@ It accepts either:
 Example:
 
 ```depviz
-depviz LR
 repo moul/depviz
-repo moul/depviz2 as d2
 
-#679 "Bootstrap v4 root" @v4
-d2#10 "Old POC PR" [closed]
 note flow "Design DepViz Flow"
 
-flow -> #679
-d2#10 -> #679
+#679 depends on #80, #81 and blocks #85
+#156 depends on moul/depviz2#5252
+#679 addresses flow
 ```
 
 See [docs/DEPVIZ-FLOW.md](docs/DEPVIZ-FLOW.md).
 
 The editor includes syntax highlighting for DepViz Flow, JSON, and JSONL.
-Fenced Markdown blocks like ```` ```depviz ```` can be pasted directly.
+Plain Flow and fenced Markdown blocks like ```` ```depviz ```` can both be
+pasted directly.
 
 The static files live under `live/app/` and are deployable as-is through
 GitHub Pages. No Node.js build is required.

@@ -2,30 +2,24 @@
 
 DepViz Flow is the human input format for `depviz live`.
 
-JSON/JSONL remains the machine format. Flow is optimized for editing by hand,
-copying into Markdown, and growing from one repo to many repos without changing
-the first lines you wrote.
+JSON/JSONL remains the machine format. Flow is optimized for writing dependency
+intent by hand, copying into Markdown, and growing from one repo to many repos
+without changing the first lines you wrote.
 
-The Live editor accepts the fenced Markdown form directly, so a block from an
-issue, PR, README, or HackMD note can be pasted without removing the fences.
+The Live editor guesses the input format. Plain Flow, JSONL, exported JSON, and
+Markdown code fences are all accepted without a mode switch.
 
 ## Example
 
 ```depviz
-depviz LR
-board "DepViz v4 POC"
-
 repo moul/depviz
-repo moul/depviz2 as d2
 
-#679 "Bootstrap v4 root" [open] @v4
-d2#10 "Old POC PR" [closed] @poc
-note flow "Design DepViz Flow"
-
-flow -> #679
-d2#10 -> #679
-gh:openai/codex#123 ~> #679
+#679 depends on #80, #81 and blocks #85
+#156 depends on moul/depviz2#5252
 ```
+
+GitHub titles, labels, owners, and states come from sync/exported JSON. Flow is
+for declaring the relationship layer.
 
 ## References
 
@@ -61,36 +55,35 @@ Local-only refs are explicit:
 note flow "Design DepViz Flow"
 task release "Prepare v4 release"
 
-flow -> release
+flow blocks release
 ```
 
-## Edges
+## Relations
 
-Edges read left-to-right as prerequisite to result:
+Relations use verbs because they read well in issue comments and PR
+descriptions:
 
 ```depviz
-A -> B
+#679 depends on #80, #81
+#679 blocks #85
+#679 addresses flow
 ```
 
-means `A` blocks or unlocks `B`.
+`depends on` means each target blocks the subject. `blocks` means the subject
+blocks each target. `addresses` records a non-blocking relationship.
 
-Use reverse form when it reads better:
+Lists can use commas and `and`:
 
 ```depviz
-B <- A
+#679 depends on #80, #81 and blocks #85
 ```
 
-Use soft edges for suspected dependencies:
+The parser still accepts arrow aliases for imported snippets, but the human
+format should prefer verbs.
+
+## Local Nodes
 
 ```depviz
-A ~> B
-```
-
-## Nodes
-
-```depviz
-#123 "Issue title" [open] @label +owner
-!45 "PR title" [merged] @release
 note slug "Local note"
 task slug "Local task"
 ```
@@ -104,6 +97,7 @@ Flow should stay pleasant when it is rendered by plain Markdown:
 - comments use `# comment` or `// comment`
 - short refs are for the current repo; canonical refs are stored internally
 - aliases are local to the block, so examples can stay compact
+- GitHub state is not written by hand; connected data owns that truth
 
 That makes the same snippet usable in a GitHub issue, a PR description, a
 HackMD note, a README, or the Live editor.
