@@ -2,6 +2,7 @@ const sampleURL = './sample.events.jsonl';
 
 const dom = {
   input: document.getElementById('sourceInput'),
+  syntax: document.getElementById('syntaxLayer'),
   status: document.getElementById('status'),
   lineCount: document.getElementById('lineCount'),
   error: document.getElementById('errorText'),
@@ -59,6 +60,7 @@ function boot() {
 
 function wireEvents() {
   dom.input.addEventListener('input', update);
+  dom.input.addEventListener('scroll', syncHighlightScroll);
   dom.filter.addEventListener('input', () => {
     state.filter = dom.filter.value.toLowerCase();
     render();
@@ -103,6 +105,7 @@ function readFile(event) {
 
 function update() {
   const text = dom.input.value;
+  updateHighlight(text);
   dom.lineCount.textContent = `${countLines(text)} lines`;
   try {
     state.data = parseInput(text);
@@ -114,6 +117,75 @@ function update() {
     dom.status.textContent = 'input error';
   }
   render();
+}
+
+function updateHighlight(text) {
+  dom.syntax.innerHTML = `${highlightInput(text)}\n`;
+  syncHighlightScroll();
+}
+
+function syncHighlightScroll() {
+  dom.syntax.scrollTop = dom.input.scrollTop;
+  dom.syntax.scrollLeft = dom.input.scrollLeft;
+}
+
+function highlightInput(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return '';
+  if (looksLikeJSON(trimmed)) return highlightJSON(text);
+  return highlightFlow(text);
+}
+
+function looksLikeJSON(text) {
+  if (text.startsWith('{') || text.startsWith('[')) return true;
+  return text.split(/\r?\n/).some((line) => line.trim().startsWith('{'));
+}
+
+function highlightJSON(text) {
+  const tokenRE = /"(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\b(?:true|false|null)\b|[{}\[\],:]/g;
+  let out = '';
+  let last = 0;
+  let match;
+  while ((match = tokenRE.exec(text)) !== null) {
+    out += esc(text.slice(last, match.index));
+    const token = match[0];
+    const next = text.slice(tokenRE.lastIndex).match(/^\s*(.)/);
+    let cls = 'tok-punct';
+    if (token.startsWith('"')) {
+      cls = next && next[1] === ':' ? 'tok-key' : 'tok-string';
+    } else if (/^-?\d/.test(token)) {
+      cls = 'tok-number';
+    } else if (/^(true|false|null)$/.test(token)) {
+      cls = 'tok-literal';
+    }
+    out += `<span class="${cls}">${esc(token)}</span>`;
+    last = tokenRE.lastIndex;
+  }
+  out += esc(text.slice(last));
+  return out;
+}
+
+function highlightFlow(text) {
+  return text.split(/(\r?\n)/).map((line) => {
+    if (/^\s*#\s/.test(line)) return `<span class="tok-comment">${esc(line)}</span>`;
+    const tokenRE = /"(?:\\.|[^"\\])*"|[#][0-9]+|![0-9]+|@[A-Za-z0-9_.:-]+|<-|->|~>|--|\b(?:depviz|repo|board|note|task)\b/g;
+    let out = '';
+    let last = 0;
+    let match;
+    while ((match = tokenRE.exec(line)) !== null) {
+      out += esc(line.slice(last, match.index));
+      const token = match[0];
+      let cls = 'tok-ref';
+      if (token.startsWith('"')) cls = 'tok-string';
+      else if (token.startsWith('@')) cls = 'tok-tag';
+      else if (['<-', '->', '~>', '--'].includes(token)) cls = 'tok-arrow';
+      else if (/^(depviz|repo|board|note|task)$/.test(token)) cls = 'tok-keyword';
+      out += `<span class="${cls}">${esc(token)}</span>`;
+      last = tokenRE.lastIndex;
+    }
+    out += esc(line.slice(last));
+    return out;
+  }).join('');
 }
 
 function parseInput(text) {

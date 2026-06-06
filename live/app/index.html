@@ -28,7 +28,10 @@
           Open file
         </label>
       </div>
-      <textarea id="sourceInput" spellcheck="false" aria-label="DepViz JSONL or export JSON"></textarea>
+      <div class="editorWrap" id="editorWrap">
+        <pre id="syntaxLayer" class="syntaxLayer" aria-hidden="true"></pre>
+        <textarea id="sourceInput" spellcheck="false" aria-label="DepViz JSONL or export JSON"></textarea>
+      </div>
       <div class="inputMeta">
         <span id="lineCount">0 lines</span>
         <span id="errorText"></span>

@@ -109,6 +109,9 @@ It accepts either:
 - the JSONL event format used by `depviz ingest events`
 - the JSON export produced by `depviz gen json`
 
+The editor includes syntax highlighting for JSON/JSONL input, with a small
+DepViz Flow highlighter ready for the future human DSL.
+
 The static files live under `live/app/` and are deployable as-is through
 GitHub Pages. No Node.js build is required.
 

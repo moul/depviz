@@ -25,6 +25,7 @@ The POC succeeds if:
 - `depviz gen json` creates a stable machine-readable export
 - `depviz gen html` creates an inspectable static file
 - `depviz live` serves a browser app that accepts JSONL or exported JSON
+- Live input has syntax highlighting for JSON/JSONL
 - every same-repo PR can publish a `/previews/pr-N/live/` Pages preview
 - fixture output is covered by golden tests
 

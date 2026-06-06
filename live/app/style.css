@@ -127,21 +127,100 @@ h2 {
   display: none;
 }
 
+.editorWrap {
+  position: relative;
+  width: 100%;
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #101828;
+}
+
+.editorWrap:focus-within {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+textarea,
+.syntaxLayer {
+  margin: 0;
+  padding: 12px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 textarea {
+  position: relative;
+  z-index: 1;
   width: 100%;
   min-height: 420px;
   resize: none;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-  background: #101828;
-  color: #e5e7eb;
-  tab-size: 2;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: #f9fafb;
   outline: none;
-  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
-textarea:focus,
+textarea::selection {
+  background: rgba(45, 212, 191, 0.28);
+  color: transparent;
+}
+
+.syntaxLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  color: #d0d5dd;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.tok-key {
+  color: #7dd3fc;
+}
+
+.tok-string {
+  color: #86efac;
+}
+
+.tok-number {
+  color: #fcd34d;
+}
+
+.tok-literal {
+  color: #c4b5fd;
+}
+
+.tok-punct {
+  color: #94a3b8;
+}
+
+.tok-comment {
+  color: #64748b;
+}
+
+.tok-ref {
+  color: #f9a8d4;
+}
+
+.tok-arrow {
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+.tok-keyword {
+  color: #67e8f9;
+  font-weight: 700;
+}
+
+.tok-tag {
+  color: #fde68a;
+}
+
 .filters input:focus {
   border-color: var(--teal);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
@@ -377,6 +456,10 @@ tr:last-child td {
   }
 
   textarea {
+    min-height: 280px;
+  }
+
+  .editorWrap {
     min-height: 280px;
   }
 
