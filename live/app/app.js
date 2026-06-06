@@ -1,4 +1,5 @@
-const sampleURL = './sample.depviz';
+const assetVersion = 'pr-679-c0a0321';
+const sampleURL = `./sample.depviz?v=${assetVersion}`;
 
 const dom = {
   input: document.getElementById('sourceInput'),
