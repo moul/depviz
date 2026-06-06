@@ -582,6 +582,7 @@ tr.ci-success td:first-child {
 
 table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -612,8 +613,39 @@ tr:last-child td {
   border-bottom: 0;
 }
 
-td .badges {
-  max-width: 320px;
+.itemCol {
+  width: 42%;
+}
+
+.signalCol {
+  width: 42%;
+}
+
+.labelCol {
+  width: 16%;
+}
+
+.tableItem {
+  min-width: 0;
+}
+
+.tableItemID {
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.tableItemID a {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.tableItemTitle {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.workTable .badges {
+  max-width: 100%;
 }
 
 @media (max-width: 920px) {

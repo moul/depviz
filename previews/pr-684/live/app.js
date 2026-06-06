@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.7-dev';
+const assetVersion = 'v4.1.8-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -1222,9 +1222,20 @@ function renderGraph(snapshot, nodes) {
 function renderTable(nodes) {
   const rows = nodes.map((node) => {
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
-    return `<tr class="${nodeCardClasses(node).join(' ')}"><td>${id}</td><td>${badgesHTML(nodeBadges(node))}</td><td>${esc(node.title)}</td><td>${esc(labels(node).join(', '))}</td></tr>`;
+    const klass = nodeCardClasses(node).filter(Boolean).join(' ');
+    const labelText = labels(node).join(', ');
+    return `<tr class="${klass}">
+      <td><div class="tableItem"><div class="tableItemID">${id}</div><div class="tableItemTitle">${esc(node.title)}</div></div></td>
+      <td>${badgesHTML(nodeBadges(node))}</td>
+      <td>${esc(labelText)}</td>
+    </tr>`;
   }).join('');
-  dom.table.innerHTML = `<table><thead><tr><th>ID</th><th>Signals</th><th>Title</th><th>Labels</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const empty = '<tr><td colspan="3"><div class="reason">no visible cards</div></td></tr>';
+  dom.table.innerHTML = `<table class="workTable">
+    <colgroup><col class="itemCol"><col class="signalCol"><col class="labelCol"></colgroup>
+    <thead><tr><th>Item</th><th>Signals</th><th>Labels</th></tr></thead>
+    <tbody>${rows || empty}</tbody>
+  </table>`;
 }
 
 function visibleNodes(nodes) {
