@@ -115,6 +115,9 @@ Example:
 ```depviz
 repo moul/depviz
 
+#679 "Bootstrap depviz v4" [open] @v4
+#80 "Choose Flow syntax" [open] @live
+#81 "Hydrate refs from GitHub" [open] @github
 note flow "Design DepViz Flow"
 
 #679 depends on #80, #81 and blocks #85
@@ -123,6 +126,10 @@ note flow "Design DepViz Flow"
 ```
 
 See [docs/DEPVIZ-FLOW.md](docs/DEPVIZ-FLOW.md).
+
+In standalone Live, node definitions make the graph readable without fetching
+GitHub. With GitHub sync/export, the same board can usually shrink to relation
+lines like `#679 blocks #85`; GitHub owns titles, labels, and state.
 
 The editor includes syntax highlighting for DepViz Flow, JSON, and JSONL.
 Plain Flow and fenced Markdown blocks like ```` ```depviz ```` can both be

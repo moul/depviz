@@ -11,6 +11,8 @@ Markdown code fences are all accepted without a mode switch.
 
 ## Example
 
+GitHub-connected boards can stay relation-only:
+
 ```depviz
 repo moul/depviz
 
@@ -18,8 +20,20 @@ repo moul/depviz
 #156 depends on moul/depviz2#5252
 ```
 
-GitHub titles, labels, owners, and states come from sync/exported JSON. Flow is
-for declaring the relationship layer.
+GitHub titles, labels, owners, and states come from sync/exported JSON in that
+mode. Flow is mostly the relationship layer.
+
+Standalone Live examples can define nodes by hand so the graph has readable
+cards before any sync exists:
+
+```depviz
+repo moul/depviz
+
+#679 "Bootstrap depviz v4" [open] @v4
+#80 "Choose Flow syntax" [open] @live
+
+#679 depends on #80
+```
 
 ## References
 
@@ -81,7 +95,19 @@ Lists can use commas and `and`:
 The parser still accepts arrow aliases for imported snippets, but the human
 format should prefer verbs.
 
-## Local Nodes
+## Node Definitions
+
+GitHub refs can be declared manually when the input is the whole demo or note:
+
+```depviz
+#123 "Issue title" [open] @label +owner
+!45 "PR title" [merged] @release
+```
+
+When GitHub is connected, prefer omitting those definitions unless you are
+adding local-only context. The synced source owns external state.
+
+Local-only refs are explicit:
 
 ```depviz
 note slug "Local note"
@@ -97,7 +123,8 @@ Flow should stay pleasant when it is rendered by plain Markdown:
 - comments use `# comment` or `// comment`
 - short refs are for the current repo; canonical refs are stored internally
 - aliases are local to the block, so examples can stay compact
-- GitHub state is not written by hand; connected data owns that truth
+- GitHub state is written by hand only in standalone Live snippets
+- connected data owns external truth when a GitHub sync/export is present
 
 That makes the same snippet usable in a GitHub issue, a PR description, a
 HackMD note, a README, or the Live editor.

@@ -167,7 +167,7 @@ function highlightJSON(text) {
 
 function highlightFlow(text) {
   return text.split(/(\r?\n)/).map((line) => {
-    if (/^\s*#\s/.test(line)) return `<span class="tok-comment">${esc(line)}</span>`;
+    if (/^\s*(#\s|\/\/)/.test(line)) return `<span class="tok-comment">${esc(line)}</span>`;
     const tokenRE = /"(?:\\.|[^"\\])*"|(?:gh:)?[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+[#!]\d+|[A-Za-z][A-Za-z0-9_.-]*[#!]\d+|[#][0-9]+|![0-9]+|@[A-Za-z0-9_.:-]+|<-|->|~>|--|\b(?:depviz|repo|board|note|task|as|depends|on|blocks|addresses|and)\b/g;
     let out = '';
     let last = 0;
