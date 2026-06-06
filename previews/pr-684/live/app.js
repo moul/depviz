@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.2-dev';
+const assetVersion = 'v4.1.4-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -34,6 +34,7 @@ const state = {
   showExternal: true,
   showLocal: true,
   showClosed: false,
+  githubRefresh: [],
   data: emptyExport(),
 };
 
@@ -124,6 +125,7 @@ function readFile(event) {
 
 function update() {
   const text = dom.input.value;
+  state.githubRefresh = [];
   updateHighlight(text);
   dom.lineCount.textContent = `${countLines(text)} lines`;
   try {
@@ -250,11 +252,17 @@ async function hydrateGitHub() {
     }
     if (updates.length > 0) {
       state.data = mergeHydratedNodes(state.data, updates);
+      state.githubRefresh = githubRefreshItems(updates);
       render();
     }
-    dom.status.textContent = failures.length > 0
+    const statusParts = [failures.length > 0
       ? `refreshed ${updates.length}/${refs.length} GitHub refs`
-      : `refreshed ${updates.length} GitHub refs`;
+      : `refreshed ${updates.length} GitHub refs`];
+    const closedHidden = !state.showClosed ? updates.filter(isClosed).length : 0;
+    const publicFallbacks = updates.filter((node) => nodeData(node).auth_fallback).length;
+    if (closedHidden > 0) statusParts.push(`${closedHidden} closed in refresh summary`);
+    if (publicFallbacks > 0) statusParts.push(`${publicFallbacks} via public fallback`);
+    dom.status.textContent = statusParts.join('; ');
     dom.error.textContent = failures.slice(0, 2).join('  ');
   } finally {
     dom.hydrateGithub.disabled = false;
@@ -283,12 +291,15 @@ function parseGitHubNodeID(id) {
 }
 
 async function fetchGitHubNode(ref, token) {
-  const headers = {
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-  };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`https://api.github.com/repos/${ref.repo}/issues/${ref.number}`, { headers });
+  let authFallback = false;
+  let res = await fetchGitHubIssue(ref, token);
+  if (!res.ok && token && [401, 403, 404].includes(res.status)) {
+    const publicRes = await fetchGitHubIssue(ref, '');
+    if (publicRes.ok) {
+      res = publicRes;
+      authFallback = true;
+    }
+  }
   if (!res.ok) throw new Error(githubFetchError(res, token));
   const issue = await res.json();
   const isPR = Boolean(issue.pull_request);
@@ -301,6 +312,7 @@ async function fetchGitHubNode(ref, token) {
     owner: issue.assignee?.login || issue.user?.login || '',
     data_json: JSON.stringify({
       hydrated: true,
+      auth_fallback: authFallback,
       labels: (issue.labels || []).map((label) => label.name || label),
       number: issue.number,
       repo: ref.repo,
@@ -312,6 +324,15 @@ async function fetchGitHubNode(ref, token) {
     source_id: `github:${ref.repo}`,
     external_id: `${marker}${ref.number}`,
   });
+}
+
+async function fetchGitHubIssue(ref, token) {
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return fetch(`https://api.github.com/repos/${ref.repo}/issues/${ref.number}`, { headers });
 }
 
 function githubFetchError(res, token) {
@@ -333,6 +354,17 @@ function mergeHydratedNodes(data, updates) {
     edges: data.snapshot.edges,
   };
   return buildExportFromSnapshot(snapshot);
+}
+
+function githubRefreshItems(nodes) {
+  return nodes.map((node) => ({
+    id: node.id,
+    title: node.title,
+    kind: node.kind,
+    state: node.state,
+    url: node.url,
+    reason: `${node.kind} ${node.state}${isClosed(node) && !state.showClosed ? '; closed hidden by filter' : ''}`,
+  })).slice(0, 12);
 }
 
 function updateHighlight(text) {
@@ -993,7 +1025,11 @@ function renderStats(counts) {
 }
 
 function renderBrief(brief) {
+  const githubRefresh = state.githubRefresh.length
+    ? briefSection('GitHub refresh', state.githubRefresh, false)
+    : '';
   dom.brief.innerHTML = `<div class="briefGrid">
+    ${githubRefresh}
     ${briefSection('Next move', brief.next_move ? [brief.next_move] : [], true)}
     ${briefSection('Ready now', brief.ready || [], false)}
     ${briefSection('Blocking most work', brief.blockers || [], false)}
@@ -1108,7 +1144,7 @@ function encodeBase64URL(text) {
 }
 
 function decodeBase64URL(text) {
-  const padded = text.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((text.length + 3) % 4);
+  const padded = text.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (text.length % 4)) % 4);
   const binary = atob(padded);
   return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
 }
@@ -1119,10 +1155,14 @@ function countLines(text) {
 }
 
 function labels(node) {
+  return nodeData(node).labels || [];
+}
+
+function nodeData(node) {
   try {
-    return JSON.parse(node.data_json || '{}').labels || [];
+    return JSON.parse(node.data_json || '{}');
   } catch {
-    return [];
+    return {};
   }
 }
 
