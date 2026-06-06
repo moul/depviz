@@ -50,6 +50,11 @@ button.active {
   font-weight: 650;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .topbar {
   min-height: 56px;
   padding: 10px 14px;
@@ -85,6 +90,21 @@ button.active {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.actions input {
+  width: 178px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 7px 9px;
+}
+
+.actions input:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+  outline: none;
 }
 
 .shell {
@@ -483,6 +503,7 @@ tr:last-child td {
   }
 
   .actions button,
+  .actions input,
   .viewTabs button {
     flex: 1 1 auto;
   }
