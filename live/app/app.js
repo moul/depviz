@@ -1,5 +1,7 @@
-const assetVersion = 'v4.1.0-dev';
+const assetVersion = 'v4.1.2-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
+const githubTokenStorageKey = 'depviz.githubToken';
+const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
 
 const dom = {
   input: document.getElementById('sourceInput'),
@@ -16,6 +18,10 @@ const dom = {
   graphCanvas: document.getElementById('graphCanvas'),
   table: document.getElementById('tableView'),
   githubToken: document.getElementById('githubTokenInput'),
+  connectGithub: document.getElementById('connectGithubBtn'),
+  pasteGithubToken: document.getElementById('pasteGithubTokenBtn'),
+  forgetGithubToken: document.getElementById('forgetGithubTokenBtn'),
+  githubAuthState: document.getElementById('githubAuthState'),
   hydrateGithub: document.getElementById('hydrateGithubBtn'),
   showExternal: document.getElementById('showExternal'),
   showLocal: document.getElementById('showLocal'),
@@ -51,7 +57,8 @@ function emptyExport() {
 }
 
 function boot() {
-  dom.githubToken.value = sessionStorage.getItem('depviz.githubToken') || '';
+  dom.githubToken.value = sessionStorage.getItem(githubTokenStorageKey) || '';
+  refreshGitHubAuthUI();
   wireEvents();
   const hashed = readHash();
   if (hashed) {
@@ -88,7 +95,13 @@ function wireEvents() {
   document.getElementById('shareBtn').addEventListener('click', shareLink);
   document.getElementById('exportBtn').addEventListener('click', exportJSON);
   document.getElementById('fileInput').addEventListener('change', readFile);
-  dom.githubToken.addEventListener('input', persistGitHubToken);
+  dom.connectGithub.addEventListener('click', connectGitHub);
+  dom.pasteGithubToken.addEventListener('click', pasteGitHubToken);
+  dom.forgetGithubToken.addEventListener('click', forgetGitHubToken);
+  dom.githubToken.addEventListener('input', () => {
+    persistGitHubToken();
+    refreshGitHubAuthUI();
+  });
   dom.hydrateGithub.addEventListener('click', hydrateGitHub);
 }
 
@@ -126,9 +139,92 @@ function update() {
 }
 
 function persistGitHubToken() {
-  const token = dom.githubToken.value.trim();
-  if (token) sessionStorage.setItem('depviz.githubToken', token);
-  else sessionStorage.removeItem('depviz.githubToken');
+  const token = githubToken();
+  if (token) sessionStorage.setItem(githubTokenStorageKey, token);
+  else sessionStorage.removeItem(githubTokenStorageKey);
+}
+
+function githubToken() {
+  return dom.githubToken.value.trim();
+}
+
+function setGitHubToken(token) {
+  dom.githubToken.value = token.trim();
+  persistGitHubToken();
+  refreshGitHubAuthUI();
+}
+
+function refreshGitHubAuthUI() {
+  const connected = Boolean(githubToken());
+  dom.githubAuthState.textContent = connected ? 'GitHub: token' : 'GitHub: public';
+  dom.forgetGithubToken.disabled = !connected;
+}
+
+function connectGitHub() {
+  const refs = githubRefsForSnapshot(state.data.snapshot);
+  const url = buildGitHubTokenURL(refs);
+  const popup = window.open(url, '_blank');
+  if (popup) popup.opener = null;
+  const owners = uniqueGitHubOwners(refs);
+  dom.status.textContent = owners.length > 1
+    ? `GitHub token page opened; choose access for ${owners.length} owners`
+    : 'GitHub token page opened';
+}
+
+async function pasteGitHubToken() {
+  if (!navigator.clipboard || !navigator.clipboard.readText) {
+    dom.status.textContent = 'clipboard unavailable; use token fallback';
+    dom.githubToken.focus();
+    return;
+  }
+  try {
+    const token = extractGitHubToken(await navigator.clipboard.readText());
+    if (!token) {
+      dom.status.textContent = 'clipboard has no GitHub token';
+      dom.githubToken.focus();
+      return;
+    }
+    setGitHubToken(token);
+    dom.status.textContent = 'GitHub token ready for this tab';
+  } catch (err) {
+    dom.status.textContent = 'clipboard blocked; use token fallback';
+    dom.githubToken.focus();
+  }
+}
+
+function forgetGitHubToken() {
+  setGitHubToken('');
+  dom.status.textContent = 'GitHub token forgotten';
+}
+
+function buildGitHubTokenURL(refs) {
+  const repos = [...new Set(refs.map((ref) => ref.repo))].filter(Boolean);
+  const owners = uniqueGitHubOwners(refs);
+  const description = repos.length > 0
+    ? `Read issues and pull requests for ${repos.slice(0, 6).join(', ')} from DepViz Live.`
+    : 'Read issues and pull requests from DepViz Live.';
+  const params = new URLSearchParams({
+    name: 'DepViz Live',
+    description,
+    expires_in: '30',
+    metadata: 'read',
+    issues: 'read',
+    pull_requests: 'read',
+  });
+  if (owners.length === 1) params.set('target_name', owners[0]);
+  return `${githubFineGrainedTokenURL}?${params.toString()}`;
+}
+
+function uniqueGitHubOwners(refs) {
+  return [...new Set(refs.map((ref) => ref.repo.split('/')[0]).filter(Boolean))];
+}
+
+function extractGitHubToken(text) {
+  const trimmed = String(text || '').trim();
+  const prefixed = trimmed.match(/\b(?:github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9_]+)\b/);
+  if (prefixed) return prefixed[0];
+  if (/^[A-Za-z0-9_]{20,}$/.test(trimmed)) return trimmed;
+  return '';
 }
 
 async function hydrateGitHub() {
@@ -139,10 +235,10 @@ async function hydrateGitHub() {
   }
 
   dom.hydrateGithub.disabled = true;
-  dom.status.textContent = `hydrating ${refs.length} GitHub refs`;
+  dom.status.textContent = `refreshing ${refs.length} GitHub refs`;
   dom.error.textContent = '';
   try {
-    const token = dom.githubToken.value.trim();
+    const token = githubToken();
     const updates = [];
     const failures = [];
     for (const ref of refs) {
@@ -157,8 +253,8 @@ async function hydrateGitHub() {
       render();
     }
     dom.status.textContent = failures.length > 0
-      ? `hydrated ${updates.length}/${refs.length} GitHub refs`
-      : `hydrated ${updates.length} GitHub refs`;
+      ? `refreshed ${updates.length}/${refs.length} GitHub refs`
+      : `refreshed ${updates.length} GitHub refs`;
     dom.error.textContent = failures.slice(0, 2).join('  ');
   } finally {
     dom.hydrateGithub.disabled = false;
@@ -193,7 +289,7 @@ async function fetchGitHubNode(ref, token) {
   };
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`https://api.github.com/repos/${ref.repo}/issues/${ref.number}`, { headers });
-  if (!res.ok) throw new Error(githubFetchError(res));
+  if (!res.ok) throw new Error(githubFetchError(res, token));
   const issue = await res.json();
   const isPR = Boolean(issue.pull_request);
   const marker = ref.marker === '!' || isPR ? '!' : '#';
@@ -218,9 +314,14 @@ async function fetchGitHubNode(ref, token) {
   });
 }
 
-function githubFetchError(res) {
-  if (res.status === 401 || res.status === 403) return `${res.status}; add a token or check access`;
-  if (res.status === 404) return '404; missing or private';
+function githubFetchError(res, token) {
+  if (res.status === 401) return token ? '401; token rejected' : '401; connect GitHub';
+  if (res.status === 403) return token
+    ? '403; token lacks access or rate-limited'
+    : '403; connect GitHub for private refs or higher limits';
+  if (res.status === 404) return token
+    ? '404; missing or token lacks repo access'
+    : '404; missing/private; connect GitHub if private';
   return `${res.status} ${res.statusText}`;
 }
 

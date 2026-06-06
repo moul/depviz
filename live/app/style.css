@@ -75,6 +75,7 @@ button:disabled {
 
 .brand strong {
   font-size: 17px;
+  white-space: nowrap;
 }
 
 .brand span,
@@ -92,6 +93,13 @@ button:disabled {
   gap: 8px;
 }
 
+.githubAuth {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .actions input {
   width: 178px;
   border: 1px solid var(--line);
@@ -99,6 +107,17 @@ button:disabled {
   background: var(--panel);
   color: var(--ink);
   padding: 7px 9px;
+}
+
+.githubAuth input {
+  width: 126px;
+}
+
+.tokenState {
+  min-width: 96px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .actions input:focus {
