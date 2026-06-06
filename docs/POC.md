@@ -12,6 +12,7 @@ It proves that DepViz can be useful locally before becoming a hosted product:
 - export JSON for tools and live mode
 - export one static HTML file
 - serve a stateless Live v1 app without a Node.js build
+- parse Markdown-friendly DepViz Flow input for humans
 
 ## Success Criteria
 
@@ -24,8 +25,8 @@ The POC succeeds if:
 - `depviz brief` is worth reading on a real repo
 - `depviz gen json` creates a stable machine-readable export
 - `depviz gen html` creates an inspectable static file
-- `depviz live` serves a browser app that accepts JSONL or exported JSON
-- Live input has syntax highlighting for JSON/JSONL
+- `depviz live` serves a browser app that accepts DepViz Flow, JSONL, or exported JSON
+- Live input has syntax highlighting for DepViz Flow, JSON, and JSONL
 - every same-repo PR can publish a `/previews/pr-N/live/` Pages preview
 - fixture output is covered by golden tests
 

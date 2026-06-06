@@ -1,4 +1,4 @@
-const sampleURL = './sample.events.jsonl';
+const sampleURL = './sample.depviz';
 
 const dom = {
   input: document.getElementById('sourceInput'),
@@ -168,7 +168,7 @@ function highlightJSON(text) {
 function highlightFlow(text) {
   return text.split(/(\r?\n)/).map((line) => {
     if (/^\s*#\s/.test(line)) return `<span class="tok-comment">${esc(line)}</span>`;
-    const tokenRE = /"(?:\\.|[^"\\])*"|[#][0-9]+|![0-9]+|@[A-Za-z0-9_.:-]+|<-|->|~>|--|\b(?:depviz|repo|board|note|task)\b/g;
+    const tokenRE = /"(?:\\.|[^"\\])*"|(?:gh:)?[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+[#!]\d+|[A-Za-z][A-Za-z0-9_.-]*[#!]\d+|[#][0-9]+|![0-9]+|@[A-Za-z0-9_.:-]+|<-|->|~>|--|\b(?:depviz|repo|board|note|task|as)\b/g;
     let out = '';
     let last = 0;
     let match;
@@ -179,7 +179,7 @@ function highlightFlow(text) {
       if (token.startsWith('"')) cls = 'tok-string';
       else if (token.startsWith('@')) cls = 'tok-tag';
       else if (['<-', '->', '~>', '--'].includes(token)) cls = 'tok-arrow';
-      else if (/^(depviz|repo|board|note|task)$/.test(token)) cls = 'tok-keyword';
+      else if (/^(depviz|repo|board|note|task|as)$/.test(token)) cls = 'tok-keyword';
       out += `<span class="${cls}">${esc(token)}</span>`;
       last = tokenRE.lastIndex;
     }
@@ -189,7 +189,7 @@ function highlightFlow(text) {
 }
 
 function parseInput(text) {
-  const trimmed = text.trim();
+  const trimmed = stripMarkdownFence(text.trim());
   if (!trimmed) return emptyExport();
   if (trimmed.startsWith('{')) {
     try {
@@ -202,7 +202,23 @@ function parseInput(text) {
       if (!trimmed.includes('\n')) throw err;
     }
   }
+  if (looksLikeFlow(trimmed)) return buildExportFromEvents(parseFlow(trimmed));
   return buildExportFromEvents(parseJSONL(trimmed));
+}
+
+function stripMarkdownFence(text) {
+  const lines = text.split(/\r?\n/);
+  if (lines.length >= 2 && /^```\w*\s*$/.test(lines[0].trim()) && /^```\s*$/.test(lines[lines.length - 1].trim())) {
+    return lines.slice(1, -1).join('\n').trim();
+  }
+  return text;
+}
+
+function looksLikeFlow(text) {
+  return text.split(/\r?\n/).some((line) => {
+    const trimmed = line.trim();
+    return /^(depviz|repo|board|note|task)\b/.test(trimmed) || /(?:^|\s)(?:gh:)?[\w.-]+\/[\w.-]+[#!]\d+\b/.test(trimmed) || /\s(?:->|<-|~>)\s/.test(trimmed);
+  });
 }
 
 function parseJSONL(text) {
@@ -215,6 +231,212 @@ function parseJSONL(text) {
       throw new Error(`line ${index + 1}: ${err.message}`);
     }
   });
+}
+
+function parseFlow(text) {
+  const ctx = {
+    defaultRepo: '',
+    aliases: new Map(),
+    localAliases: new Map(),
+    events: [],
+    nodes: new Set(),
+  };
+  for (const [index, rawLine] of text.split(/\r?\n/).entries()) {
+    const lineNo = index + 1;
+    const line = stripInlineComment(rawLine).trim();
+    if (!line) continue;
+    if (/^depviz\b/i.test(line)) continue;
+    if (/^repo\b/i.test(line)) {
+      parseFlowRepo(ctx, line, lineNo);
+      continue;
+    }
+    if (/^board\b/i.test(line)) {
+      parseFlowBoard(ctx, line, lineNo);
+      continue;
+    }
+    if (/^note\b/i.test(line) || /^task\b/i.test(line)) {
+      parseFlowLocalNode(ctx, line, lineNo);
+      continue;
+    }
+    if (parseFlowEdge(ctx, line, lineNo)) continue;
+    if (parseFlowGitHubNode(ctx, line, lineNo)) continue;
+    throw new Error(`line ${lineNo}: unsupported DepViz Flow statement`);
+  }
+  return ctx.events;
+}
+
+function parseFlowRepo(ctx, line, lineNo) {
+  const match = /^repo\s+([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)(?:\s+as\s+([A-Za-z][A-Za-z0-9_.-]*))?\s*$/i.exec(line);
+  if (!match) throw new Error(`line ${lineNo}: expected repo owner/name [as alias]`);
+  const repo = match[1];
+  const alias = match[2] || '';
+  if (!ctx.defaultRepo) ctx.defaultRepo = repo;
+  if (alias) ctx.aliases.set(alias, repo);
+  ctx.events.push({ type: 'source', id: `github:${repo}`, kind: 'github', title: repo, url: `https://github.com/${repo}` });
+}
+
+function parseFlowBoard(ctx, line, lineNo) {
+  const title = readQuoted(line.replace(/^board\s+/i, ''), lineNo) || line.replace(/^board\s+/i, '').trim();
+  if (!title) throw new Error(`line ${lineNo}: board needs a title`);
+  ctx.events.push({ type: 'board', id: 'default', title });
+}
+
+function parseFlowLocalNode(ctx, line, lineNo) {
+  const kind = /^note\b/i.test(line) ? 'note' : 'task';
+  const rest = line.replace(/^(note|task)\s+/i, '');
+  const match = /^([A-Za-z][A-Za-z0-9_.:-]*)(?:\s+(.*))?$/.exec(rest);
+  if (!match) throw new Error(`line ${lineNo}: expected ${kind} slug "title"`);
+  const slugID = match[1];
+  const tail = match[2] || '';
+  const title = readQuoted(tail, lineNo) || slugID;
+  const id = `${kind}:${slugID}`;
+  ctx.localAliases.set(slugID, id);
+  upsertFlowNode(ctx, {
+    type: kind === 'note' ? 'note' : 'node',
+    id,
+    kind,
+    title,
+    state: kind === 'note' ? 'local' : readState(tail) || 'open',
+    source: kind === 'note' ? 'local' : 'flow',
+    external_id: id,
+    labels: readLabels(tail),
+  });
+}
+
+function parseFlowGitHubNode(ctx, line, lineNo) {
+  const refMatch = /^(\S+)(?:\s+(.*))?$/.exec(line);
+  if (!refMatch) return false;
+  const ref = resolveFlowRef(ctx, refMatch[1], lineNo);
+  if (!ref || ref.kind === 'local') return false;
+  const tail = refMatch[2] || '';
+  const title = readQuoted(tail, lineNo) || ref.id;
+  upsertFlowNode(ctx, {
+    type: 'node',
+    id: ref.id,
+    kind: ref.kind,
+    title,
+    state: readState(tail) || 'open',
+    source: `github:${ref.repo}`,
+    external_id: `${ref.marker}${ref.number}`,
+    url: githubURL(ref.repo, ref.marker, ref.number),
+    labels: readLabels(tail),
+    owner: readOwner(tail),
+  });
+  return true;
+}
+
+function parseFlowEdge(ctx, line, lineNo) {
+  const match = /^(\S+)\s+(->|<-|~>)\s+(\S+)(?:\s+(.*))?$/.exec(line);
+  if (!match) return false;
+  const left = resolveFlowRef(ctx, match[1], lineNo);
+  const arrow = match[2];
+  const right = resolveFlowRef(ctx, match[3], lineNo);
+  const tail = match[4] || '';
+  ensureFlowRefNode(ctx, left);
+  ensureFlowRefNode(ctx, right);
+  if (arrow === '<-') {
+    ctx.events.push({ type: 'edge', from: left.id, to: right.id, kind: 'blocked_by', authority: 'flow', evidence: { line, note: readQuoted(tail, lineNo) || tail.trim() } });
+  } else {
+    ctx.events.push({ type: 'edge', from: left.id, to: right.id, kind: 'blocks', authority: arrow === '~>' ? 'flow-soft' : 'flow', confidence: arrow === '~>' ? 0.5 : 1, evidence: { line, note: readQuoted(tail, lineNo) || tail.trim() } });
+  }
+  return true;
+}
+
+function resolveFlowRef(ctx, token, lineNo) {
+  if (/^(note|task):[A-Za-z0-9_.:-]+$/.test(token)) return { id: token, kind: 'local' };
+  if (ctx.localAliases.has(token)) return { id: ctx.localAliases.get(token), kind: 'local' };
+  const local = /^([A-Za-z][A-Za-z0-9_.:-]*)$/.exec(token);
+  if (local && !ctx.aliases.has(local[1])) return { id: `task:${local[1]}`, kind: 'local' };
+  const canonical = /^gh:([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)([#!])(\d+)$/.exec(token);
+  if (canonical) return flowGitHubRef(canonical[1], canonical[2], canonical[3]);
+  const repoRef = /^([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)([#!])(\d+)$/.exec(token);
+  if (repoRef) return flowGitHubRef(repoRef[1], repoRef[2], repoRef[3]);
+  const aliasRef = /^([A-Za-z][A-Za-z0-9_.-]*)([#!])(\d+)$/.exec(token);
+  if (aliasRef && ctx.aliases.has(aliasRef[1])) return flowGitHubRef(ctx.aliases.get(aliasRef[1]), aliasRef[2], aliasRef[3]);
+  const shorthand = /^([#!])(\d+)$/.exec(token);
+  if (shorthand) {
+    if (!ctx.defaultRepo) throw new Error(`line ${lineNo}: ${token} needs a default repo`);
+    return flowGitHubRef(ctx.defaultRepo, shorthand[1], shorthand[2]);
+  }
+  throw new Error(`line ${lineNo}: cannot resolve ref ${token}`);
+}
+
+function flowGitHubRef(repo, marker, number) {
+  return {
+    id: `gh:${repo}${marker}${number}`,
+    kind: marker === '!' ? 'pr' : 'issue',
+    repo,
+    marker,
+    number,
+  };
+}
+
+function ensureFlowRefNode(ctx, ref) {
+  if (ctx.nodes.has(ref.id)) return;
+  if (ref.kind === 'local') {
+    const [kind, slugID] = ref.id.split(':', 2);
+    upsertFlowNode(ctx, { type: kind === 'note' ? 'note' : 'node', id: ref.id, kind, title: slugID, state: kind === 'note' ? 'local' : 'open', source: kind === 'note' ? 'local' : 'flow', external_id: ref.id });
+    return;
+  }
+  upsertFlowNode(ctx, {
+    type: 'node',
+    id: ref.id,
+    kind: ref.kind,
+    title: ref.id,
+    state: 'open',
+    source: `github:${ref.repo}`,
+    external_id: `${ref.marker}${ref.number}`,
+    url: githubURL(ref.repo, ref.marker, ref.number),
+  });
+}
+
+function upsertFlowNode(ctx, event) {
+  if (ctx.nodes.has(event.id)) {
+    const index = ctx.events.findIndex((item) => item.id === event.id && (item.type === 'node' || item.type === 'note'));
+    if (index >= 0) ctx.events[index] = { ...ctx.events[index], ...event };
+    return;
+  }
+  ctx.nodes.add(event.id);
+  ctx.events.push(event);
+}
+
+function githubURL(repo, marker, number) {
+  return `https://github.com/${repo}/${marker === '!' ? 'pull' : 'issues'}/${number}`;
+}
+
+function stripInlineComment(line) {
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"' && line[i - 1] !== '\\') quoted = !quoted;
+    if (!quoted && char === '/' && line[i + 1] === '/') return line.slice(0, i);
+    if (!quoted && char === '#' && /\s/.test(line[i + 1] || '') && (i === 0 || /\s/.test(line[i - 1]))) return line.slice(0, i);
+  }
+  return line;
+}
+
+function readQuoted(text, lineNo) {
+  const match = /"((?:\\.|[^"\\])*)"/.exec(text);
+  if (!match) return '';
+  try {
+    return JSON.parse(`"${match[1]}"`);
+  } catch (err) {
+    throw new Error(`line ${lineNo}: invalid quoted string`);
+  }
+}
+
+function readState(text) {
+  const match = /\[([A-Za-z0-9_.:-]+)\]/.exec(text);
+  return match ? match[1] : '';
+}
+
+function readLabels(text) {
+  return Array.from(text.matchAll(/@([A-Za-z0-9_.:-]+)/g), (match) => match[1]);
+}
+
+function readOwner(text) {
+  const match = /(?:^|\s)\+([A-Za-z0-9_.-]+)/.exec(text);
+  return match ? match[1] : '';
 }
 
 function buildExportFromEvents(events) {
@@ -233,6 +455,12 @@ function buildExportFromEvents(events) {
     const type = event.type || 'node';
     const boardID = event.board || board.id;
     if (type === 'source' || type === 'depviz.source.v1') continue;
+    if (type === 'board' || type === 'depviz.board.v1') {
+      board.id = event.id || board.id;
+      board.name = event.title || event.name || board.name;
+      board.description = event.description || board.description;
+      continue;
+    }
     if (type === 'edge' || type === 'depviz.edge.v1') {
       const edge = normalizeEdge({
         id: event.id || stableEdgeID(boardID, event.from, event.to, event.kind || 'blocked_by'),
