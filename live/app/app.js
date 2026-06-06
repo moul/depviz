@@ -210,6 +210,8 @@ function buildGitHubTokenURL(refs) {
     metadata: 'read',
     issues: 'read',
     pull_requests: 'read',
+    checks: 'read',
+    statuses: 'read',
   });
   if (owners.length === 1) params.set('target_name', owners[0]);
   return `${githubFineGrainedTokenURL}?${params.toString()}`;
@@ -289,32 +291,66 @@ function parseGitHubNodeID(id) {
 }
 
 async function fetchGitHubNode(ref, token) {
-  let authFallback = false;
-  let res = await fetchGitHubIssue(ref, token);
-  if (!res.ok && token && [401, 403, 404].includes(res.status)) {
-    const publicRes = await fetchGitHubIssue(ref, '');
-    if (publicRes.ok) {
-      res = publicRes;
-      authFallback = true;
-    }
-  }
-  if (!res.ok) throw new Error(githubFetchError(res, token));
-  const issue = await res.json();
+  const issueResult = await fetchGitHubJSON(ref, token, `/repos/${ref.repo}/issues/${ref.number}`);
+  if (!issueResult.ok) throw new Error(githubFetchError(issueResult.res, token));
+  const issue = issueResult.data;
   const isPR = Boolean(issue.pull_request);
   const marker = ref.marker === '!' || isPR ? '!' : '#';
+  let authFallback = issueResult.authFallback;
+  let pr = null;
+  let reviews = [];
+  let checkRuns = null;
+  let status = null;
+  const metadataErrors = [];
+
+  if (isPR) {
+    const prResult = await fetchOptionalGitHubJSON(ref, token, `/repos/${ref.repo}/pulls/${ref.number}`);
+    authFallback = authFallback || prResult.authFallback;
+    pr = prResult.data;
+    if (prResult.error) metadataErrors.push(`pr:${prResult.error}`);
+
+    const reviewsResult = await fetchOptionalGitHubJSON(ref, token, `/repos/${ref.repo}/pulls/${ref.number}/reviews`);
+    authFallback = authFallback || reviewsResult.authFallback;
+    reviews = Array.isArray(reviewsResult.data) ? reviewsResult.data : [];
+    if (reviewsResult.error) metadataErrors.push(`review:${reviewsResult.error}`);
+
+    const headSHA = pr?.head?.sha || '';
+    if (headSHA) {
+      const checkRunsResult = await fetchOptionalGitHubJSON(ref, token, `/repos/${ref.repo}/commits/${headSHA}/check-runs?per_page=100`);
+      authFallback = authFallback || checkRunsResult.authFallback;
+      checkRuns = checkRunsResult.data;
+      if (checkRunsResult.error) metadataErrors.push(`checks:${checkRunsResult.error}`);
+
+      const statusResult = await fetchOptionalGitHubJSON(ref, token, `/repos/${ref.repo}/commits/${headSHA}/status`);
+      authFallback = authFallback || statusResult.authFallback;
+      status = statusResult.data;
+      if (statusResult.error) metadataErrors.push(`status:${statusResult.error}`);
+    }
+  }
+
+  const lifecycle = githubLifecycle(issue, pr);
+  const review = summarizeGitHubReviews(reviews, pr);
+  const ci = summarizeGitHubCI(checkRuns, status);
   return normalizeNode({
     id: ref.id,
     kind: isPR ? 'pr' : 'issue',
     title: issue.title || ref.id,
-    state: issue.state || 'unknown',
+    state: lifecycle.state,
     owner: issue.assignee?.login || issue.user?.login || '',
     data_json: JSON.stringify({
       hydrated: true,
       auth_fallback: authFallback,
+      lifecycle,
+      review,
+      ci,
+      metadata_errors: metadataErrors,
       labels: (issue.labels || []).map((label) => label.name || label),
       number: issue.number,
       repo: ref.repo,
       source: 'github-browser',
+      head_sha: pr?.head?.sha || '',
+      base_ref: pr?.base?.ref || '',
+      head_ref: pr?.head?.ref || '',
     }),
     updated_at: issue.updated_at || '',
     board_role: 'card',
@@ -324,13 +360,33 @@ async function fetchGitHubNode(ref, token) {
   });
 }
 
-async function fetchGitHubIssue(ref, token) {
+async function fetchOptionalGitHubJSON(ref, token, path) {
+  const result = await fetchGitHubJSON(ref, token, path);
+  if (result.ok) return result;
+  return { ...result, data: null, error: githubFetchError(result.res, token) };
+}
+
+async function fetchGitHubJSON(ref, token, path) {
+  let authFallback = false;
+  let res = await githubFetch(path, token);
+  if (!res.ok && token && [401, 403, 404].includes(res.status)) {
+    const publicRes = await githubFetch(path, '');
+    if (publicRes.ok) {
+      res = publicRes;
+      authFallback = true;
+    }
+  }
+  if (!res.ok) return { ok: false, res, data: null, authFallback };
+  return { ok: true, res, data: await res.json(), authFallback };
+}
+
+async function githubFetch(path, token) {
   const headers = {
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
   };
   if (token) headers.Authorization = `Bearer ${token}`;
-  return fetch(`https://api.github.com/repos/${ref.repo}/issues/${ref.number}`, { headers });
+  return fetch(`https://api.github.com${path}`, { headers });
 }
 
 function githubFetchError(res, token) {
@@ -352,6 +408,82 @@ function mergeHydratedNodes(data, updates) {
     edges: data.snapshot.edges,
   };
   return buildExportFromSnapshot(snapshot);
+}
+
+function githubLifecycle(issue, pr) {
+  if (pr?.merged_at || pr?.merged) {
+    return { state: 'merged', phase: 'done', merged: true, draft: false };
+  }
+  if (pr?.draft) {
+    return { state: 'draft', phase: 'review', merged: false, draft: true };
+  }
+  const state = issue.state || pr?.state || 'unknown';
+  const phase = state === 'open' ? 'active' : 'done';
+  return { state, phase, merged: false, draft: false };
+}
+
+function summarizeGitHubReviews(reviews, pr) {
+  const requested = [
+    ...(pr?.requested_reviewers || []).map((reviewer) => reviewer.login).filter(Boolean),
+    ...(pr?.requested_teams || []).map((team) => team.slug || team.name).filter(Boolean),
+  ];
+  const latestByUser = new Map();
+  for (const review of reviews || []) {
+    const user = review.user?.login || '';
+    const stateName = String(review.state || '').toUpperCase();
+    if (!user || !stateName || stateName === 'PENDING') continue;
+    latestByUser.set(user, stateName);
+  }
+  const latest = Array.from(latestByUser.values());
+  const approvals = latest.filter((stateName) => stateName === 'APPROVED').length;
+  const changesRequested = latest.filter((stateName) => stateName === 'CHANGES_REQUESTED').length;
+  const comments = latest.filter((stateName) => stateName === 'COMMENTED').length;
+  let stateName = 'none';
+  if (changesRequested > 0) stateName = 'changes_requested';
+  else if (approvals > 0) stateName = 'approved';
+  else if (requested.length > 0) stateName = 'requested';
+  else if (comments > 0) stateName = 'commented';
+  return {
+    state: stateName,
+    approvals,
+    changes_requested: changesRequested,
+    comments,
+    requested,
+    total: reviews?.length || 0,
+  };
+}
+
+function summarizeGitHubCI(checkRunsPayload, statusPayload) {
+  const runs = checkRunsPayload?.check_runs || [];
+  const statusState = String(statusPayload?.state || '').toLowerCase();
+  const failedConclusions = new Set(['failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure']);
+  const okConclusions = new Set(['success', 'neutral', 'skipped']);
+  let failed = 0;
+  let pending = 0;
+  let passed = 0;
+  for (const run of runs) {
+    const status = String(run.status || '').toLowerCase();
+    const conclusion = String(run.conclusion || '').toLowerCase();
+    if (failedConclusions.has(conclusion)) failed++;
+    else if (status !== 'completed' || !conclusion) pending++;
+    else if (okConclusions.has(conclusion)) passed++;
+  }
+  if (['failure', 'error'].includes(statusState)) failed++;
+  if (statusState === 'pending') pending++;
+
+  let stateName = 'none';
+  if (failed > 0) stateName = 'failure';
+  else if (pending > 0) stateName = 'pending';
+  else if (runs.length > 0 || statusState === 'success') stateName = 'success';
+
+  return {
+    state: stateName,
+    total: runs.length,
+    passed,
+    failed,
+    pending,
+    status_state: statusState || 'none',
+  };
 }
 
 function githubRefreshItems(nodes) {
