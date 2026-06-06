@@ -138,12 +138,15 @@ pasted directly.
 Live can also refresh GitHub refs directly from the browser. This is the
 backendless mode: it calls `api.github.com`, optionally with a token kept only
 in `sessionStorage`, and updates titles, states, labels, owners, and URLs in
-the current graph. `Connect GitHub` opens GitHub's fine-grained token form with
-the read-only repo permissions DepViz needs prefilled; `Use copied token` then
-loads the generated token from the clipboard. It is deliberately not a cache,
-sync backend, or full OAuth flow yet. Refreshed refs are shown in the Brief
-summary even when closed cards are hidden, and public refs fall back to
-unauthenticated GitHub reads if the current token lacks scope.
+the current graph. PRs also pull review and CI/check signals when GitHub exposes
+them, so Live can show compact badges for type, lifecycle, review, and CI state.
+`Connect GitHub` opens GitHub's fine-grained token form with the read-only repo
+permissions DepViz needs prefilled: metadata, issues, pull requests, checks, and
+commit statuses. `Use copied token` then loads the generated token from the
+clipboard. It is deliberately not a cache, sync backend, or full OAuth flow yet.
+Refreshed refs are shown in the Brief summary even when closed cards are hidden,
+and public refs fall back to unauthenticated GitHub reads if the current token
+lacks scope.
 
 The static files live under `live/app/` and are deployable as-is through
 GitHub Pages. No Node.js build is required.
