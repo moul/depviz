@@ -1,0 +1,167 @@
+{
+  "snapshot": {
+    "board": {
+      "id": "default",
+      "name": "Default",
+      "description": "Default local DepViz board",
+      "scope_query": "",
+      "parent_board_id": "",
+      "config_json": "{}",
+      "updated_at": "0001-01-01T00:00:00Z"
+    },
+    "nodes": [
+      {
+        "id": "gh:moul/depviz2#47",
+        "kind": "issue",
+        "title": "Bootstrap SQLite work graph",
+        "state": "open",
+        "owner": "",
+        "data_json": "{\"type\":\"node\",\"id\":\"gh:moul/depviz2#47\",\"kind\":\"issue\",\"title\":\"Bootstrap SQLite work graph\",\"state\":\"open\",\"source\":\"github:moul/depviz2\",\"external_id\":\"#47\",\"url\":\"https://github.com/moul/depviz2/issues/47\",\"labels\":[\"poc\",\"core\"]}",
+        "updated_at": "0001-01-01T00:00:00Z",
+        "board_role": "card",
+        "local_state": "",
+        "url": "https://github.com/moul/depviz2/issues/47",
+        "source_id": "github:moul/depviz2",
+        "external_id": "#47"
+      },
+      {
+        "id": "gh:moul/depviz2#51",
+        "kind": "issue",
+        "title": "Static HTML export",
+        "state": "open",
+        "owner": "",
+        "data_json": "{\"type\":\"node\",\"id\":\"gh:moul/depviz2#51\",\"kind\":\"issue\",\"title\":\"Static HTML export\",\"state\":\"open\",\"source\":\"github:moul/depviz2\",\"external_id\":\"#51\",\"url\":\"https://github.com/moul/depviz2/issues/51\",\"labels\":[\"poc\",\"html\"]}",
+        "updated_at": "0001-01-01T00:00:00Z",
+        "board_role": "card",
+        "local_state": "",
+        "url": "https://github.com/moul/depviz2/issues/51",
+        "source_id": "github:moul/depviz2",
+        "external_id": "#51"
+      },
+      {
+        "id": "gh:moul/depviz2#60",
+        "kind": "issue",
+        "title": "JSONL fixture ingestion",
+        "state": "open",
+        "owner": "",
+        "data_json": "{\"type\":\"node\",\"id\":\"gh:moul/depviz2#60\",\"kind\":\"issue\",\"title\":\"JSONL fixture ingestion\",\"state\":\"open\",\"source\":\"github:moul/depviz2\",\"external_id\":\"#60\",\"url\":\"https://github.com/moul/depviz2/issues/60\",\"labels\":[\"poc\",\"ingest\"]}",
+        "updated_at": "0001-01-01T00:00:00Z",
+        "board_role": "card",
+        "local_state": "",
+        "url": "https://github.com/moul/depviz2/issues/60",
+        "source_id": "github:moul/depviz2",
+        "external_id": "#60"
+      },
+      {
+        "id": "note:decide-live-input-format",
+        "kind": "note",
+        "title": "Decide Live input format",
+        "state": "local",
+        "owner": "",
+        "data_json": "{\"type\":\"note\",\"id\":\"note:decide-live-input-format\",\"title\":\"Decide Live input format\",\"board\":\"default\"}",
+        "updated_at": "0001-01-01T00:00:00Z",
+        "board_role": "card",
+        "local_state": "",
+        "url": "",
+        "source_id": "local",
+        "external_id": "note:decide-live-input-format"
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge:22ec489392c66c24",
+        "from_id": "note:decide-live-input-format",
+        "to_id": "gh:moul/depviz2#60",
+        "kind": "blocked_by",
+        "scope_board_id": "default",
+        "confidence": 1,
+        "authority": "event",
+        "evidence_json": "{\"event\":{\"type\":\"edge\",\"from\":\"note:decide-live-input-format\",\"to\":\"gh:moul/depviz2#60\",\"kind\":\"blocked_by\"}}",
+        "observed_at": "0001-01-01T00:00:00Z"
+      },
+      {
+        "id": "edge:990d5cb7e383c0ce",
+        "from_id": "gh:moul/depviz2#51",
+        "to_id": "gh:moul/depviz2#47",
+        "kind": "blocked_by",
+        "scope_board_id": "default",
+        "confidence": 1,
+        "authority": "event",
+        "evidence_json": "{\"event\":{\"type\":\"edge\",\"from\":\"gh:moul/depviz2#51\",\"to\":\"gh:moul/depviz2#47\",\"kind\":\"blocked_by\"}}",
+        "observed_at": "0001-01-01T00:00:00Z"
+      },
+      {
+        "id": "edge:bf799bf8645f1792",
+        "from_id": "gh:moul/depviz2#47",
+        "to_id": "gh:moul/depviz2#60",
+        "kind": "blocked_by",
+        "scope_board_id": "default",
+        "confidence": 1,
+        "authority": "event",
+        "evidence_json": "{\"event\":{\"type\":\"edge\",\"from\":\"gh:moul/depviz2#47\",\"to\":\"gh:moul/depviz2#60\",\"kind\":\"blocked_by\"}}",
+        "observed_at": "0001-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "brief": {
+    "board_name": "Default",
+    "next_move": {
+      "id": "gh:moul/depviz2#60",
+      "title": "JSONL fixture ingestion",
+      "kind": "issue",
+      "state": "open",
+      "url": "https://github.com/moul/depviz2/issues/60",
+      "reason": "no active blockers, unlocks 2 cards",
+      "impact": 2
+    },
+    "ready": [
+      {
+        "id": "gh:moul/depviz2#60",
+        "title": "JSONL fixture ingestion",
+        "kind": "issue",
+        "state": "open",
+        "url": "https://github.com/moul/depviz2/issues/60",
+        "reason": "no active blockers, unlocks 2 cards",
+        "impact": 2
+      }
+    ],
+    "blockers": [
+      {
+        "id": "gh:moul/depviz2#60",
+        "title": "JSONL fixture ingestion",
+        "kind": "issue",
+        "state": "open",
+        "url": "https://github.com/moul/depviz2/issues/60",
+        "reason": "blocks 2 active cards",
+        "impact": 2
+      },
+      {
+        "id": "gh:moul/depviz2#47",
+        "title": "Bootstrap SQLite work graph",
+        "kind": "issue",
+        "state": "open",
+        "url": "https://github.com/moul/depviz2/issues/47",
+        "reason": "blocks 1 active card",
+        "impact": 1
+      }
+    ],
+    "local_only": [
+      {
+        "id": "note:decide-live-input-format",
+        "title": "Decide Live input format",
+        "kind": "note",
+        "state": "local",
+        "reason": "local-only planning card"
+      }
+    ],
+    "stale": [],
+    "counts": {
+      "nodes": 4,
+      "edges": 3,
+      "ready": 1,
+      "blocked": 3,
+      "local_only": 1,
+      "stale": 0
+    }
+  }
+}

@@ -1,172 +1,189 @@
-# Depviz
+# DepViz
 
-<h1 align="center">
-  <img src="https://raw.githubusercontent.com/moul/depviz/master/assets/depviz.svg?sanitize=true" alt="Depviz" title="Depviz" height="200px">
-  <br>
-</h1>
+DepViz v4 is a local-first work graph engine for humans, agents, and existing
+issue trackers.
 
-<h3 align="center">👓 Issue dependency visualizer, a.k.a. "auto-roadmap".</h3>
+It turns scattered issues, PRs, plans, docs, local notes, and dependency facts
+into a board-scoped execution graph that answers:
 
-[![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/moul.io/depviz/v3)
-[![License](https://img.shields.io/badge/license-Apache--2.0%20%2F%20MIT-%2397ca00.svg)](https://github.com/moul/depviz/blob/master/COPYRIGHT)
-[![GitHub release](https://img.shields.io/github/release/moul/depviz.svg)](https://github.com/moul/depviz/releases)
-[![Go Report Card](https://goreportcard.com/badge/moul.io/depviz)](https://goreportcard.com/report/moul.io/depviz)
-[![CodeFactor](https://www.codefactor.io/repository/github/moul/depviz/badge)](https://www.codefactor.io/repository/github/moul/depviz)
-[![Docker Metrics](https://images.microbadger.com/badges/image/moul/depviz.svg)](https://microbadger.com/images/moul/depviz)
-[![GolangCI](https://golangci.com/badges/github.com/moul/depviz.svg)](https://golangci.com/r/github.com/moul/depviz)
-[![Made by Manfred Touron](https://img.shields.io/badge/made%20by-Manfred%20Touron-blue.svg?style=flat)](https://manfred.life/)
+```text
+What can move now?
+What is blocked?
+What should happen next?
+```
 
-<!-- [![codecov](https://codecov.io/gh/moul/depviz/branch/master/graph/badge.svg)](https://codecov.io/gh/moul/depviz) -->
+## v4 status
 
-## Introduction
+This repository is now the v4 line.
 
-dependency visualizer (auto roadmap)
+The previous v3 codebase is preserved by:
 
-`depviz` aggregates **tasks** from multiple projects and generates visual representations (graphs) of the dependencies.
+- release tags such as `v3.20.0`
+- the `v3` branch, created from the old `master`
 
-_inspired by this discussion: [jbenet/random-ideas#37](https://github.com/jbenet/random-ideas/issues/37)_
+Curious users can continue exploring or maintaining the old implementation from
+that branch. New work should happen on v4.
 
-## Philosophy
+## POC
 
-The ultimate goal of this tool is to allow the tech and the non-tech to collaborate seamlessly.
+The first v4 POC is **DepViz Board Brief**.
 
-Oftentimes, there are “non-technical project managers” that love tools like Jira and try to define everything, including the delay required.
-Developers, however, mostly hate Jira-like tools and prefer to focus on small tasks with an easy-to-use interface, like Trello, GitHub issues, GitLab issues.
+It currently supports:
 
-The idea of depviz is to:
+- SQLite local state in `.depviz/state.db`
+- JSONL/DepCrumb-style event ingest
+- a default board
+- local-only note cards
+- manual dependency edges
+- GitHub sync through `gh`
+- ready/blocker queries
+- morning `depviz brief`
+- JSON export for tools and live mode
+- single-file static HTML export
+- stateless `depviz live` web app
 
-* link those different tools (aggregate the different sources and find the relationships: find that this exact “Jira user story” belongs to those 5 technical issues on github
-* create various visual ways of displaying this information. Then, we can have a company that has some non-technical project manager only focusing on user stories and their priorities, and devs that focus on tasks and estimate the tasks by themselves (everyone doing what they are good at)
-* in general, help everyone have the overall vision more clear
-
-## Target
-
-* Graphs are “fun” but not very useful yet, a good dependency tool would be like graphviz. The current depviz version makes the graph in something that is more “weight-based”, because nodes will be grouped to make the graph fit the screen. Graphviz is not focused on making things beautiful, but focused on being 100% clear on the dependency. We need a good graph driver that supports this kind of graph.
-* Having options for multiple layouts/graphs.
-* Implementing the [PERT method](https://en.wikipedia.org/wiki/Program_evaluation_and_review_technique) and adding more fields in depviz: due date, difficulty, etc, in order to create graphs for “finding the shortest path”, for example.
-* Improving the UI to improve collaboration (sharing a URL, etc).
-
-## Demo
-
-https://depviz-demo.moul.io/
-
-_Limited to the following repos: [moul/depviz](https://github.com/moul/depviz), [moul/depviz-test](https://github.com/moul/depviz-test), [moul-bot/depviz-test](https://github.com/moul-bot/depviz-test)._
-
-## Supported providers
-
-_Depviz_ aggregates the entities of multiple providers into 3 generic ones.
-
----
-
-Supported providers:
-
-* GitHub
-  * Task: Issue, Pull Request, Milestone
-  * Owner: TODO
-  * Topic: TODO
-* GitLab: _(planned)_
-* Jira _(planned)_
-* Trello _(planned)_
-
-TODO: detailed mapping table
-
-## Under the hood
-
-### Depviz entities
-
-There are 3 entities:
-
-* A `Task` that have a real life cycle: opened->closed
-* An `Owner` which only contains things
-* A `Topic` which allows categorizing/tagging other things
-
-**Examples**:
-
-* a `Milestone` is a `Depviz Task`, because even if it contains other tasks, it also has a well defined lifecycle: to be closed when every children tasks are finished.
-* a `Repository` is a `Depviz Owner` because even if you can archive a repository, it's not the normal lifecycle, and will most of the time be unrelated with the amount of tasks done
-
-A `Task` can be considered as something directly actionable, or indirectly/automatically closable based on a business rule.
-
-**More info here: [./api/dvmodel.proto](./api/dvmodel.proto)**
-
-#### Task
-
-should have:
-
-* a unique `ID`: canonical URL
-* a `LocalID`: human-readable identifier
-* a `Title`: _not necessarily unique_
-* a `Kind`: `Issue`, `Pull Request`, `Milestone`, `Epic`, `Story`, `Card`
-* a `State`: `opened`, `in progress`, or `closed`
-* an `Owner`: _see below_
-* a `Driver`: `GitHub`, `GitLab`, `Jira`, `Trello`
-
-may have:
-
-* other relationships: `Author`, `Milestone`, `Assignees`, `Reviewers`, `Label`, `Dependencies`, `Dependents`, `Related`, `Parts`, `Parents`
-* other metadata: `Description`
-* other states: `Locked`
-* timestamps: `Created`, `Updated`, `Due`, `Completed`
-* metrics: `NumDownvotes`, `NumUpvotes`, `NumComments`
-
-#### Owner
-
-should have:
-
-* a unique `ID`: canonical URL
-* a `LocalID`: human-readable identifier
-* a `Title`: _not necessarily unique_
-* a `Kind`: `User`, `Organization`, `Team`, `Repo`, `Provider`
-* a `Driver`: `GitHub`, `GitLab`, `Jira`, `Trello`
-
-may have:
-
-* an `Owner`
-* other states: `Fork`
-* other metadata: `Homepage`, `Description`, `Avatar`, `Fullname`, `Shortname`
-* timestamps: `Created`, `Updated`
-
-#### Topic
-
-should have:
-
-* a unique `ID`: canonical URL
-* a `LocalID`: human-readable identifier
-* a `Title`: _not necessarily unique_
-* a `Kind`: `Label`
-* a `Driver`: `GitHub`, `GitLab`, `Jira`, `Trello`
-
-may have:
-
-* an `Owner`: _see above_
-* other metadata: `Color`, `Description`
+The point of the POC is not a pretty graph. The point is a useful daily answer.
 
 ## Install
 
-### Download a release
-
-https://github.com/moul/depviz/releases
-
-### Install With Golang
-
-```bash
-go get moul.io/depviz/cmd/depviz/v3
+```text
+make install
 ```
 
-### Using brew
+The binary is installed from:
 
-```bash
-brew install moul/moul/depviz
+```text
+moul.io/depviz/v4/cmd/depviz
 ```
 
-## Usage
+## Quickstart
 
-TODO
+```text
+depviz init
+depviz ingest events testdata/simple/events.jsonl
+depviz board note default "Define POC scope"
+depviz edge add note:define-poc-scope gh:moul/depviz2#47 --kind blocks
+depviz brief
+depviz gen json --out dist/depviz.json
+depviz gen html --out dist/depviz.html
+depviz live
+```
+
+For real GitHub data:
+
+```text
+depviz sync github owner/repo
+depviz brief
+```
+
+GitHub auth uses the `gh` CLI. Run `gh auth login` first, or provide a
+`GITHUB_TOKEN` through `gh`.
+
+## Commands
+
+```text
+depviz init
+depviz ingest events <path>
+depviz sync github owner/repo [--limit 200]
+depviz board list
+depviz board note <board> <text>
+depviz edge add <from> <to> --kind blocked_by
+depviz query ready
+depviz query blockers
+depviz brief
+depviz gen html --board default --view graph --out dist/depviz.html
+depviz gen json --board default --out dist/depviz.json
+depviz live --addr 127.0.0.1:8686
+```
+
+## Live Mode
+
+`depviz live` serves a stateless browser app from the Go binary:
+
+```text
+make live
+```
+
+It accepts either:
+
+- DepViz Flow, the concise Markdown-friendly human format
+- the JSONL event format used by `depviz ingest events`
+- the JSON export produced by `depviz gen json`
+
+Example:
+
+```depviz
+repo moul/depviz
+
+#679 "Bootstrap depviz v4" [open] @v4
+#80 "Choose Flow syntax" [open] @live
+#81 "Hydrate refs from GitHub" [open] @github
+note flow "Design DepViz Flow"
+
+#679 depends on #80, #81 and blocks #85
+#156 depends on moul/depviz2#5252
+#679 addresses flow
+```
+
+See [docs/DEPVIZ-FLOW.md](docs/DEPVIZ-FLOW.md).
+
+In standalone Live, node definitions make the graph readable without fetching
+GitHub. With GitHub sync/export, the same board can usually shrink to relation
+lines like `#679 blocks #85`; GitHub owns titles, labels, and state.
+
+The editor includes syntax highlighting for DepViz Flow, JSON, and JSONL.
+Plain Flow and fenced Markdown blocks like ```` ```depviz ```` can both be
+pasted directly.
+
+The static files live under `live/app/` and are deployable as-is through
+GitHub Pages. No Node.js build is required.
+
+The Pages workflow publishes:
+
+- `master` to `/live/`
+- each open PR to `/previews/pr-N/live/`
+
+PR previews are removed when the PR closes.
+
+## Local State
+
+Runtime state is ignored:
+
+```text
+.depviz/state.db
+.depviz/cache/
+.depviz/sync/
+```
+
+Reviewable project facts should be git-versioned when they become useful:
+
+```text
+.depviz/events.jsonl
+.depviz/boards/*.toml
+.depviz/views/*.toml
+.depviz/notes/*.md
+```
+
+## Development
+
+```text
+make test
+go vet ./...
+```
+
+Fixture dogfood:
+
+```text
+tmpdir=$(mktemp -d)
+DEPVIZ_DB="$tmpdir/state.db" depviz init
+DEPVIZ_DB="$tmpdir/state.db" depviz ingest events testdata/simple/events.jsonl
+DEPVIZ_DB="$tmpdir/state.db" depviz brief
+DEPVIZ_DB="$tmpdir/state.db" depviz gen json --out "$tmpdir/depviz.json"
+DEPVIZ_DB="$tmpdir/state.db" depviz gen html --out "$tmpdir/depviz.html"
+```
 
 ## License
 
-© 2018-2021 [Manfred Touron](https://manfred.life)
-
-Licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0) ([`LICENSE-APACHE`](LICENSE-APACHE)) or the [MIT license](https://opensource.org/licenses/MIT) ([`LICENSE-MIT`](LICENSE-MIT)), at your option. See the [`COPYRIGHT`](COPYRIGHT) file for more details.
-
-`SPDX-License-Identifier: (Apache-2.0 OR MIT)`
+Licensed under the [Apache License, Version 2.0](LICENSE-APACHE) or the
+[MIT license](LICENSE-MIT), at your option. See [COPYRIGHT](COPYRIGHT) for
+details.

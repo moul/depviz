@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.8"
+          cache: true
+      - run: make test
+      - run: go vet ./...
+      - name: Fixture smoke
+        run: |
+          tmpdir="$(mktemp -d)"
+          export DEPVIZ_DB="$tmpdir/state.db"
+          go run ./cmd/depviz init
+          go run ./cmd/depviz ingest events testdata/simple/events.jsonl
+          go run ./cmd/depviz board note default "Define POC scope"
+          go run ./cmd/depviz edge add note:define-poc-scope gh:moul/depviz2#47 --kind blocks
+          go run ./cmd/depviz brief
+          go run ./cmd/depviz gen json --out "$tmpdir/depviz.json"
+          go run ./cmd/depviz gen html --out "$tmpdir/depviz.html"
+          test -s "$tmpdir/depviz.json"
+          test -s "$tmpdir/depviz.html"
+          test -s live/app/index.html
+          test -s live/app/app.js
