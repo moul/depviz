@@ -35,6 +35,7 @@ The POC fails if the first impressive artifact is only a graph screenshot.
 ## Next Slices
 
 1. Improve GitHub dependency extraction and stale detection.
-2. Add saved board/view config files under `.depviz/`.
-3. Point `depviz.io/live` at the GitHub Pages live route.
-4. Add local `depviz mcp`.
+2. Harden DepViz Flow with golden examples and better live diagnostics.
+3. Add saved board/view config files under `.depviz/`.
+4. Point `depviz.io/live` at the GitHub Pages live route.
+5. Add local `depviz mcp`.

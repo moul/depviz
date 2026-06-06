@@ -95,5 +95,29 @@ note slug "Local note"
 task slug "Local task"
 ```
 
-The parser is intentionally small in v1. The rule is stable: short refs are for
-the current repo; canonical refs are stored internally.
+## Markdown Shape
+
+Flow should stay pleasant when it is rendered by plain Markdown:
+
+- every useful example fits in a `depviz` fenced code block
+- one line should usually mean one node, one edge, or one setting
+- comments use `# comment` or `// comment`
+- short refs are for the current repo; canonical refs are stored internally
+- aliases are local to the block, so examples can stay compact
+
+That makes the same snippet usable in a GitHub issue, a PR description, a
+HackMD note, a README, or the Live editor.
+
+## Parser Roadmap
+
+The v1 parser is intentionally small. Future parser work should optimize for
+clarity before cleverness:
+
+1. grow the language through golden examples, not hidden heuristics
+2. keep the Markdown rendering readable without custom CSS
+3. add a shared grammar or shared fixtures before the CLI and Live parser diverge
+4. make ref resolution two-pass so local aliases and repo aliases can be used
+   before they are declared
+5. preserve concise syntax for the 80% case, then add explicit canonical syntax
+   for multi-repo and automation-heavy boards
+6. return line/column diagnostics that are good enough to edit live
