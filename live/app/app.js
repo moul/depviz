@@ -1,4 +1,4 @@
-const assetVersion = 'v4.0.0';
+const assetVersion = 'v4.1.0-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 
 const dom = {
@@ -15,6 +15,8 @@ const dom = {
   graph: document.getElementById('graphView'),
   graphCanvas: document.getElementById('graphCanvas'),
   table: document.getElementById('tableView'),
+  githubToken: document.getElementById('githubTokenInput'),
+  hydrateGithub: document.getElementById('hydrateGithubBtn'),
   showExternal: document.getElementById('showExternal'),
   showLocal: document.getElementById('showLocal'),
   showClosed: document.getElementById('showClosed'),
@@ -49,6 +51,7 @@ function emptyExport() {
 }
 
 function boot() {
+  dom.githubToken.value = sessionStorage.getItem('depviz.githubToken') || '';
   wireEvents();
   const hashed = readHash();
   if (hashed) {
@@ -85,6 +88,8 @@ function wireEvents() {
   document.getElementById('shareBtn').addEventListener('click', shareLink);
   document.getElementById('exportBtn').addEventListener('click', exportJSON);
   document.getElementById('fileInput').addEventListener('change', readFile);
+  dom.githubToken.addEventListener('input', persistGitHubToken);
+  dom.hydrateGithub.addEventListener('click', hydrateGitHub);
 }
 
 async function loadSample() {
@@ -118,6 +123,115 @@ function update() {
     dom.status.textContent = 'input error';
   }
   render();
+}
+
+function persistGitHubToken() {
+  const token = dom.githubToken.value.trim();
+  if (token) sessionStorage.setItem('depviz.githubToken', token);
+  else sessionStorage.removeItem('depviz.githubToken');
+}
+
+async function hydrateGitHub() {
+  const refs = githubRefsForSnapshot(state.data.snapshot);
+  if (refs.length === 0) {
+    dom.status.textContent = 'no GitHub refs';
+    return;
+  }
+
+  dom.hydrateGithub.disabled = true;
+  dom.status.textContent = `hydrating ${refs.length} GitHub refs`;
+  dom.error.textContent = '';
+  try {
+    const token = dom.githubToken.value.trim();
+    const updates = [];
+    const failures = [];
+    for (const ref of refs) {
+      try {
+        updates.push(await fetchGitHubNode(ref, token));
+      } catch (err) {
+        failures.push(`${ref.id}: ${err.message}`);
+      }
+    }
+    if (updates.length > 0) {
+      state.data = mergeHydratedNodes(state.data, updates);
+      render();
+    }
+    dom.status.textContent = failures.length > 0
+      ? `hydrated ${updates.length}/${refs.length} GitHub refs`
+      : `hydrated ${updates.length} GitHub refs`;
+    dom.error.textContent = failures.slice(0, 2).join('  ');
+  } finally {
+    dom.hydrateGithub.disabled = false;
+  }
+}
+
+function githubRefsForSnapshot(snapshot) {
+  const seen = new Set();
+  return snapshot.nodes.flatMap((node) => {
+    const ref = parseGitHubNodeID(node.id);
+    if (!ref || seen.has(ref.id)) return [];
+    seen.add(ref.id);
+    return [ref];
+  });
+}
+
+function parseGitHubNodeID(id) {
+  const match = /^gh:([^#!]+)([#!])([0-9]+)$/.exec(id || '');
+  if (!match) return null;
+  return {
+    id,
+    repo: match[1],
+    marker: match[2],
+    number: match[3],
+  };
+}
+
+async function fetchGitHubNode(ref, token) {
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`https://api.github.com/repos/${ref.repo}/issues/${ref.number}`, { headers });
+  if (!res.ok) throw new Error(githubFetchError(res));
+  const issue = await res.json();
+  const isPR = Boolean(issue.pull_request);
+  const marker = ref.marker === '!' || isPR ? '!' : '#';
+  return normalizeNode({
+    id: ref.id,
+    kind: isPR ? 'pr' : 'issue',
+    title: issue.title || ref.id,
+    state: issue.state || 'unknown',
+    owner: issue.assignee?.login || issue.user?.login || '',
+    data_json: JSON.stringify({
+      hydrated: true,
+      labels: (issue.labels || []).map((label) => label.name || label),
+      number: issue.number,
+      repo: ref.repo,
+      source: 'github-browser',
+    }),
+    updated_at: issue.updated_at || '',
+    board_role: 'card',
+    url: issue.html_url || githubURL(ref.repo, marker, ref.number),
+    source_id: `github:${ref.repo}`,
+    external_id: `${marker}${ref.number}`,
+  });
+}
+
+function githubFetchError(res) {
+  if (res.status === 401 || res.status === 403) return `${res.status}; add a token or check access`;
+  if (res.status === 404) return '404; missing or private';
+  return `${res.status} ${res.statusText}`;
+}
+
+function mergeHydratedNodes(data, updates) {
+  const hydrated = new Map(updates.map((node) => [node.id, node]));
+  const snapshot = {
+    ...data.snapshot,
+    nodes: data.snapshot.nodes.map((node) => hydrated.get(node.id) || node),
+    edges: data.snapshot.edges,
+  };
+  return buildExportFromSnapshot(snapshot);
 }
 
 function updateHighlight(text) {

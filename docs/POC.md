@@ -13,6 +13,7 @@ It proves that DepViz can be useful locally before becoming a hosted product:
 - export one static HTML file
 - serve a stateless Live v1 app without a Node.js build
 - parse Markdown-friendly DepViz Flow input for humans
+- hydrate GitHub refs directly from the browser before adding a backend/cache
 
 ## Success Criteria
 
@@ -27,6 +28,7 @@ The POC succeeds if:
 - `depviz gen html` creates an inspectable static file
 - `depviz live` serves a browser app that accepts DepViz Flow, JSONL, or exported JSON
 - Live input has syntax highlighting for DepViz Flow, JSON, and JSONL
+- Live can refresh GitHub refs through `api.github.com` without a backend
 - every same-repo PR can publish a `/previews/pr-N/live/` Pages preview
 - fixture output is covered by golden tests
 

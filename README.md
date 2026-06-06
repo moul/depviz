@@ -135,6 +135,11 @@ The editor includes syntax highlighting for DepViz Flow, JSON, and JSONL.
 Plain Flow and fenced Markdown blocks like ```` ```depviz ```` can both be
 pasted directly.
 
+Live can also hydrate GitHub refs directly from the browser. This is the
+backendless mode: it calls `api.github.com`, optionally with a token kept in
+`sessionStorage`, and updates titles, states, labels, owners, and URLs in the
+current graph. It is deliberately not a cache or sync backend.
+
 The static files live under `live/app/` and are deployable as-is through
 GitHub Pages. No Node.js build is required.
 
