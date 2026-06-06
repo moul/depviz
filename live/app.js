@@ -1,4 +1,4 @@
-const assetVersion = 'pr-679-c0a0321';
+const assetVersion = 'v4.0.0';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 
 const dom = {
