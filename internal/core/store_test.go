@@ -84,6 +84,7 @@ func TestNonBlockingEdgesDoNotBlockBrief(t *testing.T) {
 {"type":"node","id":"gh:moul/depviz#2","kind":"issue","title":"Implementation detail","state":"open","source":"github:moul/depviz","external_id":"#2","url":"https://github.com/moul/depviz/issues/2"}
 {"type":"edge","from":"gh:moul/depviz#1","to":"gh:moul/depviz#2","kind":"addresses"}
 {"type":"edge","from":"gh:moul/depviz#2","to":"gh:moul/depviz#1","kind":"closes"}
+{"type":"edge","from":"gh:moul/depviz#1","to":"gh:moul/depviz#2","kind":"blocked_by","authority":"github-inferred","confidence":0.75}
 `)
 	if _, err := s.IngestEvents(ctx, events, DefaultBoardID); err != nil {
 		t.Fatal(err)

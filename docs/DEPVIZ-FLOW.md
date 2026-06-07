@@ -128,7 +128,8 @@ Flow should stay pleasant when it is rendered by plain Markdown:
 - GitHub state is written by hand only in standalone Live snippets
 - connected data owns external truth when a GitHub sync/export is present
 - source-inferred relations should stay visibly softer than curated DepViz
-  relations until a human promotes them
+  relations and should not drive ready/blocker decisions until a human
+  promotes them
 
 That makes the same snippet usable in a GitHub issue, a PR description, a
 HackMD note, a README, or the Live editor.

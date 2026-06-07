@@ -1455,6 +1455,7 @@ function isBlocked(nodeID, snapshot) {
 
 function edgeBlockedAndBlocker(edge) {
   const kind = String(edge.kind || '').toLowerCase().trim();
+  if (isSoftEdge(edge)) return ['', ''];
   if (isNonBlockingEdgeKind(kind)) return ['', ''];
   if (['blocked_by', 'depends_on', 'depends', 'after'].includes(kind)) return [edge.from_id, edge.to_id];
   if (['blocks', 'unblocks', 'precedes'].includes(kind)) return [edge.to_id, edge.from_id];

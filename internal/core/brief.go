@@ -166,6 +166,9 @@ func writeItem(w io.Writer, item BriefItem, showImpact bool) {
 }
 
 func edgeBlockedAndBlocker(e Edge) (blocked string, blocker string) {
+	if edgeIsSoft(e) {
+		return "", ""
+	}
 	switch strings.ToLower(strings.TrimSpace(e.Kind)) {
 	case "addresses", "mentions", "relates_to", "related_to", "closes":
 		return "", ""
@@ -176,6 +179,14 @@ func edgeBlockedAndBlocker(e Edge) (blocked string, blocker string) {
 	default:
 		return e.FromID, e.ToID
 	}
+}
+
+func edgeIsSoft(e Edge) bool {
+	if e.Confidence > 0 && e.Confidence < 1 {
+		return true
+	}
+	authority := strings.ToLower(strings.TrimSpace(e.Authority))
+	return strings.Contains(authority, "inferred") || strings.Contains(authority, "soft")
 }
 
 func activeBlockers(nodeID string, nodes map[string]Node, blockersByNode map[string]map[string]bool) []string {
