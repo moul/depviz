@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.8-dev';
+const assetVersion = 'v4.1.9-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -34,7 +34,7 @@ const state = {
   filter: '',
   showExternal: true,
   showLocal: true,
-  showClosed: false,
+  showClosed: true,
   githubRefresh: [],
   data: emptyExport(),
 };
@@ -1177,7 +1177,8 @@ function renderItem(item) {
   const reason = esc(item.reason || item.Reason || '');
   const label = url ? `<a href="${esc(url)}">${id}</a>` : id;
   const badges = badgesHTML(item.badges || plainBadges(item));
-  return `<div class="item"><div class="itemHead"><strong>${label} ${title}</strong>${badges}</div><div class="reason">${reason}</div></div>`;
+  const klass = ['item', isClosed({ state: item.state || item.State }) ? 'closedItem' : ''].filter(Boolean).join(' ');
+  return `<div class="${klass}"><div class="itemHead"><strong>${label} ${title}</strong>${badges}</div><div class="reason">${reason}</div></div>`;
 }
 
 function renderGraph(snapshot, nodes) {
