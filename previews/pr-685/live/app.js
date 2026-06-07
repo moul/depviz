@@ -1066,7 +1066,7 @@ function buildBrief(snapshot) {
         reason: readyReason(node, blockedByNode.get(node.id)),
         impact: activeBlockedCount(node.id, nodes, blockedByNode),
       }));
-    } else {
+    } else if (active.length > 0) {
       blocked++;
     }
     if (isLocal(node)) {
