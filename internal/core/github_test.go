@@ -37,3 +37,38 @@ func TestExtractDependencyEdgesSkipsHTMLEntities(t *testing.T) {
 		t.Fatalf("edge target = %s, want gh:moul/depviz#2", edges[0].To)
 	}
 }
+
+func TestExtractDependencyEdgesKeepsClosingKeywordsStrict(t *testing.T) {
+	body := `
+fix parse issue for embed directives without options (#1266)
+fixes: #5667
+likely closes the 20-30% regression #5765
+resolves gnolang/gno#5790
+#5747 fixed #5736 by making array copies safe
+testscript: reset verbose on new blocks by someone in rogpeppe/go-internal#293
+`
+	edges := extractDependencyEdges("gnolang/gno", "gh:gnolang/gno!1", body)
+	want := []extractedEdge{
+		{From: "gh:gnolang/gno!1", To: "gh:gnolang/gno#5667", Kind: "closes", Confidence: 0.7},
+		{From: "gh:gnolang/gno!1", To: "gh:gnolang/gno#5790", Kind: "closes", Confidence: 0.7},
+	}
+	if len(edges) != len(want) {
+		t.Fatalf("edges = %+v, want %+v", edges, want)
+	}
+	for i := range want {
+		if edges[i].From != want[i].From || edges[i].To != want[i].To || edges[i].Kind != want[i].Kind || edges[i].Confidence != want[i].Confidence {
+			t.Fatalf("edge %d = %+v, want %+v", i, edges[i], want[i])
+		}
+	}
+}
+
+func TestExtractDependencyEdgesResolvesRedirectGitHubHTMLLinks(t *testing.T) {
+	body := `depends on <a href="https://redirect.github.com/alecthomas/chroma/issues/1266">#1266</a>`
+	edges := extractDependencyEdges("gnolang/gno", "gh:gnolang/gno!1", body)
+	if len(edges) != 1 {
+		t.Fatalf("edges = %+v, want one edge", edges)
+	}
+	if edges[0].To != "gh:alecthomas/chroma#1266" {
+		t.Fatalf("edge target = %s, want gh:alecthomas/chroma#1266", edges[0].To)
+	}
+}

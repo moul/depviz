@@ -221,9 +221,11 @@ type extractedEdge struct {
 }
 
 var (
-	githubRefRE    = regexp.MustCompile(`(?i)(?:gh:)?([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?([#!])([0-9]+)`)
-	githubURLRefRE = regexp.MustCompile(`(?i)https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/(issues|pull)/([0-9]+)`)
-	relationVerbRE = regexp.MustCompile(`(?i)\b(blocked by|depends on|depend on|depends|after|blocks|unblocks|addresses|mentions|relates to|relates|closes|closed|close|fixes|fixed|fix|resolves|resolved|resolve)\b`)
+	githubRefRE          = regexp.MustCompile(`(?i)(?:gh:)?([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?([#!])([0-9]+)`)
+	githubURLRefRE       = regexp.MustCompile(`(?i)https://(?:www\.)?(?:github|redirect\.github)\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/(issues|pull)/([0-9]+)`)
+	htmlAnchorRefStartRE = regexp.MustCompile(`(?i)^\s*<a\s+href=["']https://(?:www\.)?(?:github|redirect\.github)\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(?:issues|pull)/[0-9]+["']>`)
+	relationRefStartRE   = regexp.MustCompile(`(?i)^\s*[:\-]?\s*(?:https://(?:www\.)?(?:github|redirect\.github)\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(?:issues|pull)/[0-9]+|(?:gh:)?(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?[#!][0-9]+)`)
+	relationVerbRE       = regexp.MustCompile(`(?i)\b(blocked by|depends on|depend on|depends|after|blocks|unblocks|addresses|mentions|relates to|relates|closes|closed|close|fixes|fixed|fix|resolves|resolved|resolve)\b`)
 )
 
 func extractDependencyEdges(repo, currentID, body string) []extractedEdge {
@@ -237,6 +239,9 @@ func extractDependencyEdges(repo, currentID, body string) []extractedEdge {
 		for _, chunk := range relationChunks(line) {
 			kind := relationEdgeKind(chunk.verb)
 			if kind == "" {
+				continue
+			}
+			if !relationChunkTargetsCurrent(repo, chunk) {
 				continue
 			}
 			confidence := relationConfidence(kind)
@@ -256,9 +261,17 @@ func extractDependencyEdges(repo, currentID, body string) []extractedEdge {
 	return edges
 }
 
+func relationChunkTargetsCurrent(repo string, chunk relationChunk) bool {
+	if !relationRefStartRE.MatchString(chunk.text) && !htmlAnchorRefStartRE.MatchString(chunk.text) {
+		return false
+	}
+	return len(githubRefs(repo, chunk.prev)) == 0
+}
+
 type relationChunk struct {
 	verb string
 	text string
+	prev string
 }
 
 func relationChunks(line string) []relationChunk {
@@ -276,9 +289,17 @@ func relationChunks(line string) []relationChunk {
 		chunks = append(chunks, relationChunk{
 			verb: line[match[2]:match[3]],
 			text: line[start:end],
+			prev: relationPrefix(line, match[0], i),
 		})
 	}
 	return chunks
+}
+
+func relationPrefix(line string, verbStart, index int) string {
+	if index > 0 {
+		return ""
+	}
+	return line[:verbStart]
 }
 
 func relationEdgeKind(verb string) string {
@@ -375,6 +396,9 @@ func validRefBoundary(text string, start, end int) bool {
 	if start > 0 {
 		prev := text[start-1]
 		if prev == '&' {
+			return false
+		}
+		if prev == '>' && end < len(text) && text[end] == '<' {
 			return false
 		}
 		if isRefWordByte(prev) {

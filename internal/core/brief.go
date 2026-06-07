@@ -58,7 +58,7 @@ func (s *Store) BuildBrief(ctx context.Context, boardID string) (Brief, error) {
 				Reason: readyReason(n, blockedByNode[n.ID]),
 				Impact: activeBlockedCount(n.ID, nodes, blockedByNode),
 			})
-		} else {
+		} else if len(activeBlockers) > 0 {
 			blockedCount++
 		}
 		if n.IsLocalOnly() {
