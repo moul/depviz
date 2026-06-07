@@ -541,7 +541,7 @@ function highlightJSON(text) {
 function highlightFlow(text) {
   return text.split(/(\r?\n)/).map((line) => {
     if (/^\s*(#\s|\/\/)/.test(line)) return `<span class="tok-comment">${esc(line)}</span>`;
-    const tokenRE = /"(?:\\.|[^"\\])*"|(?:gh:)?[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+[#!]\d+|[A-Za-z][A-Za-z0-9_.-]*[#!]\d+|[#][0-9]+|![0-9]+|@[A-Za-z0-9_.:-]+|<-|->|~>|--|\b(?:depviz|repo|board|note|task|as|depends|on|blocks|addresses|and)\b/g;
+    const tokenRE = /"(?:\\.|[^"\\])*"|(?:gh:)?[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+[#!]\d+|[A-Za-z][A-Za-z0-9_.-]*[#!]\d+|[#][0-9]+|![0-9]+|@[A-Za-z0-9_.:-]+|<-|->|~>|--|\b(?:depviz|repo|board|note|task|as|depends|on|blocks|addresses|mentions|relates|to|closes|fixes|resolves|and)\b/g;
     let out = '';
     let last = 0;
     let match;
@@ -552,7 +552,7 @@ function highlightFlow(text) {
       if (token.startsWith('"')) cls = 'tok-string';
       else if (token.startsWith('@')) cls = 'tok-tag';
       else if (['<-', '->', '~>', '--'].includes(token)) cls = 'tok-arrow';
-      else if (/^(depviz|repo|board|note|task|as|depends|on|blocks|addresses|and)$/.test(token)) cls = 'tok-keyword';
+      else if (/^(depviz|repo|board|note|task|as|depends|on|blocks|addresses|mentions|relates|to|closes|fixes|resolves|and)$/.test(token)) cls = 'tok-keyword';
       out += `<span class="${cls}">${esc(token)}</span>`;
       last = tokenRE.lastIndex;
     }
@@ -590,7 +590,7 @@ function stripMarkdownFence(text) {
 function looksLikeFlow(text) {
   return text.split(/\r?\n/).some((line) => {
     const trimmed = line.trim();
-    return /^(depviz|repo|board|note|task)\b/.test(trimmed) || /\b(depends\s+on|blocks|addresses)\b/i.test(trimmed) || /(?:^|\s)(?:gh:)?[\w.-]+\/[\w.-]+[#!]\d+\b/.test(trimmed) || /\s(?:->|<-|~>)\s/.test(trimmed);
+    return /^(depviz|repo|board|note|task)\b/.test(trimmed) || /\b(depends\s+on|blocks|addresses|mentions|relates\s+to|relates|closes|fixes|resolves)\b/i.test(trimmed) || /(?:^|\s)(?:gh:)?[\w.-]+\/[\w.-]+[#!]\d+\b/.test(trimmed) || /\s(?:->|<-|~>)\s/.test(trimmed);
   });
 }
 
@@ -739,7 +739,7 @@ function parseFlowRelation(ctx, line, lineNo) {
 }
 
 function relationChunks(text) {
-  const relationRE = /\b(depends\s+on|depends|blocks|addresses)\b/ig;
+  const relationRE = /\b(depends\s+on|depends|blocks|addresses|mentions|relates\s+to|relates|closes|fixes|resolves)\b/ig;
   const matches = Array.from(text.matchAll(relationRE));
   if (matches.length === 0 || matches[0].index !== 0) return [];
   return matches.map((match, index) => {
@@ -753,6 +753,8 @@ function relationChunks(text) {
 function normalizeRelationVerb(verb) {
   const normalized = verb.toLowerCase().replace(/\s+/g, ' ').trim();
   if (normalized === 'depends' || normalized === 'depends on') return 'depends_on';
+  if (['fixes', 'resolves'].includes(normalized)) return 'closes';
+  if (normalized === 'relates' || normalized === 'relates to') return 'relates_to';
   return normalized;
 }
 
@@ -1197,13 +1199,19 @@ function renderGraph(snapshot, nodes) {
   const width = Math.max(900, 70 + Math.min(cols, Math.max(nodes.length, 1)) * xGap);
   let html = `<div class="graphInner" style="width:${width}px;min-height:${height}px">
     <svg class="edgeLayer" width="${width}" height="${height}" aria-hidden="true">
-      <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#98a2b3"></path></marker></defs>`;
+      <defs>
+        <marker id="arrowHard" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#667085"></path></marker>
+        <marker id="arrowSoft" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#b8c0cc"></path></marker>
+      </defs>`;
   for (const edge of snapshot.edges) {
     if (!visible.has(edge.from_id) || !visible.has(edge.to_id)) continue;
     const from = positions.get(edge.from_id);
     const to = positions.get(edge.to_id);
     if (!from || !to) continue;
-    html += `<line x1="${from.x + 218}" y1="${from.y + 39}" x2="${to.x}" y2="${to.y + 39}" stroke="#98a2b3" stroke-width="1.5" marker-end="url(#arrow)"></line>`;
+    const soft = isSoftEdge(edge);
+    const kind = esc(edge.kind || 'edge');
+    const authority = esc(edge.authority || '');
+    html += `<line class="${edgeClasses(edge)}" x1="${from.x + 218}" y1="${from.y + 39}" x2="${to.x}" y2="${to.y + 39}" marker-end="url(#${soft ? 'arrowSoft' : 'arrowHard'})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
   }
   html += '</svg>';
   for (const node of nodes) {
@@ -1447,10 +1455,26 @@ function isBlocked(nodeID, snapshot) {
 
 function edgeBlockedAndBlocker(edge) {
   const kind = String(edge.kind || '').toLowerCase().trim();
-  if (['addresses', 'mentions', 'relates_to'].includes(kind)) return ['', ''];
+  if (isNonBlockingEdgeKind(kind)) return ['', ''];
   if (['blocked_by', 'depends_on', 'depends', 'after'].includes(kind)) return [edge.from_id, edge.to_id];
   if (['blocks', 'unblocks', 'precedes'].includes(kind)) return [edge.to_id, edge.from_id];
   return [edge.from_id, edge.to_id];
+}
+
+function edgeClasses(edge) {
+  const kind = String(edge.kind || 'edge').toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+  return ['graphEdge', isSoftEdge(edge) ? 'softEdge' : 'hardEdge', `edge-${kind}`].join(' ');
+}
+
+function isSoftEdge(edge) {
+  const kind = String(edge.kind || '').toLowerCase().trim();
+  const authority = String(edge.authority || '').toLowerCase();
+  const confidence = Number(edge.confidence || 1);
+  return confidence < 1 || authority.includes('inferred') || authority.includes('soft') || isNonBlockingEdgeKind(kind);
+}
+
+function isNonBlockingEdgeKind(kind) {
+  return ['addresses', 'mentions', 'relates_to', 'related_to', 'closes'].includes(kind);
 }
 
 function activeBlockers(nodeID, nodes, blockersByNode) {
