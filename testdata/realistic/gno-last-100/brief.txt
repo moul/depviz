@@ -1,0 +1,64 @@
+DepViz brief: Default
+Nodes: 103 - edges: 11 - ready: 72 - blocked: 0 - local: 0
+
+Next move
+  gh:gnolang/gno!5732 fix(gnovm): typedRuntimeError for runtime errors - no active blockers
+    https://github.com/gnolang/gno/pull/5732
+
+Ready now
+  gh:gnolang/gno!5732 fix(gnovm): typedRuntimeError for runtime errors - no active blockers
+    https://github.com/gnolang/gno/pull/5732
+  gh:gnolang/gno!5733 fix(gnovm): avoid having empty pointer if range nil array is discarded - no active blockers
+    https://github.com/gnolang/gno/pull/5733
+  gh:gnolang/gno!5737 fix(gnovm): defer nil-pointer panic for value method bound to nil receiver - no active blockers
+    https://github.com/gnolang/gno/pull/5737
+  gh:gnolang/gno!5738 fix(gnovm): bounds-check array index so recover() catches out-of-range panic - no active blockers
+    https://github.com/gnolang/gno/pull/5738
+  gh:gnolang/gno!5739 WIP: fix(gnovm): preserve embedded alias name as struct field name - no active blockers
+    https://github.com/gnolang/gno/pull/5739
+  gh:gnolang/gno!5740 WIP: fix(gnovm): accept underflowing float constants as 0 - no active blockers
+    https://github.com/gnolang/gno/pull/5740
+  gh:gnolang/gno!5741 WIP: fix(gnovm): convert underflowing negative float constant to +0 - no active blockers
+    https://github.com/gnolang/gno/pull/5741
+  gh:gnolang/gno!5743 fix(p/nt/markdown/sanitize): case-insensitive mailto ?body= reject - no active blockers
+    https://github.com/gnolang/gno/pull/5743
+  gh:gnolang/gno!5749 fix(gnovm/stdlibs/strings): keep invalid UTF-8 bytes in Split, add tests - no active blockers
+    https://github.com/gnolang/gno/pull/5749
+  gh:gnolang/gno!5751 fix: nil ptr when discarded key and value not present on range - no active blockers
+    https://github.com/gnolang/gno/pull/5751
+  gh:gnolang/gno!5752 docs: add `make preview` target for the docs.gno.land frontend - no active blockers
+    https://github.com/gnolang/gno/pull/5752
+  gh:gnolang/gno!5753 feat(stdlibs): port upstream additions Go 1.18-1.25 across 11 packages - no active blockers
+    https://github.com/gnolang/gno/pull/5753
+
+Blocking most work
+  none
+
+Local-only
+  none
+
+Stale external state
+  gh:gnolang/gno#3312 gh:gnolang/gno#3312 - placeholder external ref; sync a wider scope
+    https://github.com/gnolang/gno/issues/3312
+  gh:gnolang/gno#5385 gh:gnolang/gno#5385 - placeholder external ref; sync a wider scope
+    https://github.com/gnolang/gno/issues/5385
+  gh:gnolang/gno#5484 gh:gnolang/gno#5484 - placeholder external ref; sync a wider scope
+    https://github.com/gnolang/gno/issues/5484
+  gh:gnolang/gno#5487 Feature request: add UpdatePubKey function to https://test11.testnets.gno.land/r/gnops/valoper - not updated in 30+ days
+    https://github.com/gnolang/gno/issues/5487
+  gh:gnolang/gno#5525 Migrate Labnet validator coordination to Discord - not updated in 30+ days
+    https://github.com/gnolang/gno/issues/5525
+  gh:gnolang/gno#5526 Migrate Mainnet validator coordination to Discord - not updated in 30+ days
+    https://github.com/gnolang/gno/issues/5526
+  gh:gnolang/gno#5527 Migrate Testnet validator coordination to Discord - not updated in 30+ days
+    https://github.com/gnolang/gno/issues/5527
+  gh:gnolang/gno#5528 [META] Validator Coordination - not updated in 30+ days
+    https://github.com/gnolang/gno/issues/5528
+  gh:gnolang/gno#5530 Feature request: redirect after a successful transaction (gnoweb/Adena) - not updated in 30+ days
+    https://github.com/gnolang/gno/issues/5530
+  gh:gnolang/gno#5546 [META] GRC20 / GRC721 Spec Alignment & Improvement Tasks - not updated in 30+ days
+    https://github.com/gnolang/gno/issues/5546
+  gh:gnolang/gno#5549 Integrated playground in gnoweb - not updated in 30+ days
+    https://github.com/gnolang/gno/issues/5549
+  gh:gnolang/gno#5550 gnodev: add `version` subcommand - not updated in 30+ days
+    https://github.com/gnolang/gno/issues/5550
