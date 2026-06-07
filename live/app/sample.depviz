@@ -1,5 +1,5 @@
 // Standalone Live demo: define nodes by hand so cards have titles and states.
-// Click Hydrate GitHub to refresh public refs directly from api.github.com.
+// Click Refresh GitHub to refresh public refs directly from api.github.com.
 board "DepViz v4 POC"
 
 repo moul/depviz

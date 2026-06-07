@@ -1,5 +1,8 @@
-const assetVersion = 'v4.1.0-dev';
+const assetVersion = 'v4.1.9-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
+const githubTokenStorageKey = 'depviz.githubToken';
+const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
+const views = new Set(['brief', 'graph', 'table']);
 
 const dom = {
   input: document.getElementById('sourceInput'),
@@ -16,6 +19,10 @@ const dom = {
   graphCanvas: document.getElementById('graphCanvas'),
   table: document.getElementById('tableView'),
   githubToken: document.getElementById('githubTokenInput'),
+  connectGithub: document.getElementById('connectGithubBtn'),
+  pasteGithubToken: document.getElementById('pasteGithubTokenBtn'),
+  forgetGithubToken: document.getElementById('forgetGithubTokenBtn'),
+  githubAuthState: document.getElementById('githubAuthState'),
   hydrateGithub: document.getElementById('hydrateGithubBtn'),
   showExternal: document.getElementById('showExternal'),
   showLocal: document.getElementById('showLocal'),
@@ -27,7 +34,8 @@ const state = {
   filter: '',
   showExternal: true,
   showLocal: true,
-  showClosed: false,
+  showClosed: true,
+  githubRefresh: [],
   data: emptyExport(),
 };
 
@@ -51,8 +59,10 @@ function emptyExport() {
 }
 
 function boot() {
-  dom.githubToken.value = sessionStorage.getItem('depviz.githubToken') || '';
+  dom.githubToken.value = sessionStorage.getItem(githubTokenStorageKey) || '';
+  refreshGitHubAuthUI();
   wireEvents();
+  setView(readURLView(), { persist: false, renderNow: false });
   const hashed = readHash();
   if (hashed) {
     dom.input.value = hashed;
@@ -77,18 +87,20 @@ function wireEvents() {
   }
   for (const btn of document.querySelectorAll('[data-view]')) {
     btn.addEventListener('click', () => {
-      state.view = btn.dataset.view;
-      document.querySelectorAll('[data-view]').forEach((item) => {
-        item.classList.toggle('active', item === btn);
-      });
-      render();
+      setView(btn.dataset.view, { persist: true, renderNow: true });
     });
   }
   document.getElementById('sampleBtn').addEventListener('click', loadSample);
   document.getElementById('shareBtn').addEventListener('click', shareLink);
   document.getElementById('exportBtn').addEventListener('click', exportJSON);
   document.getElementById('fileInput').addEventListener('change', readFile);
-  dom.githubToken.addEventListener('input', persistGitHubToken);
+  dom.connectGithub.addEventListener('click', connectGitHub);
+  dom.pasteGithubToken.addEventListener('click', pasteGitHubToken);
+  dom.forgetGithubToken.addEventListener('click', forgetGitHubToken);
+  dom.githubToken.addEventListener('input', () => {
+    persistGitHubToken();
+    refreshGitHubAuthUI();
+  });
   dom.hydrateGithub.addEventListener('click', hydrateGitHub);
 }
 
@@ -111,6 +123,7 @@ function readFile(event) {
 
 function update() {
   const text = dom.input.value;
+  state.githubRefresh = [];
   updateHighlight(text);
   dom.lineCount.textContent = `${countLines(text)} lines`;
   try {
@@ -126,9 +139,94 @@ function update() {
 }
 
 function persistGitHubToken() {
-  const token = dom.githubToken.value.trim();
-  if (token) sessionStorage.setItem('depviz.githubToken', token);
-  else sessionStorage.removeItem('depviz.githubToken');
+  const token = githubToken();
+  if (token) sessionStorage.setItem(githubTokenStorageKey, token);
+  else sessionStorage.removeItem(githubTokenStorageKey);
+}
+
+function githubToken() {
+  return dom.githubToken.value.trim();
+}
+
+function setGitHubToken(token) {
+  dom.githubToken.value = token.trim();
+  persistGitHubToken();
+  refreshGitHubAuthUI();
+}
+
+function refreshGitHubAuthUI() {
+  const connected = Boolean(githubToken());
+  dom.githubAuthState.textContent = connected ? 'GitHub: token' : 'GitHub: public';
+  dom.forgetGithubToken.disabled = !connected;
+}
+
+function connectGitHub() {
+  const refs = githubRefsForSnapshot(state.data.snapshot);
+  const url = buildGitHubTokenURL(refs);
+  const popup = window.open(url, '_blank');
+  if (popup) popup.opener = null;
+  const owners = uniqueGitHubOwners(refs);
+  dom.status.textContent = owners.length > 1
+    ? `GitHub token page opened; choose access for ${owners.length} owners`
+    : 'GitHub token page opened';
+}
+
+async function pasteGitHubToken() {
+  if (!navigator.clipboard || !navigator.clipboard.readText) {
+    dom.status.textContent = 'clipboard unavailable; use token fallback';
+    dom.githubToken.focus();
+    return;
+  }
+  try {
+    const token = extractGitHubToken(await navigator.clipboard.readText());
+    if (!token) {
+      dom.status.textContent = 'clipboard has no GitHub token';
+      dom.githubToken.focus();
+      return;
+    }
+    setGitHubToken(token);
+    dom.status.textContent = 'GitHub token ready for this tab';
+  } catch (err) {
+    dom.status.textContent = 'clipboard blocked; use token fallback';
+    dom.githubToken.focus();
+  }
+}
+
+function forgetGitHubToken() {
+  setGitHubToken('');
+  dom.status.textContent = 'GitHub token forgotten';
+}
+
+function buildGitHubTokenURL(refs) {
+  const repos = [...new Set(refs.map((ref) => ref.repo))].filter(Boolean);
+  const owners = uniqueGitHubOwners(refs);
+  const description = repos.length > 0
+    ? `Read issues and pull requests for ${repos.slice(0, 6).join(', ')} from DepViz Live.`
+    : 'Read issues and pull requests from DepViz Live.';
+  const params = new URLSearchParams({
+    name: 'DepViz Live',
+    description,
+    expires_in: '30',
+    metadata: 'read',
+    issues: 'read',
+    pull_requests: 'read',
+    checks: 'read',
+    statuses: 'read',
+  });
+  if (owners.length === 1) params.set('target_name', owners[0]);
+  return `${githubFineGrainedTokenURL}?${params.toString()}`;
+}
+
+function uniqueGitHubOwners(refs) {
+  return [...new Set(refs.map((ref) => ref.repo.split('/')[0]).filter(Boolean))];
+}
+
+function extractGitHubToken(text) {
+  const trimmed = String(text || '').trim();
+  const prefixed = trimmed.match(/\b(?:github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9_]+)\b/);
+  if (prefixed) return prefixed[0];
+  if (/^[A-Za-z0-9_]{20,}$/.test(trimmed)) return trimmed;
+  return '';
 }
 
 async function hydrateGitHub() {
@@ -139,10 +237,10 @@ async function hydrateGitHub() {
   }
 
   dom.hydrateGithub.disabled = true;
-  dom.status.textContent = `hydrating ${refs.length} GitHub refs`;
+  dom.status.textContent = `refreshing ${refs.length} GitHub refs`;
   dom.error.textContent = '';
   try {
-    const token = dom.githubToken.value.trim();
+    const token = githubToken();
     const updates = [];
     const failures = [];
     for (const ref of refs) {
@@ -154,11 +252,17 @@ async function hydrateGitHub() {
     }
     if (updates.length > 0) {
       state.data = mergeHydratedNodes(state.data, updates);
+      state.githubRefresh = githubRefreshItems(updates);
       render();
     }
-    dom.status.textContent = failures.length > 0
-      ? `hydrated ${updates.length}/${refs.length} GitHub refs`
-      : `hydrated ${updates.length} GitHub refs`;
+    const statusParts = [failures.length > 0
+      ? `refreshed ${updates.length}/${refs.length} GitHub refs`
+      : `refreshed ${updates.length} GitHub refs`];
+    const closedHidden = !state.showClosed ? updates.filter(isClosed).length : 0;
+    const publicFallbacks = updates.filter((node) => nodeData(node).auth_fallback).length;
+    if (closedHidden > 0) statusParts.push(`${closedHidden} closed in refresh summary`);
+    if (publicFallbacks > 0) statusParts.push(`${publicFallbacks} via public fallback`);
+    dom.status.textContent = statusParts.join('; ');
     dom.error.textContent = failures.slice(0, 2).join('  ');
   } finally {
     dom.hydrateGithub.disabled = false;
@@ -187,28 +291,66 @@ function parseGitHubNodeID(id) {
 }
 
 async function fetchGitHubNode(ref, token) {
-  const headers = {
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-  };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`https://api.github.com/repos/${ref.repo}/issues/${ref.number}`, { headers });
-  if (!res.ok) throw new Error(githubFetchError(res));
-  const issue = await res.json();
+  const issueResult = await fetchGitHubJSON(ref, token, `/repos/${ref.repo}/issues/${ref.number}`);
+  if (!issueResult.ok) throw new Error(githubFetchError(issueResult.res, token));
+  const issue = issueResult.data;
   const isPR = Boolean(issue.pull_request);
   const marker = ref.marker === '!' || isPR ? '!' : '#';
+  let authFallback = issueResult.authFallback;
+  let pr = null;
+  let reviews = [];
+  let checkRuns = null;
+  let status = null;
+  const metadataErrors = [];
+
+  if (isPR) {
+    const prResult = await fetchOptionalGitHubJSON(ref, token, `/repos/${ref.repo}/pulls/${ref.number}`);
+    authFallback = authFallback || prResult.authFallback;
+    pr = prResult.data;
+    if (prResult.error) metadataErrors.push(`pr:${prResult.error}`);
+
+    const reviewsResult = await fetchOptionalGitHubJSON(ref, token, `/repos/${ref.repo}/pulls/${ref.number}/reviews`);
+    authFallback = authFallback || reviewsResult.authFallback;
+    reviews = Array.isArray(reviewsResult.data) ? reviewsResult.data : [];
+    if (reviewsResult.error) metadataErrors.push(`review:${reviewsResult.error}`);
+
+    const headSHA = pr?.head?.sha || '';
+    if (headSHA) {
+      const checkRunsResult = await fetchOptionalGitHubJSON(ref, token, `/repos/${ref.repo}/commits/${headSHA}/check-runs?per_page=100`);
+      authFallback = authFallback || checkRunsResult.authFallback;
+      checkRuns = checkRunsResult.data;
+      if (checkRunsResult.error) metadataErrors.push(`checks:${checkRunsResult.error}`);
+
+      const statusResult = await fetchOptionalGitHubJSON(ref, token, `/repos/${ref.repo}/commits/${headSHA}/status`);
+      authFallback = authFallback || statusResult.authFallback;
+      status = statusResult.data;
+      if (statusResult.error) metadataErrors.push(`status:${statusResult.error}`);
+    }
+  }
+
+  const lifecycle = githubLifecycle(issue, pr);
+  const review = summarizeGitHubReviews(reviews, pr);
+  const ci = summarizeGitHubCI(checkRuns, status);
   return normalizeNode({
     id: ref.id,
     kind: isPR ? 'pr' : 'issue',
     title: issue.title || ref.id,
-    state: issue.state || 'unknown',
+    state: lifecycle.state,
     owner: issue.assignee?.login || issue.user?.login || '',
     data_json: JSON.stringify({
       hydrated: true,
+      auth_fallback: authFallback,
+      lifecycle,
+      review,
+      ci,
+      metadata_errors: metadataErrors,
       labels: (issue.labels || []).map((label) => label.name || label),
       number: issue.number,
       repo: ref.repo,
       source: 'github-browser',
+      head_sha: pr?.head?.sha || '',
+      base_ref: pr?.base?.ref || '',
+      head_ref: pr?.head?.ref || '',
     }),
     updated_at: issue.updated_at || '',
     board_role: 'card',
@@ -218,9 +360,43 @@ async function fetchGitHubNode(ref, token) {
   });
 }
 
-function githubFetchError(res) {
-  if (res.status === 401 || res.status === 403) return `${res.status}; add a token or check access`;
-  if (res.status === 404) return '404; missing or private';
+async function fetchOptionalGitHubJSON(ref, token, path) {
+  const result = await fetchGitHubJSON(ref, token, path);
+  if (result.ok) return result;
+  return { ...result, data: null, error: githubFetchError(result.res, token) };
+}
+
+async function fetchGitHubJSON(ref, token, path) {
+  let authFallback = false;
+  let res = await githubFetch(path, token);
+  if (!res.ok && token && [401, 403, 404].includes(res.status)) {
+    const publicRes = await githubFetch(path, '');
+    if (publicRes.ok) {
+      res = publicRes;
+      authFallback = true;
+    }
+  }
+  if (!res.ok) return { ok: false, res, data: null, authFallback };
+  return { ok: true, res, data: await res.json(), authFallback };
+}
+
+async function githubFetch(path, token) {
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return fetch(`https://api.github.com${path}`, { headers });
+}
+
+function githubFetchError(res, token) {
+  if (res.status === 401) return token ? '401; token rejected' : '401; connect GitHub';
+  if (res.status === 403) return token
+    ? '403; token lacks access or rate-limited'
+    : '403; connect GitHub for private refs or higher limits';
+  if (res.status === 404) return token
+    ? '404; missing or token lacks repo access'
+    : '404; missing/private; connect GitHub if private';
   return `${res.status} ${res.statusText}`;
 }
 
@@ -232,6 +408,88 @@ function mergeHydratedNodes(data, updates) {
     edges: data.snapshot.edges,
   };
   return buildExportFromSnapshot(snapshot);
+}
+
+function githubLifecycle(issue, pr) {
+  if (pr?.merged_at || pr?.merged) {
+    return { state: 'merged', phase: 'done', merged: true, draft: false };
+  }
+  if (pr?.draft) {
+    return { state: 'draft', phase: 'review', merged: false, draft: true };
+  }
+  const state = issue.state || pr?.state || 'unknown';
+  const phase = state === 'open' ? 'active' : 'done';
+  return { state, phase, merged: false, draft: false };
+}
+
+function summarizeGitHubReviews(reviews, pr) {
+  const requested = [
+    ...(pr?.requested_reviewers || []).map((reviewer) => reviewer.login).filter(Boolean),
+    ...(pr?.requested_teams || []).map((team) => team.slug || team.name).filter(Boolean),
+  ];
+  const latestByUser = new Map();
+  for (const review of reviews || []) {
+    const user = review.user?.login || '';
+    const stateName = String(review.state || '').toUpperCase();
+    if (!user || !stateName || stateName === 'PENDING') continue;
+    latestByUser.set(user, stateName);
+  }
+  const latest = Array.from(latestByUser.values());
+  const approvals = latest.filter((stateName) => stateName === 'APPROVED').length;
+  const changesRequested = latest.filter((stateName) => stateName === 'CHANGES_REQUESTED').length;
+  const comments = latest.filter((stateName) => stateName === 'COMMENTED').length;
+  let stateName = 'none';
+  if (changesRequested > 0) stateName = 'changes_requested';
+  else if (approvals > 0) stateName = 'approved';
+  else if (requested.length > 0) stateName = 'requested';
+  else if (comments > 0) stateName = 'commented';
+  return {
+    state: stateName,
+    approvals,
+    changes_requested: changesRequested,
+    comments,
+    requested,
+    total: reviews?.length || 0,
+  };
+}
+
+function summarizeGitHubCI(checkRunsPayload, statusPayload) {
+  const runs = checkRunsPayload?.check_runs || [];
+  const statusState = Number(statusPayload?.total_count || 0) > 0 ? String(statusPayload?.state || '').toLowerCase() : '';
+  const failedConclusions = new Set(['failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure']);
+  const okConclusions = new Set(['success', 'neutral', 'skipped']);
+  let failed = 0;
+  let pending = 0;
+  let passed = 0;
+  for (const run of runs) {
+    const status = String(run.status || '').toLowerCase();
+    const conclusion = String(run.conclusion || '').toLowerCase();
+    if (failedConclusions.has(conclusion)) failed++;
+    else if (status !== 'completed' || !conclusion) pending++;
+    else if (okConclusions.has(conclusion)) passed++;
+  }
+  if (['failure', 'error'].includes(statusState)) failed++;
+  if (statusState === 'pending') pending++;
+
+  let stateName = 'none';
+  if (failed > 0) stateName = 'failure';
+  else if (pending > 0) stateName = 'pending';
+  else if (runs.length > 0 || statusState === 'success') stateName = 'success';
+
+  return {
+    state: stateName,
+    total: runs.length,
+    passed,
+    failed,
+    pending,
+    status_state: statusState || 'none',
+  };
+}
+
+function githubRefreshItems(nodes) {
+  return nodes.map((node) => briefItem(node, {
+    reason: `${node.kind} ${node.state}${isClosed(node) && !state.showClosed ? '; closed hidden by filter' : ''}`,
+  })).slice(0, 12);
 }
 
 function updateHighlight(text) {
@@ -802,28 +1060,23 @@ function buildBrief(snapshot) {
     if (isClosed(node)) continue;
     const active = activeBlockers(node.id, nodes, blockersByNode);
     if (active.length === 0 && !isPlaceholder(node)) {
-      ready.push({
-        id: node.id,
-        title: node.title,
-        kind: node.kind,
-        state: node.state,
-        url: node.url,
+      ready.push(briefItem(node, {
         reason: readyReason(node, blockedByNode.get(node.id)),
         impact: activeBlockedCount(node.id, nodes, blockedByNode),
-      });
+      }));
     } else {
       blocked++;
     }
     if (isLocal(node)) {
-      localOnly.push({ id: node.id, title: node.title, kind: node.kind, state: node.state, reason: 'local-only planning card' });
+      localOnly.push(briefItem(node, { reason: 'local-only planning card' }));
     }
     if (isPlaceholder(node) && !isLocal(node)) {
-      stale.push({ id: node.id, title: node.title, kind: node.kind, state: node.state, url: node.url, reason: 'placeholder external ref; sync a wider scope' });
+      stale.push(briefItem(node, { reason: 'placeholder external ref; sync a wider scope' }));
       continue;
     }
     const updated = Date.parse(node.updated_at || '');
     if (!isLocal(node) && Number.isFinite(updated) && updated < cutoff) {
-      stale.push({ id: node.id, title: node.title, kind: node.kind, state: node.state, url: node.url, reason: 'not updated in 30+ days' });
+      stale.push(briefItem(node, { reason: 'not updated in 30+ days' }));
     }
   }
 
@@ -832,15 +1085,10 @@ function buildBrief(snapshot) {
     if (!node || isClosed(node)) continue;
     const impact = activeBlockedCount(blockerID, nodes, blockedByNode);
     if (impact === 0) continue;
-    blockers.push({
-      id: node.id,
-      title: node.title,
-      kind: node.kind,
-      state: node.state,
-      url: node.url,
+    blockers.push(briefItem(node, {
       impact,
       reason: `blocks ${impact} active card${impact === 1 ? '' : 's'}`,
-    });
+    }));
   }
 
   sortItems(ready);
@@ -863,6 +1111,18 @@ function buildBrief(snapshot) {
       local_only: localOnly.length,
       stale: stale.length,
     },
+  };
+}
+
+function briefItem(node, extra = {}) {
+  return {
+    id: node.id,
+    title: node.title,
+    kind: node.kind,
+    state: node.state,
+    url: node.url,
+    badges: nodeBadges(node),
+    ...extra,
   };
 }
 
@@ -892,7 +1152,11 @@ function renderStats(counts) {
 }
 
 function renderBrief(brief) {
+  const githubRefresh = state.githubRefresh.length
+    ? briefSection('GitHub refresh', state.githubRefresh, false)
+    : '';
   dom.brief.innerHTML = `<div class="briefGrid">
+    ${githubRefresh}
     ${briefSection('Next move', brief.next_move ? [brief.next_move] : [], true)}
     ${briefSection('Ready now', brief.ready || [], false)}
     ${briefSection('Blocking most work', brief.blockers || [], false)}
@@ -912,7 +1176,9 @@ function renderItem(item) {
   const url = item.url || item.URL || '';
   const reason = esc(item.reason || item.Reason || '');
   const label = url ? `<a href="${esc(url)}">${id}</a>` : id;
-  return `<div class="item"><strong>${label} ${title}</strong><div class="reason">${reason}</div></div>`;
+  const badges = badgesHTML(item.badges || plainBadges(item));
+  const klass = ['item', isClosed({ state: item.state || item.State }) ? 'closedItem' : ''].filter(Boolean).join(' ');
+  return `<div class="${klass}"><div class="itemHead"><strong>${label} ${title}</strong>${badges}</div><div class="reason">${reason}</div></div>`;
 }
 
 function renderGraph(snapshot, nodes) {
@@ -942,12 +1208,12 @@ function renderGraph(snapshot, nodes) {
   html += '</svg>';
   for (const node of nodes) {
     const pos = positions.get(node.id);
-    const klass = ['nodeCard', isLocal(node) ? 'note' : '', isClosed(node) ? 'closed' : '', isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
+    const klass = ['nodeCard', ...nodeCardClasses(node), isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
     html += `<article class="${klass}" style="transform:translate(${pos.x}px, ${pos.y}px)">
       <div class="nodeId">${id}</div>
       <div class="nodeTitle">${esc(node.title)}</div>
-      <div class="nodeState">${esc(node.kind)} - ${esc(node.state)}</div>
+      ${badgesHTML(nodeBadges(node))}
     </article>`;
   }
   html += '</div>';
@@ -957,9 +1223,20 @@ function renderGraph(snapshot, nodes) {
 function renderTable(nodes) {
   const rows = nodes.map((node) => {
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
-    return `<tr><td>${id}</td><td>${esc(node.title)}</td><td>${esc(node.kind)}</td><td>${esc(node.state)}</td><td>${esc(labels(node).join(', '))}</td></tr>`;
+    const klass = nodeCardClasses(node).filter(Boolean).join(' ');
+    const labelText = labels(node).join(', ');
+    return `<tr class="${klass}">
+      <td><div class="tableItem"><div class="tableItemID">${id}</div><div class="tableItemTitle">${esc(node.title)}</div></div></td>
+      <td>${badgesHTML(nodeBadges(node))}</td>
+      <td>${esc(labelText)}</td>
+    </tr>`;
   }).join('');
-  dom.table.innerHTML = `<table><thead><tr><th>ID</th><th>Title</th><th>Kind</th><th>State</th><th>Labels</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const empty = '<tr><td colspan="3"><div class="reason">no visible cards</div></td></tr>';
+  dom.table.innerHTML = `<table class="workTable">
+    <colgroup><col class="itemCol"><col class="signalCol"><col class="labelCol"></colgroup>
+    <thead><tr><th>Item</th><th>Signals</th><th>Labels</th></tr></thead>
+    <tbody>${rows || empty}</tbody>
+  </table>`;
 }
 
 function visibleNodes(nodes) {
@@ -967,14 +1244,38 @@ function visibleNodes(nodes) {
     if (!state.showClosed && isClosed(node)) return false;
     if (!state.showLocal && isLocal(node)) return false;
     if (!state.showExternal && !isLocal(node)) return false;
-    const hay = [node.id, node.title, node.state, node.kind, labels(node).join(' ')].join(' ').toLowerCase();
+    const hay = [node.id, node.title, node.state, node.kind, badgeText(nodeBadges(node)), labels(node).join(' ')].join(' ').toLowerCase();
     return !state.filter || hay.includes(state.filter);
   });
 }
 
+function setView(view, options = {}) {
+  const next = views.has(view) ? view : 'brief';
+  state.view = next;
+  document.querySelectorAll('[data-view]').forEach((item) => {
+    item.classList.toggle('active', item.dataset.view === next);
+  });
+  if (options.persist !== false) writeURLView(next);
+  if (options.renderNow !== false) render();
+}
+
+function readURLView() {
+  const view = new URLSearchParams(location.search).get('view') || 'brief';
+  return views.has(view) ? view : 'brief';
+}
+
+function writeURLView(view) {
+  const url = new URL(location.href);
+  if (view === 'brief') url.searchParams.delete('view');
+  else url.searchParams.set('view', view);
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
 function shareLink() {
   const encoded = encodeBase64URL(dom.input.value);
-  history.replaceState(null, '', `#data=${encoded}`);
+  const url = new URL(location.href);
+  url.hash = `data=${encoded}`;
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   navigator.clipboard?.writeText(location.href);
   dom.status.textContent = 'share link copied';
 }
@@ -1007,7 +1308,7 @@ function encodeBase64URL(text) {
 }
 
 function decodeBase64URL(text) {
-  const padded = text.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((text.length + 3) % 4);
+  const padded = text.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (text.length % 4)) % 4);
   const binary = atob(padded);
   return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
 }
@@ -1017,11 +1318,105 @@ function countLines(text) {
   return text.split(/\r?\n/).length;
 }
 
+function nodeCardClasses(node) {
+  const data = nodeData(node);
+  const lifecycle = data.lifecycle?.state || node.state || 'unknown';
+  const ci = data.ci?.state || 'none';
+  const review = data.review?.state || 'none';
+  return [
+    isLocal(node) ? 'note' : '',
+    isClosed(node) ? 'closed' : '',
+    `kind-${badgeClass(node.kind || 'task')}`,
+    `life-${badgeClass(lifecycle)}`,
+    node.kind === 'pr' ? `ci-${badgeClass(ci)}` : '',
+    node.kind === 'pr' ? `review-${badgeClass(review)}` : '',
+  ];
+}
+
+function nodeBadges(node) {
+  const data = nodeData(node);
+  const badges = [];
+  if (isLocal(node)) {
+    badges.push(badge('type-local', '📝 note'));
+    return badges;
+  }
+  badges.push(typeBadge(node));
+  badges.push(lifecycleBadge(data.lifecycle?.state || node.state));
+  if (node.kind === 'pr') {
+    badges.push(reviewBadge(data.review || {}));
+    badges.push(ciBadge(data.ci || {}));
+  }
+  if (data.auth_fallback) badges.push(badge('auth-public', '🌐 public'));
+  return badges.filter(Boolean);
+}
+
+function plainBadges(item) {
+  const kind = item.kind || item.Kind || 'task';
+  const state = item.state || item.State || 'unknown';
+  return [typeBadge({ kind }), lifecycleBadge(state)].filter(Boolean);
+}
+
+function typeBadge(node) {
+  const kind = node.kind || 'task';
+  if (kind === 'pr') return badge('type-pr', '🔀 PR');
+  if (kind === 'issue') return badge('type-issue', '📌 issue');
+  if (kind === 'note') return badge('type-local', '📝 note');
+  return badge('type-task', '▣ task');
+}
+
+function lifecycleBadge(value) {
+  const lifecycle = String(value || 'unknown').toLowerCase();
+  if (lifecycle === 'merged') return badge('life-merged', '🟣 merged');
+  if (lifecycle === 'draft') return badge('life-draft', '🚧 draft');
+  if (lifecycle === 'open') return badge('life-open', '🟢 open');
+  if (isClosed({ state: lifecycle })) return badge('life-closed', '⚫ closed');
+  if (lifecycle === 'local') return badge('life-local', '📝 local');
+  return badge('life-unknown', '◇ unknown');
+}
+
+function reviewBadge(review) {
+  const reviewState = String(review.state || 'none').toLowerCase();
+  if (reviewState === 'approved') return badge('review-approved', `✅ review${review.approvals ? ` ${review.approvals}` : ''}`);
+  if (reviewState === 'changes_requested') return badge('review-changes', `✋ changes${review.changes_requested ? ` ${review.changes_requested}` : ''}`);
+  if (reviewState === 'requested') return badge('review-requested', '👀 review');
+  if (reviewState === 'commented') return badge('review-commented', '💬 comments');
+  return badge('review-none', '👀 no review');
+}
+
+function ciBadge(ci) {
+  const ciState = String(ci.state || 'none').toLowerCase();
+  if (ciState === 'success') return badge('ci-success', `🟢 ci ok${ci.total ? ` ${ci.total}` : ''}`);
+  if (ciState === 'failure') return badge('ci-failure', `🔴 ci fail${ci.failed ? ` ${ci.failed}` : ''}`);
+  if (ciState === 'pending') return badge('ci-pending', `🟡 ci wait${ci.pending ? ` ${ci.pending}` : ''}`);
+  return badge('ci-none', '⚪ no ci');
+}
+
+function badge(kind, text) {
+  return { kind, text };
+}
+
+function badgesHTML(badges) {
+  if (!badges || badges.length === 0) return '';
+  return `<div class="badges">${badges.map((item) => `<span class="badge ${esc(item.kind)}">${esc(item.text)}</span>`).join('')}</div>`;
+}
+
+function badgeText(badges) {
+  return (badges || []).map((item) => item.text || '').join(' ');
+}
+
+function badgeClass(value) {
+  return String(value || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'unknown';
+}
+
 function labels(node) {
+  return nodeData(node).labels || [];
+}
+
+function nodeData(node) {
   try {
-    return JSON.parse(node.data_json || '{}').labels || [];
+    return JSON.parse(node.data_json || '{}');
   } catch {
-    return [];
+    return {};
   }
 }
 

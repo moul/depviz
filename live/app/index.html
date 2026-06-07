@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DepViz Live</title>
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=v4.1.9-dev">
 </head>
 <body>
   <header class="topbar">
@@ -13,8 +13,14 @@
       <span id="status">stateless work graph</span>
     </div>
     <div class="actions">
-      <input id="githubTokenInput" type="password" autocomplete="off" spellcheck="false" placeholder="GitHub token">
-      <button id="hydrateGithubBtn" type="button">Hydrate GitHub</button>
+      <div class="githubAuth" aria-label="GitHub connection">
+        <button id="connectGithubBtn" type="button">Connect GitHub</button>
+        <button id="pasteGithubTokenBtn" type="button">Use copied token</button>
+        <input id="githubTokenInput" type="password" autocomplete="off" spellcheck="false" placeholder="token fallback" aria-label="GitHub token">
+        <button id="forgetGithubTokenBtn" type="button">Forget</button>
+        <span id="githubAuthState" class="tokenState">GitHub: public</span>
+      </div>
+      <button id="hydrateGithubBtn" type="button">Refresh GitHub</button>
       <button id="sampleBtn" type="button">Load sample</button>
       <button id="shareBtn" type="button">Share link</button>
       <button id="exportBtn" type="button">Export JSON</button>
@@ -57,7 +63,7 @@
         <input id="filterInput" type="search" placeholder="Filter id, title, state, label" aria-label="Filter cards">
         <label><input id="showExternal" type="checkbox" checked> External</label>
         <label><input id="showLocal" type="checkbox" checked> Local</label>
-        <label><input id="showClosed" type="checkbox"> Closed</label>
+        <label><input id="showClosed" type="checkbox" checked> Closed</label>
       </div>
 
       <div class="stats" id="stats"></div>
@@ -69,6 +75,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=v4.1.0-dev"></script>
+  <script src="./app.js?v=v4.1.9-dev"></script>
 </body>
 </html>
