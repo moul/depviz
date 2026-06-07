@@ -539,6 +539,24 @@ textarea::selection {
   pointer-events: none;
 }
 
+.graphEdge {
+  stroke: #667085;
+  stroke-width: 1.7;
+}
+
+.graphEdge.softEdge {
+  stroke: #b8c0cc;
+  stroke-dasharray: 5 5;
+  stroke-width: 1.35;
+}
+
+.graphEdge.edge-addresses,
+.graphEdge.edge-mentions,
+.graphEdge.edge-relates_to,
+.graphEdge.edge-closes {
+  stroke-dasharray: 2 5;
+}
+
 .nodeCard {
   position: absolute;
   width: 218px;

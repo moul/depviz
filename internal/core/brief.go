@@ -167,7 +167,7 @@ func writeItem(w io.Writer, item BriefItem, showImpact bool) {
 
 func edgeBlockedAndBlocker(e Edge) (blocked string, blocker string) {
 	switch strings.ToLower(strings.TrimSpace(e.Kind)) {
-	case "addresses", "mentions", "relates_to", "related_to":
+	case "addresses", "mentions", "relates_to", "related_to", "closes":
 		return "", ""
 	case "blocked_by", "depends_on", "depends", "after":
 		return e.FromID, e.ToID

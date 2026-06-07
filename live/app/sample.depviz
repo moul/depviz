@@ -11,3 +11,4 @@ note live-format "Decide Live input format"
 
 #681 depends on #680 and addresses live-format
 #680 blocks #649
+#681 closes #649

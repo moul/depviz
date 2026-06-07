@@ -290,6 +290,10 @@ func (s *Store) CreateNote(ctx context.Context, boardID, text string) (Node, err
 }
 
 func (s *Store) AddEdge(ctx context.Context, boardID, fromID, toID, kind, authority string, evidence any) (Edge, error) {
+	return s.AddEdgeWithConfidence(ctx, boardID, fromID, toID, kind, authority, 1, evidence)
+}
+
+func (s *Store) AddEdgeWithConfidence(ctx context.Context, boardID, fromID, toID, kind, authority string, confidence float64, evidence any) (Edge, error) {
 	if fromID == "" || toID == "" {
 		return Edge{}, errors.New("edge from and to are required")
 	}
@@ -301,6 +305,9 @@ func (s *Store) AddEdge(ctx context.Context, boardID, fromID, toID, kind, author
 	}
 	if authority == "" {
 		authority = "local"
+	}
+	if confidence <= 0 {
+		confidence = 1
 	}
 	if err := s.ensureNodeInBoard(ctx, boardID, fromID); err != nil {
 		return Edge{}, err
@@ -322,7 +329,7 @@ func (s *Store) AddEdge(ctx context.Context, boardID, fromID, toID, kind, author
 		ToID:         toID,
 		Kind:         kind,
 		ScopeBoardID: boardID,
-		Confidence:   1,
+		Confidence:   confidence,
 		Authority:    authority,
 		EvidenceJSON: evidenceJSON,
 		ObservedAt:   nowUTC(),
@@ -527,7 +534,7 @@ func (s *Store) IngestEvent(ctx context.Context, data []byte, defaultBoard strin
 		if ev.Kind == "" {
 			ev.Kind = "blocked_by"
 		}
-		_, err := s.AddEdge(ctx, ev.Board, ev.From, ev.To, ev.Kind, ev.Authority, map[string]any{"event": json.RawMessage(data)})
+		_, err := s.AddEdgeWithConfidence(ctx, ev.Board, ev.From, ev.To, ev.Kind, ev.Authority, ev.Confidence, map[string]any{"event": json.RawMessage(data)})
 		return err
 	case "depviz.note.v1", "note":
 		if ev.Title == "" {

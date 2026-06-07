@@ -83,6 +83,7 @@ func TestNonBlockingEdgesDoNotBlockBrief(t *testing.T) {
 {"type":"node","id":"gh:moul/depviz#1","kind":"issue","title":"Product question","state":"open","source":"github:moul/depviz","external_id":"#1","url":"https://github.com/moul/depviz/issues/1"}
 {"type":"node","id":"gh:moul/depviz#2","kind":"issue","title":"Implementation detail","state":"open","source":"github:moul/depviz","external_id":"#2","url":"https://github.com/moul/depviz/issues/2"}
 {"type":"edge","from":"gh:moul/depviz#1","to":"gh:moul/depviz#2","kind":"addresses"}
+{"type":"edge","from":"gh:moul/depviz#2","to":"gh:moul/depviz#1","kind":"closes"}
 `)
 	if _, err := s.IngestEvents(ctx, events, DefaultBoardID); err != nil {
 		t.Fatal(err)
@@ -96,5 +97,35 @@ func TestNonBlockingEdgesDoNotBlockBrief(t *testing.T) {
 	}
 	if brief.Counts.Ready != 2 {
 		t.Fatalf("ready = %d, want 2", brief.Counts.Ready)
+	}
+}
+
+func TestIngestEventPreservesEdgeConfidence(t *testing.T) {
+	ctx := context.Background()
+	s, err := OpenStore(ctx, t.TempDir()+"/state.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	events := strings.NewReader(`
+{"type":"node","id":"gh:moul/depviz#1","kind":"issue","title":"Implementation detail","state":"open","source":"github:moul/depviz","external_id":"#1","url":"https://github.com/moul/depviz/issues/1"}
+{"type":"node","id":"gh:moul/depviz#2","kind":"issue","title":"Closing PR","state":"open","source":"github:moul/depviz","external_id":"#2","url":"https://github.com/moul/depviz/issues/2"}
+{"type":"edge","from":"gh:moul/depviz#2","to":"gh:moul/depviz#1","kind":"closes","authority":"github-inferred","confidence":0.7}
+`)
+	if _, err := s.IngestEvents(ctx, events, DefaultBoardID); err != nil {
+		t.Fatal(err)
+	}
+	snap, err := s.Snapshot(ctx, DefaultBoardID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Edges) != 1 {
+		t.Fatalf("edges = %+v, want one edge", snap.Edges)
+	}
+	if snap.Edges[0].Confidence != 0.7 {
+		t.Fatalf("confidence = %v, want 0.7", snap.Edges[0].Confidence)
+	}
+	if snap.Edges[0].Authority != "github-inferred" {
+		t.Fatalf("authority = %q, want github-inferred", snap.Edges[0].Authority)
 	}
 }

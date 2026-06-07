@@ -69,7 +69,7 @@ func SyncGitHub(ctx context.Context, s *Store, opts GitHubSyncOptions) (int, err
 		}
 		count++
 		for _, edge := range extractDependencyEdges(opts.Repo, id, body) {
-			if _, err := s.AddEdge(ctx, DefaultBoardID, edge.From, edge.To, edge.Kind, "github-text", edge); err != nil {
+			if _, err := s.AddEdgeWithConfidence(ctx, DefaultBoardID, edge.From, edge.To, edge.Kind, "github-inferred", edge.Confidence, edge); err != nil {
 				return count, err
 			}
 		}
@@ -102,7 +102,7 @@ func SyncGitHub(ctx context.Context, s *Store, opts GitHubSyncOptions) (int, err
 		}
 		count++
 		for _, edge := range extractDependencyEdges(opts.Repo, id, pr.Body) {
-			if _, err := s.AddEdge(ctx, DefaultBoardID, edge.From, edge.To, edge.Kind, "github-text", edge); err != nil {
+			if _, err := s.AddEdgeWithConfidence(ctx, DefaultBoardID, edge.From, edge.To, edge.Kind, "github-inferred", edge.Confidence, edge); err != nil {
 				return count, err
 			}
 		}
@@ -213,16 +213,17 @@ func githubPayload(kind, repo string, number int, labels, assignees []string, bo
 }
 
 type extractedEdge struct {
-	From string `json:"from"`
-	To   string `json:"to"`
-	Kind string `json:"kind"`
-	Line string `json:"line"`
+	From       string  `json:"from"`
+	To         string  `json:"to"`
+	Kind       string  `json:"kind"`
+	Line       string  `json:"line"`
+	Confidence float64 `json:"confidence"`
 }
 
 var (
 	githubRefRE    = regexp.MustCompile(`(?i)(?:gh:)?([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?([#!])([0-9]+)`)
 	githubURLRefRE = regexp.MustCompile(`(?i)https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/(issues|pull)/([0-9]+)`)
-	relationVerbRE = regexp.MustCompile(`(?i)\b(blocked by|depends on|depend on|depends|after|blocks|unblocks|addresses|mentions|relates to|relates)\b`)
+	relationVerbRE = regexp.MustCompile(`(?i)\b(blocked by|depends on|depend on|depends|after|blocks|unblocks|addresses|mentions|relates to|relates|closes|closed|close|fixes|fixed|fix|resolves|resolved|resolve)\b`)
 )
 
 func extractDependencyEdges(repo, currentID, body string) []extractedEdge {
@@ -230,7 +231,7 @@ func extractDependencyEdges(repo, currentID, body string) []extractedEdge {
 	seen := map[string]bool{}
 	for _, line := range strings.Split(body, "\n") {
 		lower := strings.ToLower(line)
-		if !strings.Contains(lower, "block") && !strings.Contains(lower, "depend") && !strings.Contains(lower, "after") && !strings.Contains(lower, "address") && !strings.Contains(lower, "mention") && !strings.Contains(lower, "relate") {
+		if !strings.Contains(lower, "block") && !strings.Contains(lower, "depend") && !strings.Contains(lower, "after") && !strings.Contains(lower, "address") && !strings.Contains(lower, "mention") && !strings.Contains(lower, "relate") && !strings.Contains(lower, "close") && !strings.Contains(lower, "fix") && !strings.Contains(lower, "resolve") {
 			continue
 		}
 		for _, chunk := range relationChunks(line) {
@@ -238,6 +239,7 @@ func extractDependencyEdges(repo, currentID, body string) []extractedEdge {
 			if kind == "" {
 				continue
 			}
+			confidence := relationConfidence(kind)
 			for _, target := range githubRefs(repo, chunk.text) {
 				if target == currentID {
 					continue
@@ -247,7 +249,7 @@ func extractDependencyEdges(repo, currentID, body string) []extractedEdge {
 					continue
 				}
 				seen[key] = true
-				edges = append(edges, extractedEdge{From: currentID, To: target, Kind: kind, Line: strings.TrimSpace(line)})
+				edges = append(edges, extractedEdge{From: currentID, To: target, Kind: kind, Line: strings.TrimSpace(line), Confidence: confidence})
 			}
 		}
 	}
@@ -291,8 +293,23 @@ func relationEdgeKind(verb string) string {
 		return "mentions"
 	case "relates", "relates to":
 		return "relates_to"
+	case "close", "closes", "closed", "fix", "fixes", "fixed", "resolve", "resolves", "resolved":
+		return "closes"
 	default:
 		return ""
+	}
+}
+
+func relationConfidence(kind string) float64 {
+	switch kind {
+	case "blocked_by", "blocks":
+		return 0.75
+	case "closes":
+		return 0.7
+	case "addresses", "mentions", "relates_to":
+		return 0.55
+	default:
+		return 0.5
 	}
 }
 

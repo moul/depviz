@@ -81,10 +81,12 @@ descriptions:
 #679 depends on #80, #81
 #679 blocks #85
 #679 addresses flow
+#679 closes #85
 ```
 
 `depends on` means each target blocks the subject. `blocks` means the subject
-blocks each target. `addresses` records a non-blocking relationship.
+blocks each target. `addresses`, `mentions`, `relates to`, and `closes` record
+non-blocking relationships.
 
 Lists can use commas and `and`:
 
@@ -125,6 +127,8 @@ Flow should stay pleasant when it is rendered by plain Markdown:
 - aliases are local to the block, so examples can stay compact
 - GitHub state is written by hand only in standalone Live snippets
 - connected data owns external truth when a GitHub sync/export is present
+- source-inferred relations should stay visibly softer than curated DepViz
+  relations until a human promotes them
 
 That makes the same snippet usable in a GitHub issue, a PR description, a
 HackMD note, a README, or the Live editor.
