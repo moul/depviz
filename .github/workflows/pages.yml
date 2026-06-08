@@ -98,7 +98,16 @@ jobs:
           fi
 
           git -C _site commit -m "$msg"
-          git -C _site push origin gh-pages
+          for attempt in 1 2 3; do
+            if git -C _site push origin gh-pages; then
+              exit 0
+            fi
+            if [ "$attempt" = "3" ]; then
+              exit 1
+            fi
+            git -C _site fetch origin gh-pages
+            git -C _site rebase origin/gh-pages
+          done
 
       - name: Comment preview URL
         if: github.event_name == 'pull_request' && github.event.action != 'closed'
