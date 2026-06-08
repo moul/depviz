@@ -75,6 +75,7 @@ button:disabled {
 
 .brand strong {
   font-size: 17px;
+  white-space: nowrap;
 }
 
 .brand span,
@@ -92,6 +93,13 @@ button:disabled {
   gap: 8px;
 }
 
+.githubAuth {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .actions input {
   width: 178px;
   border: 1px solid var(--line);
@@ -99,6 +107,17 @@ button:disabled {
   background: var(--panel);
   color: var(--ink);
   padding: 7px 9px;
+}
+
+.githubAuth input {
+  width: 126px;
+}
+
+.tokenState {
+  min-width: 96px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .actions input:focus {
@@ -347,9 +366,60 @@ textarea::selection {
   border-top: 0;
 }
 
+.item.closedItem {
+  margin-top: 5px;
+  padding: 5px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f5f6f8;
+  color: #667085;
+  font-size: 12px;
+}
+
+.item.closedItem .itemHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.item.closedItem strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item.closedItem .badges {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.item.closedItem .badge {
+  min-height: 17px;
+  padding: 1px 5px;
+  font-size: 10px;
+}
+
+.item.closedItem .badge.review-none {
+  display: none;
+}
+
+.item.closedItem .reason {
+  display: none;
+}
+
 .item strong {
   display: block;
   overflow-wrap: anywhere;
+}
+
+.itemHead {
+  display: block;
+}
+
+.itemHead .badges {
+  margin-top: 5px;
 }
 
 .item a {
@@ -359,6 +429,91 @@ textarea::selection {
 
 .reason {
   color: var(--muted);
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border: 1px solid #d0d5dd;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #344054;
+  padding: 2px 7px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.badge.type-pr {
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+
+.badge.type-issue {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.badge.type-local,
+.badge.life-local {
+  border-color: #99f6e4;
+  background: #ecfeff;
+  color: #0f766e;
+}
+
+.badge.life-open,
+.badge.review-approved,
+.badge.ci-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.badge.life-merged {
+  border-color: #ddd6fe;
+  background: #faf5ff;
+  color: #6d28d9;
+}
+
+.badge.life-closed,
+.badge.ci-none,
+.badge.review-none {
+  border-color: #e5e7eb;
+  background: #f9fafb;
+  color: #667085;
+}
+
+.badge.life-draft,
+.badge.review-requested,
+.badge.review-commented,
+.badge.ci-pending {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.badge.review-changes,
+.badge.ci-failure {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.badge.auth-public {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #075985;
 }
 
 .graphCanvas {
@@ -411,6 +566,52 @@ textarea::selection {
 .nodeCard.closed {
   color: #6b7280;
   background: #f3f4f6;
+  width: 190px;
+  min-height: 0;
+  max-height: 64px;
+  overflow: hidden;
+  padding: 7px 8px;
+  opacity: 0.82;
+}
+
+.nodeCard.kind-pr {
+  border-top: 3px solid #8b5cf6;
+}
+
+.nodeCard.kind-issue {
+  border-top: 3px solid #3b82f6;
+}
+
+.nodeCard.life-merged {
+  background: #faf5ff;
+  border-color: #c4b5fd;
+}
+
+.nodeCard.life-draft {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.nodeCard.closed.life-closed,
+.nodeCard.closed.life-merged {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.nodeCard.ci-failure {
+  box-shadow: inset 3px 0 0 #dc2626, 0 2px 12px rgba(16, 24, 40, 0.07);
+}
+
+.nodeCard.ci-success {
+  box-shadow: inset 3px 0 0 #16a34a, 0 2px 12px rgba(16, 24, 40, 0.07);
+}
+
+tr.ci-failure td:first-child {
+  box-shadow: inset 3px 0 0 #dc2626;
+}
+
+tr.ci-success td:first-child {
+  box-shadow: inset 3px 0 0 #16a34a;
 }
 
 .nodeId {
@@ -425,6 +626,40 @@ textarea::selection {
 .nodeTitle {
   font-weight: 650;
   overflow-wrap: anywhere;
+  margin-bottom: 8px;
+}
+
+.nodeCard.closed .nodeId,
+.nodeCard.closed .nodeTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeCard.closed .nodeId {
+  display: none;
+}
+
+.nodeCard.closed .nodeTitle {
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.nodeCard.closed .badge {
+  flex: 0 0 auto;
+  min-height: 17px;
+  padding: 1px 5px;
+  font-size: 10px;
+}
+
+.nodeCard.closed .badges {
+  flex-wrap: nowrap;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.nodeCard.closed .badge.review-none {
+  display: none;
 }
 
 .nodeState {
@@ -435,6 +670,7 @@ textarea::selection {
 
 table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -465,6 +701,89 @@ tr:last-child td {
   border-bottom: 0;
 }
 
+.workTable tr.closed td {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  background: #f5f6f8;
+  color: #667085;
+  font-size: 12px;
+}
+
+.workTable tr.closed .tableItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workTable tr.closed .tableItemID,
+.workTable tr.closed .tableItemTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workTable tr.closed .tableItemID {
+  flex: 0 1 46%;
+  margin-bottom: 0;
+}
+
+.workTable tr.closed .tableItemTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.workTable tr.closed .badges {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.workTable tr.closed .badge {
+  min-height: 17px;
+  padding: 1px 5px;
+  font-size: 10px;
+}
+
+.workTable tr.closed .badge.review-none {
+  display: none;
+}
+
+.itemCol {
+  width: 42%;
+}
+
+.signalCol {
+  width: 42%;
+}
+
+.labelCol {
+  width: 16%;
+}
+
+.tableItem {
+  min-width: 0;
+}
+
+.tableItemID {
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.tableItemID a {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.tableItemTitle {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.workTable .badges {
+  max-width: 100%;
+}
+
 @media (max-width: 920px) {
   .shell {
     grid-template-columns: 1fr;
@@ -487,6 +806,7 @@ tr:last-child td {
   .briefGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
 }
 
 @media (max-width: 560px) {
