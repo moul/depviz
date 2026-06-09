@@ -58,7 +58,7 @@ func (s *Store) BuildBrief(ctx context.Context, boardID string) (Brief, error) {
 				Reason: readyReason(n, blockedByNode[n.ID]),
 				Impact: activeBlockedCount(n.ID, nodes, blockedByNode),
 			})
-		} else {
+		} else if len(activeBlockers) > 0 {
 			blockedCount++
 		}
 		if n.IsLocalOnly() {
@@ -166,7 +166,12 @@ func writeItem(w io.Writer, item BriefItem, showImpact bool) {
 }
 
 func edgeBlockedAndBlocker(e Edge) (blocked string, blocker string) {
+	if edgeIsSoft(e) {
+		return "", ""
+	}
 	switch strings.ToLower(strings.TrimSpace(e.Kind)) {
+	case "addresses", "mentions", "relates_to", "related_to", "closes":
+		return "", ""
 	case "blocked_by", "depends_on", "depends", "after":
 		return e.FromID, e.ToID
 	case "blocks", "unblocks", "precedes":
@@ -174,6 +179,14 @@ func edgeBlockedAndBlocker(e Edge) (blocked string, blocker string) {
 	default:
 		return e.FromID, e.ToID
 	}
+}
+
+func edgeIsSoft(e Edge) bool {
+	if e.Confidence > 0 && e.Confidence < 1 {
+		return true
+	}
+	authority := strings.ToLower(strings.TrimSpace(e.Authority))
+	return strings.Contains(authority, "inferred") || strings.Contains(authority, "soft")
 }
 
 func activeBlockers(nodeID string, nodes map[string]Node, blockersByNode map[string]map[string]bool) []string {

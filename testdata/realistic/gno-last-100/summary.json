@@ -1,0 +1,121 @@
+{
+  "captured_at": "2026-06-07T22:10:55Z",
+  "source": "gnolang/gno",
+  "sync_limit": "50 issues + 50 PRs",
+  "nodes": 103,
+  "edges": 11,
+  "counts": {
+    "nodes": 103,
+    "edges": 11,
+    "ready": 72,
+    "blocked": 0,
+    "local_only": 0,
+    "stale": 22
+  },
+  "edge_kinds": [
+    {
+      "kind": "blocked_by",
+      "count": 5
+    },
+    {
+      "kind": "closes",
+      "count": 6
+    }
+  ],
+  "edge_authorities": [
+    {
+      "authority": "github-inferred",
+      "count": 11
+    }
+  ],
+  "sample_edges": [
+    {
+      "kind": "closes",
+      "authority": "github-inferred",
+      "confidence": 0.7,
+      "from": "gh:gnolang/gno!5732",
+      "to": "gh:gnolang/gno#5667",
+      "line": "fixes: #5667"
+    },
+    {
+      "kind": "blocked_by",
+      "authority": "github-inferred",
+      "confidence": 0.75,
+      "from": "gh:gnolang/gno#5527",
+      "to": "gh:gnolang/gno#5526",
+      "line": "Depends on #5525, #5526 and #5484"
+    },
+    {
+      "kind": "closes",
+      "authority": "github-inferred",
+      "confidence": 0.7,
+      "from": "gh:gnolang/gno!5734",
+      "to": "gh:gnolang/gno#3312",
+      "line": "fixes https://github.com/gnolang/gno/issues/3312"
+    },
+    {
+      "kind": "blocked_by",
+      "authority": "github-inferred",
+      "confidence": 0.75,
+      "from": "gh:gnolang/gno#5527",
+      "to": "gh:gnolang/gno#5484",
+      "line": "Depends on #5525, #5526 and #5484"
+    },
+    {
+      "kind": "closes",
+      "authority": "github-inferred",
+      "confidence": 0.7,
+      "from": "gh:gnolang/gno!5733",
+      "to": "gh:gnolang/gno#5665",
+      "line": "fixes #5665"
+    },
+    {
+      "kind": "blocked_by",
+      "authority": "github-inferred",
+      "confidence": 0.75,
+      "from": "gh:gnolang/gno#5526",
+      "to": "gh:gnolang/gno#5525",
+      "line": "Depends on #5525"
+    },
+    {
+      "kind": "closes",
+      "authority": "github-inferred",
+      "confidence": 0.7,
+      "from": "gh:gnolang/gno!5754",
+      "to": "gh:gnolang/gno#5662",
+      "line": "Fix #5662"
+    },
+    {
+      "kind": "blocked_by",
+      "authority": "github-inferred",
+      "confidence": 0.75,
+      "from": "gh:gnolang/gno#5527",
+      "to": "gh:gnolang/gno#5525",
+      "line": "Depends on #5525, #5526 and #5484"
+    },
+    {
+      "kind": "blocked_by",
+      "authority": "github-inferred",
+      "confidence": 0.75,
+      "from": "gh:gnolang/gno!5792",
+      "to": "gh:gnolang/gno#5385",
+      "line": "Depends on #5385. The test asserts these via `uassert.ErrorIs`, which only checks the error once #5385 switches `uassert` to `errors.Is`, so this is stacked on that branch: review the final commit, and the diff reduces to the grc721 change once #5385 merges."
+    },
+    {
+      "kind": "closes",
+      "authority": "github-inferred",
+      "confidence": 0.7,
+      "from": "gh:gnolang/gno!5751",
+      "to": "gh:gnolang/gno#5664",
+      "line": "fixes #5664"
+    },
+    {
+      "kind": "closes",
+      "authority": "github-inferred",
+      "confidence": 0.7,
+      "from": "gh:gnolang/gno!5780",
+      "to": "gh:gnolang/gno#5776",
+      "line": "closes #5776"
+    }
+  ]
+}
