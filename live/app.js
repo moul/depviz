@@ -14,6 +14,7 @@ const dom = {
   boardMeta: document.getElementById('boardMeta'),
   filter: document.getElementById('filterInput'),
   stats: document.getElementById('stats'),
+  suggestions: document.getElementById('suggestionPanel'),
   brief: document.getElementById('briefView'),
   graph: document.getElementById('graphView'),
   graphCanvas: document.getElementById('graphCanvas'),
@@ -36,6 +37,8 @@ const state = {
   showLocal: true,
   showClosed: true,
   githubRefresh: [],
+  selectedEdgeID: '',
+  dismissedSuggestionIDs: new Set(),
   data: emptyExport(),
 };
 
@@ -102,6 +105,7 @@ function wireEvents() {
     refreshGitHubAuthUI();
   });
   dom.hydrateGithub.addEventListener('click', hydrateGitHub);
+  dom.suggestions.addEventListener('click', handleSuggestionClick);
 }
 
 async function loadSample() {
@@ -1133,7 +1137,8 @@ function render() {
   const nodes = visibleNodes(snapshot.nodes);
   dom.boardTitle.textContent = snapshot.board.name || 'Default';
   dom.boardMeta.textContent = `${snapshot.nodes.length} nodes - ${snapshot.edges.length} edges`;
-  renderStats(brief.counts || {});
+  renderStats(brief.counts || {}, snapshot);
+  renderSuggestions(snapshot);
   dom.brief.classList.toggle('hidden', state.view !== 'brief');
   dom.graph.classList.toggle('hidden', state.view !== 'graph');
   dom.table.classList.toggle('hidden', state.view !== 'table');
@@ -1142,9 +1147,10 @@ function render() {
   if (state.view === 'table') renderTable(nodes);
 }
 
-function renderStats(counts) {
+function renderStats(counts, snapshot) {
   const values = [
     ['Nodes', counts.nodes || 0],
+    ['Suggested', suggestedEdges(snapshot).length],
     ['Ready', counts.ready || 0],
     ['Blocked', counts.blocked || 0],
     ['Local', counts.local_only || 0],
@@ -1185,6 +1191,8 @@ function renderItem(item) {
 
 function renderGraph(snapshot, nodes) {
   const visible = new Set(nodes.map((node) => node.id));
+  const selectedEdge = edgeByID(state.selectedEdgeID);
+  const selectedEndpoints = selectedEdge ? new Set([selectedEdge.from_id, selectedEdge.to_id]) : new Set();
   const positions = new Map();
   const cols = 4;
   const xGap = 252;
@@ -1202,6 +1210,7 @@ function renderGraph(snapshot, nodes) {
       <defs>
         <marker id="arrowHard" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#667085"></path></marker>
         <marker id="arrowSoft" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#b8c0cc"></path></marker>
+        <marker id="arrowSelected" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L0,7 L8,3.5 z" fill="#dc2626"></path></marker>
       </defs>`;
   for (const edge of snapshot.edges) {
     if (!visible.has(edge.from_id) || !visible.has(edge.to_id)) continue;
@@ -1209,16 +1218,17 @@ function renderGraph(snapshot, nodes) {
     const to = positions.get(edge.to_id);
     if (!from || !to) continue;
     const soft = isSoftEdge(edge);
+    const selected = edge.id === state.selectedEdgeID;
     const kind = esc(edge.kind || 'edge');
     const authority = esc(edge.authority || '');
-    html += `<line class="${edgeClasses(edge)}" x1="${from.x + 218}" y1="${from.y + 39}" x2="${to.x}" y2="${to.y + 39}" marker-end="url(#${soft ? 'arrowSoft' : 'arrowHard'})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
+    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}" x1="${from.x + 218}" y1="${from.y + 39}" x2="${to.x}" y2="${to.y + 39}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
   }
   html += '</svg>';
   for (const node of nodes) {
     const pos = positions.get(node.id);
-    const klass = ['nodeCard', ...nodeCardClasses(node), isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
+    const klass = ['nodeCard', ...nodeCardClasses(node), selectedEndpoints.has(node.id) ? 'selectedEndpoint' : '', isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
-    html += `<article class="${klass}" style="transform:translate(${pos.x}px, ${pos.y}px)">
+    html += `<article class="${klass}" data-node-id="${esc(node.id)}" style="transform:translate(${pos.x}px, ${pos.y}px)">
       <div class="nodeId">${id}</div>
       <div class="nodeTitle">${esc(node.title)}</div>
       ${badgesHTML(nodeBadges(node))}
@@ -1245,6 +1255,277 @@ function renderTable(nodes) {
     <thead><tr><th>Item</th><th>Signals</th><th>Labels</th></tr></thead>
     <tbody>${rows || empty}</tbody>
   </table>`;
+}
+
+function renderSuggestions(snapshot) {
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const suggestions = suggestedEdges(snapshot).filter((edge) => !state.dismissedSuggestionIDs.has(edge.id));
+  dom.suggestions.classList.toggle('hidden', suggestions.length === 0);
+  if (suggestions.length === 0) {
+    dom.suggestions.innerHTML = '';
+    return;
+  }
+  const rows = suggestions.slice(0, 8).map((edge) => renderSuggestion(edge, nodes)).join('');
+  const more = suggestions.length > 8 ? `<div class="suggestionMore">${suggestions.length - 8} more hidden by the compact panel</div>` : '';
+  dom.suggestions.innerHTML = `<section class="suggestionBox" aria-label="Suggested relations">
+    <div class="suggestionHead">
+      <strong>Suggested relations</strong>
+      <span>${suggestions.length} soft edge${suggestions.length === 1 ? '' : 's'} from GitHub or low-confidence sources</span>
+    </div>
+    <div class="suggestionList">${rows}</div>
+    ${more}
+  </section>`;
+}
+
+function renderSuggestion(edge, nodes) {
+  const from = nodes.get(edge.from_id) || placeholderNode(edge.from_id);
+  const to = nodes.get(edge.to_id) || placeholderNode(edge.to_id);
+  const selected = edge.id === state.selectedEdgeID;
+  const evidence = evidenceText(edge);
+  const kind = relationLabel(edge.kind);
+  const confidence = confidenceLabel(edge);
+  return `<article class="suggestionRow ${selected ? 'selectedSuggestion' : ''}">
+    <div class="suggestionMain">
+      <div class="suggestionRelation">
+        <strong>${esc(shortNodeLabel(from))}</strong>
+        <span>${esc(kind)}</span>
+        <strong>${esc(shortNodeLabel(to))}</strong>
+      </div>
+      <div class="suggestionEvidence">${esc(evidence || 'no evidence line captured')}</div>
+    </div>
+    <div class="suggestionMeta">
+      <span class="badge suggestionBadge">${esc(confidence)}</span>
+      <span class="badge suggestionBadge">${esc(edge.authority || 'soft')}</span>
+    </div>
+    <div class="suggestionActions">
+      <button type="button" data-suggestion-action="focus" data-edge-id="${esc(edge.id)}">Focus</button>
+      <button type="button" class="primaryAction" data-suggestion-action="promote" data-edge-id="${esc(edge.id)}">Promote</button>
+      <button type="button" data-suggestion-action="dismiss" data-edge-id="${esc(edge.id)}">Hide</button>
+    </div>
+  </article>`;
+}
+
+function handleSuggestionClick(event) {
+  const button = event.target.closest('[data-suggestion-action]');
+  if (!button) return;
+  const edgeID = button.dataset.edgeId || '';
+  const action = button.dataset.suggestionAction;
+  if (action === 'focus') focusSuggestedEdge(edgeID);
+  if (action === 'promote') promoteSuggestedEdge(edgeID);
+  if (action === 'dismiss') dismissSuggestedEdge(edgeID);
+}
+
+function focusSuggestedEdge(edgeID) {
+  if (!edgeByID(edgeID)) return;
+  state.selectedEdgeID = edgeID;
+  setView('graph', { persist: true, renderNow: true });
+  requestAnimationFrame(() => {
+    dom.graphCanvas.querySelector('.selectedEndpoint')?.scrollIntoView({ block: 'center', inline: 'center' });
+  });
+  dom.status.textContent = 'suggested relation focused';
+}
+
+function dismissSuggestedEdge(edgeID) {
+  state.dismissedSuggestionIDs.add(edgeID);
+  if (state.selectedEdgeID === edgeID) state.selectedEdgeID = '';
+  render();
+  dom.status.textContent = 'suggested relation hidden for this session';
+}
+
+function promoteSuggestedEdge(edgeID) {
+  const edge = edgeByID(edgeID);
+  if (!edge) return;
+  try {
+    dom.input.value = promoteInputText(dom.input.value, edge);
+    state.dismissedSuggestionIDs.delete(edgeID);
+    update();
+    dom.status.textContent = 'suggested relation promoted locally';
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'promotion failed';
+  }
+}
+
+function promoteInputText(text, edge) {
+  const trimmed = stripMarkdownFence(text.trim());
+  if (looksLikeJSON(trimmed)) {
+    try {
+      return promoteJSONText(trimmed, edge);
+    } catch (err) {
+      if (!trimmed.includes('\n')) throw err;
+    }
+  }
+  if (looksLikeFlow(trimmed)) return appendFlowLine(text, edgePromotionLine(edge, trimmed));
+  return appendJSONLEdge(text, officialEdge(edge));
+}
+
+function promoteJSONText(text, edge) {
+  const parsed = JSON.parse(text);
+  if (parsed.snapshot && parsed.brief) {
+    const snapshot = promoteSnapshotEdge(parsed.snapshot, edge);
+    return `${JSON.stringify({ ...parsed, snapshot, brief: buildBrief(snapshot) }, null, 2)}\n`;
+  }
+  if (parsed.nodes || parsed.edges) {
+    return `${JSON.stringify(promoteSnapshotEdge(parsed, edge), null, 2)}\n`;
+  }
+  if (parsed.type || parsed.id || parsed.from || parsed.to) {
+    return appendJSONLEdge(text, officialEdge(edge));
+  }
+  throw new Error('JSON promotion needs a DepViz export, snapshot, or event stream');
+}
+
+function promoteSnapshotEdge(snapshot, edge) {
+  let promoted = false;
+  const edges = (snapshot.edges || []).map((item) => {
+    if (item.id === edge.id || sameRelation(item, edge)) {
+      promoted = true;
+      return officialEdge({ ...edge, ...item });
+    }
+    return item;
+  });
+  if (!promoted) edges.push(officialEdge(edge));
+  return { ...snapshot, edges };
+}
+
+function officialEdge(edge) {
+  const evidence = {
+    promoted_from: {
+      authority: edge.authority || '',
+      confidence: Number(edge.confidence || 1),
+      evidence: parseEvidence(edge),
+    },
+  };
+  return normalizeEdge({
+    ...edge,
+    confidence: 1,
+    authority: 'local',
+    evidence_json: JSON.stringify(evidence),
+  });
+}
+
+function appendFlowLine(text, line) {
+  const lines = text.split(/\r?\n/);
+  const isFence = lines.length >= 2 && /^```\w*\s*$/.test(lines[0].trim()) && /^```\s*$/.test(lines[lines.length - 1].trim());
+  if (isFence) {
+    lines.splice(lines.length - 1, 0, line);
+    return `${lines.join('\n')}\n`;
+  }
+  return `${text.trimEnd()}\n${line}\n`;
+}
+
+function appendJSONLEdge(text, edge) {
+  const event = {
+    type: 'edge',
+    from: edge.from_id,
+    to: edge.to_id,
+    kind: edge.kind,
+    authority: 'local',
+    confidence: 1,
+  };
+  return `${text.trimEnd()}\n${JSON.stringify(event)}\n`;
+}
+
+function edgePromotionLine(edge, text) {
+  const repo = defaultRepoFromFlow(text);
+  const from = flowRefForID(edge.from_id, repo);
+  const to = flowRefForID(edge.to_id, repo);
+  const kind = String(edge.kind || '').toLowerCase();
+  if (['blocked_by', 'depends_on', 'depends', 'after'].includes(kind)) return `${from} depends on ${to}`;
+  if (['blocks', 'unblocks'].includes(kind)) return `${from} blocks ${to}`;
+  if (kind === 'addresses') return `${from} addresses ${to}`;
+  if (kind === 'mentions') return `${from} mentions ${to}`;
+  if (kind === 'closes') return `${from} closes ${to}`;
+  if (kind === 'relates_to' || kind === 'related_to') return `${from} relates to ${to}`;
+  return `${from} -> ${to}`;
+}
+
+function defaultRepoFromFlow(text) {
+  const match = text.match(/^\s*repo\s+([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/im);
+  return match ? match[1] : '';
+}
+
+function flowRefForID(id, defaultRepo) {
+  const ref = parseGitHubNodeID(id);
+  if (ref) {
+    const marker = ref.marker;
+    if (defaultRepo && ref.repo === defaultRepo) return `${marker}${ref.number}`;
+    return `${ref.repo}${marker}${ref.number}`;
+  }
+  return id;
+}
+
+function suggestedEdges(snapshot) {
+  return (snapshot.edges || [])
+    .filter(isSuggestedEdge)
+    .filter((edge) => !hasOfficialEquivalent(snapshot, edge))
+    .sort((a, b) => Number(b.confidence || 0) - Number(a.confidence || 0) || String(a.id).localeCompare(String(b.id)));
+}
+
+function isSuggestedEdge(edge) {
+  const confidence = Number(edge.confidence || 1);
+  return isSoftEdge(edge) && (confidence < 1 || /inferred|soft|suggest/i.test(edge.authority || ''));
+}
+
+function hasOfficialEquivalent(snapshot, edge) {
+  return (snapshot.edges || []).some((other) => sameRelation(other, edge) && !isSuggestedEdge(other));
+}
+
+function sameRelation(a, b) {
+  return relationSignature(a) === relationSignature(b);
+}
+
+function relationSignature(edge) {
+  const kind = String(edge.kind || '').toLowerCase();
+  if (['blocked_by', 'depends_on', 'depends', 'after', 'blocks', 'unblocks', 'precedes'].includes(kind)) {
+    const [blocked, blocker] = edgeBlockedAndBlockerRaw(edge);
+    return `blocking:${blocked}->${blocker}`;
+  }
+  return `${kind}:${edge.from_id}->${edge.to_id}`;
+}
+
+function edgeBlockedAndBlockerRaw(edge) {
+  const kind = String(edge.kind || '').toLowerCase().trim();
+  if (['blocked_by', 'depends_on', 'depends', 'after'].includes(kind)) return [edge.from_id, edge.to_id];
+  if (['blocks', 'unblocks', 'precedes'].includes(kind)) return [edge.to_id, edge.from_id];
+  return [edge.from_id, edge.to_id];
+}
+
+function edgeByID(edgeID) {
+  return (state.data.snapshot.edges || []).find((edge) => edge.id === edgeID);
+}
+
+function relationLabel(kind) {
+  const normalized = String(kind || 'relates').toLowerCase();
+  if (normalized === 'blocked_by') return 'depends on';
+  if (normalized === 'depends_on') return 'depends on';
+  if (normalized === 'relates_to' || normalized === 'related_to') return 'relates to';
+  return normalized.replace(/_/g, ' ');
+}
+
+function shortNodeLabel(node) {
+  const ref = parseGitHubNodeID(node.id);
+  const defaultRepo = defaultRepoFromFlow(stripMarkdownFence(dom.input.value.trim()));
+  const id = ref ? flowRefForID(node.id, defaultRepo) : node.id;
+  const title = node.title && node.title !== node.id ? ` ${node.title}` : '';
+  return `${id}${title}`.trim();
+}
+
+function confidenceLabel(edge) {
+  const confidence = Math.round(Number(edge.confidence || 1) * 100);
+  return `${confidence}%`;
+}
+
+function evidenceText(edge) {
+  const evidence = parseEvidence(edge);
+  return evidence.line || evidence.note || evidence.event?.evidence?.line || evidence.event?.evidence?.note || '';
+}
+
+function parseEvidence(edge) {
+  try {
+    return JSON.parse(edge.evidence_json || '{}');
+  } catch {
+    return {};
+  }
 }
 
 function visibleNodes(nodes) {
