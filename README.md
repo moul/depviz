@@ -153,6 +153,11 @@ highlights the edge and its endpoints in the graph; `Promote` writes an official
 local relation back into the current input, so the decision survives share links
 and exports.
 
+The graph view uses relation-aware placement: connected cards are arranged by
+dependency direction, while unrelated visible cards are kept in a compact pool.
+This keeps realistic imports, such as a hundred recent GitHub issues and PRs,
+scan-friendly without changing the ready/blocker semantics.
+
 The static files live under `live/app/` and are deployable as-is through
 GitHub Pages. No Node.js build is required.
 
