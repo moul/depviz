@@ -106,6 +106,7 @@ function wireEvents() {
   });
   dom.hydrateGithub.addEventListener('click', hydrateGitHub);
   dom.suggestions.addEventListener('click', handleSuggestionClick);
+  dom.graphCanvas.addEventListener('click', handleGraphClick);
 }
 
 async function loadSample() {
@@ -1208,11 +1209,13 @@ function renderGraph(snapshot, nodes) {
     const to = positions.get(edge.to_id);
     if (!from || !to) continue;
     const soft = isSoftEdge(edge);
-    const selected = edge.id === state.selectedEdgeID;
+    const edgeID = edgeSelectionID(edge);
+    const selected = edgeID === state.selectedEdgeID;
     const kind = esc(edge.kind || 'edge');
     const authority = esc(edge.authority || '');
     const line = graphEdgeLine(from, to);
-    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
+    html += `<line class="graphEdgeHit" data-edge-id="${esc(edgeID)}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}"></line>`;
+    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}" data-edge-id="${esc(edgeID)}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
   }
   html += '</svg>';
   for (const node of nodes) {
@@ -1227,6 +1230,16 @@ function renderGraph(snapshot, nodes) {
   }
   html += '</div>';
   dom.graphCanvas.innerHTML = html;
+}
+
+function handleGraphClick(event) {
+  const target = event.target.closest?.('[data-edge-id]');
+  if (!target || !dom.graphCanvas.contains(target)) return;
+  const edgeID = target.dataset.edgeId || '';
+  if (!edgeByID(edgeID)) return;
+  state.selectedEdgeID = edgeID;
+  render();
+  dom.status.textContent = 'edge selected';
 }
 
 function graphLayout(snapshot, nodes) {
@@ -1621,7 +1634,11 @@ function edgeBlockedAndBlockerRaw(edge) {
 }
 
 function edgeByID(edgeID) {
-  return (state.data.snapshot.edges || []).find((edge) => edge.id === edgeID);
+  return (state.data.snapshot.edges || []).find((edge) => edgeSelectionID(edge) === edgeID);
+}
+
+function edgeSelectionID(edge) {
+  return edge.id || relationSignature(edge);
 }
 
 function relationLabel(kind) {
