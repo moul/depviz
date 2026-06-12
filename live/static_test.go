@@ -48,3 +48,24 @@ func TestLiveAssetsExposeSuggestedRelationsUI(t *testing.T) {
 		}
 	}
 }
+
+func TestLiveAssetsExposeRelationAwareGraphLayout(t *testing.T) {
+	fsys := AppFS()
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"layout helper", string(app), `function graphLayout(snapshot, nodes)`},
+		{"rank helper", string(app), `function graphRanks(nodes, edges)`},
+		{"isolated pool", string(app), `const isolatedNodes = nodes.filter`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
