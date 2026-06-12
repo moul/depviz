@@ -1193,20 +1193,10 @@ function renderGraph(snapshot, nodes) {
   const visible = new Set(nodes.map((node) => node.id));
   const selectedEdge = edgeByID(state.selectedEdgeID);
   const selectedEndpoints = selectedEdge ? new Set([selectedEdge.from_id, selectedEdge.to_id]) : new Set();
-  const positions = new Map();
-  const cols = 4;
-  const xGap = 252;
-  const yGap = 130;
-  nodes.forEach((node, index) => {
-    positions.set(node.id, {
-      x: 26 + (index % cols) * xGap,
-      y: 30 + Math.floor(index / cols) * yGap,
-    });
-  });
-  const height = Math.max(620, 100 + Math.ceil(nodes.length / cols) * yGap);
-  const width = Math.max(900, 70 + Math.min(cols, Math.max(nodes.length, 1)) * xGap);
-  let html = `<div class="graphInner" style="width:${width}px;min-height:${height}px">
-    <svg class="edgeLayer" width="${width}" height="${height}" aria-hidden="true">
+  const layout = graphLayout(snapshot, nodes);
+  const positions = layout.positions;
+  let html = `<div class="graphInner" style="width:${layout.width}px;min-height:${layout.height}px">
+    <svg class="edgeLayer" width="${layout.width}" height="${layout.height}" aria-hidden="true">
       <defs>
         <marker id="arrowHard" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#667085"></path></marker>
         <marker id="arrowSoft" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#b8c0cc"></path></marker>
@@ -1221,7 +1211,8 @@ function renderGraph(snapshot, nodes) {
     const selected = edge.id === state.selectedEdgeID;
     const kind = esc(edge.kind || 'edge');
     const authority = esc(edge.authority || '');
-    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}" x1="${from.x + 218}" y1="${from.y + 39}" x2="${to.x}" y2="${to.y + 39}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
+    const line = graphEdgeLine(from, to);
+    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
   }
   html += '</svg>';
   for (const node of nodes) {
@@ -1236,6 +1227,145 @@ function renderGraph(snapshot, nodes) {
   }
   html += '</div>';
   dom.graphCanvas.innerHTML = html;
+}
+
+function graphLayout(snapshot, nodes) {
+  const cardWidth = 218;
+  const cardHeight = 88;
+  const xGap = 282;
+  const yGap = 126;
+  const padX = 26;
+  const padY = 30;
+  const visible = new Set(nodes.map((node) => node.id));
+  const layoutEdges = graphLayoutEdges(snapshot, visible);
+  const connected = new Set(layoutEdges.flatMap((edge) => [edge.from, edge.to]));
+  const connectedNodes = nodes.filter((node) => connected.has(node.id)).sort(graphNodeSort);
+  const isolatedNodes = nodes.filter((node) => !connected.has(node.id)).sort(graphNodeSort);
+  const positions = new Map();
+
+  if (connectedNodes.length === 0) {
+    placeNodeGrid(isolatedNodes, positions, { x: padX, y: padY, cols: graphGridColumns(isolatedNodes.length), xGap, yGap });
+    return graphLayoutSize(positions, cardWidth, cardHeight, padX, padY);
+  }
+
+  const ranks = graphRanks(connectedNodes, layoutEdges);
+  const columns = new Map();
+  for (const node of connectedNodes) {
+    const rank = ranks.get(node.id) || 0;
+    if (!columns.has(rank)) columns.set(rank, []);
+    columns.get(rank).push(node);
+  }
+  const orderedRanks = Array.from(columns.keys()).sort((a, b) => a - b);
+  for (const [index, rank] of orderedRanks.entries()) {
+    const column = columns.get(rank).sort((a, b) => graphDegree(layoutEdges, b.id) - graphDegree(layoutEdges, a.id) || graphNodeSort(a, b));
+    placeNodeGrid(column, positions, { x: padX + index * xGap, y: padY, cols: 1, xGap, yGap });
+  }
+
+  if (isolatedNodes.length > 0) {
+    const isolatedCols = graphGridColumns(isolatedNodes.length);
+    const isolatedX = padX + orderedRanks.length * xGap + 38;
+    placeNodeGrid(isolatedNodes, positions, { x: isolatedX, y: padY, cols: isolatedCols, xGap: 236, yGap: 102 });
+  }
+
+  return graphLayoutSize(positions, cardWidth, cardHeight, padX, padY);
+}
+
+function graphLayoutEdges(snapshot, visible) {
+  const seen = new Set();
+  const out = [];
+  for (const edge of snapshot.edges || []) {
+    if (!visible.has(edge.from_id) || !visible.has(edge.to_id)) continue;
+    const relation = graphLayoutRelation(edge);
+    if (!relation || relation.from === relation.to) continue;
+    const key = `${relation.from}\x00${relation.to}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(relation);
+  }
+  return out;
+}
+
+function graphLayoutRelation(edge) {
+  const kind = String(edge.kind || '').toLowerCase().trim();
+  if (['blocked_by', 'depends_on', 'depends', 'after', 'blocks', 'unblocks', 'precedes'].includes(kind)) {
+    const [blocked, blocker] = edgeBlockedAndBlockerRaw(edge);
+    return { from: blocker, to: blocked };
+  }
+  if (isNonBlockingEdgeKind(kind)) return { from: edge.from_id, to: edge.to_id };
+  return { from: edge.from_id, to: edge.to_id };
+}
+
+function graphRanks(nodes, edges) {
+  const nodeIDs = new Set(nodes.map((node) => node.id));
+  const incoming = new Map();
+  for (const node of nodes) incoming.set(node.id, []);
+  for (const edge of edges) {
+    if (!nodeIDs.has(edge.from) || !nodeIDs.has(edge.to)) continue;
+    incoming.get(edge.to).push(edge.from);
+  }
+  const memo = new Map();
+  const visiting = new Set();
+  const rankOf = (id) => {
+    if (memo.has(id)) return memo.get(id);
+    if (visiting.has(id)) return 0;
+    visiting.add(id);
+    const rank = Math.min(10, Math.max(0, ...Array.from(incoming.get(id) || [], (parent) => rankOf(parent) + 1)));
+    visiting.delete(id);
+    memo.set(id, rank);
+    return rank;
+  };
+  for (const node of nodes) rankOf(node.id);
+  return memo;
+}
+
+function placeNodeGrid(nodes, positions, opts) {
+  nodes.forEach((node, index) => {
+    positions.set(node.id, {
+      x: opts.x + (index % opts.cols) * opts.xGap,
+      y: opts.y + Math.floor(index / opts.cols) * opts.yGap,
+    });
+  });
+}
+
+function graphLayoutSize(positions, cardWidth, cardHeight, padX, padY) {
+  const points = Array.from(positions.values());
+  const maxX = Math.max(0, ...points.map((point) => point.x));
+  const maxY = Math.max(0, ...points.map((point) => point.y));
+  return {
+    positions,
+    width: Math.max(900, maxX + cardWidth + padX + 34),
+    height: Math.max(620, maxY + cardHeight + padY + 34),
+  };
+}
+
+function graphGridColumns(count) {
+  if (count <= 1) return 1;
+  if (count <= 6) return 2;
+  if (count <= 24) return 3;
+  return 4;
+}
+
+function graphDegree(edges, id) {
+  return edges.reduce((total, edge) => total + (edge.from === id || edge.to === id ? 1 : 0), 0);
+}
+
+function graphNodeSort(a, b) {
+  if (isClosed(a) !== isClosed(b)) return isClosed(a) ? 1 : -1;
+  if (isPlaceholder(a) !== isPlaceholder(b)) return isPlaceholder(a) ? 1 : -1;
+  if (String(a.kind) !== String(b.kind)) return String(a.kind).localeCompare(String(b.kind));
+  return String(a.id).localeCompare(String(b.id));
+}
+
+function graphEdgeLine(from, to) {
+  const cardWidth = 218;
+  const centerY = 39;
+  if (from.x === to.x) {
+    return { x1: from.x + cardWidth / 2, y1: from.y + centerY, x2: to.x + cardWidth / 2, y2: to.y + centerY };
+  }
+  if (from.x <= to.x) {
+    return { x1: from.x + cardWidth, y1: from.y + centerY, x2: to.x, y2: to.y + centerY };
+  }
+  return { x1: from.x, y1: from.y + centerY, x2: to.x + cardWidth, y2: to.y + centerY };
 }
 
 function renderTable(nodes) {
