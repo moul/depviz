@@ -641,10 +641,12 @@ textarea::selection {
   position: absolute;
   inset: 0;
   overflow: visible;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .graphEdge {
+  cursor: pointer;
+  pointer-events: stroke;
   stroke: #667085;
   stroke-width: 1.7;
 }
@@ -659,6 +661,13 @@ textarea::selection {
   stroke: #dc2626;
   stroke-width: 3;
   stroke-dasharray: none;
+}
+
+.graphEdgeHit {
+  cursor: pointer;
+  pointer-events: stroke;
+  stroke: rgba(15, 118, 110, 0.01);
+  stroke-width: 16;
 }
 
 .graphEdge.edge-addresses,
