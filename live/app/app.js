@@ -15,6 +15,7 @@ const dom = {
   filter: document.getElementById('filterInput'),
   stats: document.getElementById('stats'),
   suggestions: document.getElementById('suggestionPanel'),
+  edgeInspector: document.getElementById('edgeInspector'),
   brief: document.getElementById('briefView'),
   graph: document.getElementById('graphView'),
   graphCanvas: document.getElementById('graphCanvas'),
@@ -106,6 +107,7 @@ function wireEvents() {
   });
   dom.hydrateGithub.addEventListener('click', hydrateGitHub);
   dom.suggestions.addEventListener('click', handleSuggestionClick);
+  dom.edgeInspector.addEventListener('click', handleEdgeInspectorClick);
   dom.graphCanvas.addEventListener('click', handleGraphClick);
 }
 
@@ -1140,6 +1142,7 @@ function render() {
   dom.boardMeta.textContent = `${snapshot.nodes.length} nodes - ${snapshot.edges.length} edges`;
   renderStats(brief.counts || {}, snapshot);
   renderSuggestions(snapshot);
+  renderEdgeInspector(snapshot);
   dom.brief.classList.toggle('hidden', state.view !== 'brief');
   dom.graph.classList.toggle('hidden', state.view !== 'graph');
   dom.table.classList.toggle('hidden', state.view !== 'table');
@@ -1446,6 +1449,60 @@ function renderSuggestion(edge, nodes) {
       <button type="button" data-suggestion-action="dismiss" data-edge-id="${esc(edge.id)}">Hide</button>
     </div>
   </article>`;
+}
+
+function renderEdgeInspector(snapshot) {
+  const edge = edgeByID(state.selectedEdgeID);
+  dom.edgeInspector.classList.toggle('hidden', !edge);
+  if (!edge) {
+    dom.edgeInspector.innerHTML = '';
+    return;
+  }
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const from = nodes.get(edge.from_id) || placeholderNode(edge.from_id);
+  const to = nodes.get(edge.to_id) || placeholderNode(edge.to_id);
+  const evidence = parseEvidence(edge);
+  const evidenceLine = evidenceText(edge);
+  const evidenceJSON = Object.keys(evidence).length ? JSON.stringify(evidence, null, 2) : '';
+  const confidence = confidenceLabel(edge);
+  const authority = edge.authority || 'local';
+  dom.edgeInspector.innerHTML = `<section class="edgeBox" aria-label="Selected edge">
+    <div class="edgeHead">
+      <div>
+        <strong>Selected edge</strong>
+        <span>${esc(relationLabel(edge.kind))}</span>
+      </div>
+      <button type="button" data-edge-action="clear">Clear</button>
+    </div>
+    <div class="edgeRoute">
+      <div class="edgeEndpoint">
+        <span>From</span>
+        <strong>${esc(shortNodeLabel(from))}</strong>
+      </div>
+      <div class="edgeArrow">${esc(relationLabel(edge.kind))}</div>
+      <div class="edgeEndpoint">
+        <span>To</span>
+        <strong>${esc(shortNodeLabel(to))}</strong>
+      </div>
+    </div>
+    <div class="edgeSignals">
+      <span class="badge edgeBadge">${esc(authority)}</span>
+      <span class="badge edgeBadge">${esc(confidence)}</span>
+      <span class="badge edgeBadge">${isSoftEdge(edge) ? 'soft' : 'official'}</span>
+    </div>
+    ${evidenceLine ? `<div class="edgeEvidence"><span>Evidence</span><code>${esc(evidenceLine)}</code></div>` : ''}
+    ${evidenceJSON ? `<details class="edgeJSON"><summary>Raw evidence</summary><pre>${esc(evidenceJSON)}</pre></details>` : ''}
+  </section>`;
+}
+
+function handleEdgeInspectorClick(event) {
+  const button = event.target.closest('[data-edge-action]');
+  if (!button) return;
+  if (button.dataset.edgeAction === 'clear') {
+    state.selectedEdgeID = '';
+    render();
+    dom.status.textContent = 'edge selection cleared';
+  }
 }
 
 function handleSuggestionClick(event) {
