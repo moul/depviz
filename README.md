@@ -148,6 +148,11 @@ Refreshed refs are shown in the Brief summary even when closed cards are hidden,
 and public refs fall back to unauthenticated GitHub reads if the current token
 lacks scope.
 
+Low-confidence or source-inferred edges appear as Suggested relations. `Focus`
+highlights the edge and its endpoints in the graph; `Promote` writes an official
+local relation back into the current input, so the decision survives share links
+and exports.
+
 The static files live under `live/app/` and are deployable as-is through
 GitHub Pages. No Node.js build is required.
 
