@@ -69,3 +69,33 @@ func TestLiveAssetsExposeRelationAwareGraphLayout(t *testing.T) {
 		}
 	}
 }
+
+func TestLiveAssetsExposeEdgeInspectorWorkflow(t *testing.T) {
+	fsys := AppFS()
+	index, err := fs.ReadFile(fsys, "index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	style, err := fs.ReadFile(fsys, "style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"inspector mount", string(index), `id="edgeInspector"`},
+		{"edge hit target", string(app), `class="graphEdgeHit"`},
+		{"inspector promote", string(app), `data-edge-action="promote"`},
+		{"edge actions", string(style), `.edgeActions`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}

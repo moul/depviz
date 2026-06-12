@@ -1405,7 +1405,7 @@ function renderTable(nodes) {
 
 function renderSuggestions(snapshot) {
   const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
-  const suggestions = suggestedEdges(snapshot).filter((edge) => !state.dismissedSuggestionIDs.has(edge.id));
+  const suggestions = suggestedEdges(snapshot).filter((edge) => !state.dismissedSuggestionIDs.has(edgeSelectionID(edge)));
   dom.suggestions.classList.toggle('hidden', suggestions.length === 0);
   if (suggestions.length === 0) {
     dom.suggestions.innerHTML = '';
@@ -1426,7 +1426,8 @@ function renderSuggestions(snapshot) {
 function renderSuggestion(edge, nodes) {
   const from = nodes.get(edge.from_id) || placeholderNode(edge.from_id);
   const to = nodes.get(edge.to_id) || placeholderNode(edge.to_id);
-  const selected = edge.id === state.selectedEdgeID;
+  const edgeID = edgeSelectionID(edge);
+  const selected = edgeID === state.selectedEdgeID;
   const evidence = evidenceText(edge);
   const kind = relationLabel(edge.kind);
   const confidence = confidenceLabel(edge);
@@ -1444,9 +1445,9 @@ function renderSuggestion(edge, nodes) {
       <span class="badge suggestionBadge">${esc(edge.authority || 'soft')}</span>
     </div>
     <div class="suggestionActions">
-      <button type="button" data-suggestion-action="focus" data-edge-id="${esc(edge.id)}">Focus</button>
-      <button type="button" class="primaryAction" data-suggestion-action="promote" data-edge-id="${esc(edge.id)}">Promote</button>
-      <button type="button" data-suggestion-action="dismiss" data-edge-id="${esc(edge.id)}">Hide</button>
+      <button type="button" data-suggestion-action="focus" data-edge-id="${esc(edgeID)}">Focus</button>
+      <button type="button" class="primaryAction" data-suggestion-action="promote" data-edge-id="${esc(edgeID)}">Promote</button>
+      <button type="button" data-suggestion-action="dismiss" data-edge-id="${esc(edgeID)}">Hide</button>
     </div>
   </article>`;
 }
@@ -1466,13 +1467,21 @@ function renderEdgeInspector(snapshot) {
   const evidenceJSON = Object.keys(evidence).length ? JSON.stringify(evidence, null, 2) : '';
   const confidence = confidenceLabel(edge);
   const authority = edge.authority || 'local';
+  const suggested = isSuggestedEdge(edge) && !hasOfficialEquivalent(snapshot, edge);
+  const suggestionActions = suggested
+    ? `<button type="button" class="primaryAction" data-edge-action="promote">Promote</button>
+      <button type="button" data-edge-action="hide">Hide suggestion</button>`
+    : '';
   dom.edgeInspector.innerHTML = `<section class="edgeBox" aria-label="Selected edge">
     <div class="edgeHead">
       <div>
         <strong>Selected edge</strong>
         <span>${esc(relationLabel(edge.kind))}</span>
       </div>
-      <button type="button" data-edge-action="clear">Clear</button>
+      <div class="edgeActions">
+        ${suggestionActions}
+        <button type="button" data-edge-action="clear">Clear</button>
+      </div>
     </div>
     <div class="edgeRoute">
       <div class="edgeEndpoint">
@@ -1498,11 +1507,14 @@ function renderEdgeInspector(snapshot) {
 function handleEdgeInspectorClick(event) {
   const button = event.target.closest('[data-edge-action]');
   if (!button) return;
+  const edgeID = state.selectedEdgeID;
   if (button.dataset.edgeAction === 'clear') {
     state.selectedEdgeID = '';
     render();
     dom.status.textContent = 'edge selection cleared';
   }
+  if (button.dataset.edgeAction === 'promote') promoteSuggestedEdge(edgeID);
+  if (button.dataset.edgeAction === 'hide') dismissSuggestedEdge(edgeID);
 }
 
 function handleSuggestionClick(event) {

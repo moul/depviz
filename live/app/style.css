@@ -644,6 +644,14 @@ textarea::selection {
   display: block;
 }
 
+.edgeActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .edgeHead span,
 .edgeEndpoint span,
 .edgeEvidence span {
