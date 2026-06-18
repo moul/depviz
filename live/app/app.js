@@ -192,6 +192,13 @@ async function setMode(mode, options = {}) {
 }
 
 async function loadBackendBoard() {
+  if (!state.backendSession.authenticated) {
+    state.data = emptyExport();
+    dom.status.textContent = state.backendSession.github_oauth_configured ? 'sign in for stateful graph' : 'stateful backend needs oauth config';
+    dom.error.textContent = '';
+    render();
+    return;
+  }
   dom.status.textContent = 'loading stateful graph';
   dom.error.textContent = '';
   state.githubRefresh = [];
@@ -270,6 +277,7 @@ async function signOutBackend() {
     await fetch('./api/auth/logout', { method: 'POST', credentials: 'same-origin' });
     await refreshBackendSession();
     dom.status.textContent = 'signed out';
+    if (state.mode === 'stateful') await loadBackendBoard();
   } catch {
     dom.status.textContent = 'sign out failed';
   }

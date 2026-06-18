@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"moul.io/depviz/v4/internal/core"
@@ -62,6 +64,48 @@ func TestHealthAndAnonymousSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("anonymous export status = %d, want %d", res.StatusCode, http.StatusUnauthorized)
+	}
+}
+
+func TestAuthenticatedExport(t *testing.T) {
+	ctx := context.Background()
+	store, err := core.OpenStore(ctx, filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	account, err := store.UpsertOAuthAccount(ctx, core.OAuthAccountInput{
+		Provider:   "github",
+		ExternalID: "42",
+		Login:      "moul",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, _, err := store.CreateWebSession(ctx, account.ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := NewServer(store, Config{Addr: "127.0.0.1:0", BaseURL: "https://depviz.example"})
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/export", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", res.StatusCode, http.StatusOK)
+	}
 	var payload struct {
 		Snapshot struct {
 			Board struct {
@@ -74,6 +118,37 @@ func TestHealthAndAnonymousSession(t *testing.T) {
 	}
 	if payload.Snapshot.Board.ID != core.DefaultBoardID {
 		t.Fatalf("board id = %q, want %q", payload.Snapshot.Board.ID, core.DefaultBoardID)
+	}
+}
+
+func TestGitHubDiscoveryRequiresConnectedOAuth(t *testing.T) {
+	ctx := context.Background()
+	store, err := core.OpenStore(ctx, filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	account, err := store.UpsertOAuthAccount(ctx, core.OAuthAccountInput{
+		Provider:   "github",
+		ExternalID: "42",
+		Login:      "moul",
+		TokenJSON:  `{}`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, _, err := store.CreateWebSession(ctx, account.ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := NewServer(store, Config{})
+	req := httptest.NewRequest(http.MethodGet, "/api/github/repos", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }
 
@@ -91,6 +166,37 @@ func TestGitHubStartRequiresConfig(t *testing.T) {
 	srv.Handler().ServeHTTP(rec, req)
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+}
+
+func TestGitHubStartRequestsDiscoveryScopes(t *testing.T) {
+	ctx := context.Background()
+	store, err := core.OpenStore(ctx, filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	srv := NewServer(store, Config{
+		BaseURL:            "https://depviz.example",
+		GitHubClientID:     "client-id",
+		GitHubClientSecret: "client-secret",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/github/start?return_to=/", nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	}
+	location, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scopes := strings.Fields(location.Query().Get("scope"))
+	for _, want := range []string{"repo", "read:user", "user:email", "read:org", "read:project"} {
+		if !contains(scopes, want) {
+			t.Fatalf("scopes = %v, missing %q", scopes, want)
+		}
 	}
 }
 
@@ -125,4 +231,13 @@ func TestLogoutClearsSessionCookie(t *testing.T) {
 	if _, ok, err := store.AccountForWebSession(ctx, token); err != nil || ok {
 		t.Fatalf("session after logout ok=%v err=%v, want false nil", ok, err)
 	}
+}
+
+func contains(values []string, needle string) bool {
+	for _, value := range values {
+		if value == needle {
+			return true
+		}
+	}
+	return false
 }

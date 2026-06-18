@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -147,7 +148,10 @@ func (s *Store) AccountForWebSession(ctx context.Context, token string) (Account
 	err := s.db.QueryRowContext(ctx, `SELECT account_id, expires_at FROM web_sessions WHERE token_hash = ?`, sessionHash(token)).
 		Scan(&accountID, &expires)
 	if err != nil {
-		return Account{}, false, nil
+		if errors.Is(err, sql.ErrNoRows) {
+			return Account{}, false, nil
+		}
+		return Account{}, false, err
 	}
 	if exp := parseTime(expires); exp.IsZero() || exp.Before(nowUTC()) {
 		_, _ = s.db.ExecContext(ctx, `DELETE FROM web_sessions WHERE token_hash = ?`, sessionHash(token))
@@ -166,6 +170,107 @@ func (s *Store) DeleteWebSession(ctx context.Context, token string) error {
 	}
 	_, err := s.db.ExecContext(ctx, `DELETE FROM web_sessions WHERE token_hash = ?`, sessionHash(token))
 	return err
+}
+
+func (s *Store) OAuthConnectionForAccount(ctx context.Context, accountID, provider string) (OAuthConnection, bool, error) {
+	if accountID == "" || provider == "" {
+		return OAuthConnection{}, false, nil
+	}
+	var conn OAuthConnection
+	var scopesJSON, created, updated string
+	err := s.db.QueryRowContext(ctx, `SELECT id, account_id, provider, external_id, login, scopes_json, token_json, created_at, updated_at
+		FROM oauth_connections WHERE account_id = ? AND provider = ?`, accountID, provider).
+		Scan(&conn.ID, &conn.AccountID, &conn.Provider, &conn.ExternalID, &conn.Login, &scopesJSON, &conn.TokenJSON, &created, &updated)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return OAuthConnection{}, false, nil
+		}
+		return OAuthConnection{}, false, err
+	}
+	_ = json.Unmarshal([]byte(scopesJSON), &conn.Scopes)
+	conn.CreatedAt = parseTime(created)
+	conn.UpdatedAt = parseTime(updated)
+	return conn, true, nil
+}
+
+func (s *Store) UpsertWorkspace(ctx context.Context, workspace Workspace) (Workspace, error) {
+	workspace.Provider = strings.TrimSpace(workspace.Provider)
+	workspace.ExternalID = strings.TrimSpace(workspace.ExternalID)
+	workspace.Kind = strings.TrimSpace(workspace.Kind)
+	workspace.Name = strings.TrimSpace(workspace.Name)
+	if workspace.Provider == "" || workspace.ExternalID == "" || workspace.Kind == "" || workspace.Name == "" {
+		return Workspace{}, errors.New("provider, external id, kind, and name are required")
+	}
+	if workspace.ID == "" {
+		workspace.ID = stableID("workspace", workspace.Provider, workspace.ExternalID)
+	}
+	if workspace.DataJSON == "" {
+		workspace.DataJSON = `{}`
+	}
+	now := nowUTC()
+	var created string
+	err := s.db.QueryRowContext(ctx, `SELECT created_at FROM workspaces WHERE id = ?`, workspace.ID).Scan(&created)
+	if err != nil {
+		created = formatTime(now)
+	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO workspaces(id, provider, external_id, kind, name, url, data_json, created_at, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(provider, external_id) DO UPDATE SET
+			kind=excluded.kind,
+			name=excluded.name,
+			url=excluded.url,
+			data_json=excluded.data_json,
+			updated_at=excluded.updated_at`,
+		workspace.ID, workspace.Provider, workspace.ExternalID, workspace.Kind, workspace.Name, workspace.URL, workspace.DataJSON, created, formatTime(now))
+	if err != nil {
+		return Workspace{}, err
+	}
+	workspace.CreatedAt = parseTime(created)
+	workspace.UpdatedAt = now
+	return workspace, nil
+}
+
+func (s *Store) UpsertWorkspaceMembership(ctx context.Context, workspaceID, accountID, role, source string) error {
+	if workspaceID == "" || accountID == "" {
+		return errors.New("workspace id and account id are required")
+	}
+	if strings.TrimSpace(role) == "" {
+		role = "member"
+	}
+	if strings.TrimSpace(source) == "" {
+		source = "github"
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO workspace_memberships(workspace_id, account_id, role, source, updated_at)
+		VALUES(?, ?, ?, ?, ?)
+		ON CONFLICT(workspace_id, account_id) DO UPDATE SET
+			role=excluded.role,
+			source=excluded.source,
+			updated_at=excluded.updated_at`,
+		workspaceID, accountID, role, source, formatTime(nowUTC()))
+	return err
+}
+
+func (s *Store) UpsertPersonalOverride(ctx context.Context, override PersonalOverride) (PersonalOverride, error) {
+	override.AccountID = strings.TrimSpace(override.AccountID)
+	override.OwnerType = strings.TrimSpace(override.OwnerType)
+	override.OwnerID = strings.TrimSpace(override.OwnerID)
+	if override.AccountID == "" || override.OwnerType == "" || override.OwnerID == "" {
+		return PersonalOverride{}, errors.New("account id, owner type, and owner id are required")
+	}
+	if override.ID == "" {
+		override.ID = stableID("personal-override", override.AccountID, override.OwnerType, override.OwnerID)
+	}
+	if override.DataJSON == "" {
+		override.DataJSON = `{}`
+	}
+	override.UpdatedAt = nowUTC()
+	_, err := s.db.ExecContext(ctx, `INSERT INTO personal_overrides(id, account_id, owner_type, owner_id, data_json, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?)
+		ON CONFLICT(account_id, owner_type, owner_id) DO UPDATE SET
+			data_json=excluded.data_json,
+			updated_at=excluded.updated_at`,
+		override.ID, override.AccountID, override.OwnerType, override.OwnerID, override.DataJSON, formatTime(override.UpdatedAt))
+	return override, err
 }
 
 func (s *Store) UpsertGitHubCache(ctx context.Context, accountID, repo, refID, payloadJSON, etag string, ttl time.Duration) error {

@@ -187,6 +187,35 @@ func (s *Store) Migrate(ctx context.Context) error {
 			expires_at TEXT NOT NULL,
 			UNIQUE(account_id, repo, ref_id)
 		)`,
+		`CREATE TABLE IF NOT EXISTS workspaces (
+			id TEXT PRIMARY KEY,
+			provider TEXT NOT NULL,
+			external_id TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			name TEXT NOT NULL,
+			url TEXT NOT NULL DEFAULT '',
+			data_json TEXT NOT NULL DEFAULT '{}',
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL,
+			UNIQUE(provider, external_id)
+		)`,
+		`CREATE TABLE IF NOT EXISTS workspace_memberships (
+			workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+			account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+			role TEXT NOT NULL DEFAULT 'member',
+			source TEXT NOT NULL DEFAULT 'github',
+			updated_at TEXT NOT NULL,
+			PRIMARY KEY(workspace_id, account_id)
+		)`,
+		`CREATE TABLE IF NOT EXISTS personal_overrides (
+			id TEXT PRIMARY KEY,
+			account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+			owner_type TEXT NOT NULL,
+			owner_id TEXT NOT NULL,
+			data_json TEXT NOT NULL DEFAULT '{}',
+			updated_at TEXT NOT NULL,
+			UNIQUE(account_id, owner_type, owner_id)
+		)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := s.db.ExecContext(ctx, stmt); err != nil {

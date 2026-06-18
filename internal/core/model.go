@@ -111,6 +111,39 @@ type Account struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
+type OAuthConnection struct {
+	ID         string    `json:"id"`
+	AccountID  string    `json:"account_id"`
+	Provider   string    `json:"provider"`
+	ExternalID string    `json:"external_id"`
+	Login      string    `json:"login"`
+	Scopes     []string  `json:"scopes"`
+	TokenJSON  string    `json:"-"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type Workspace struct {
+	ID         string    `json:"id"`
+	Provider   string    `json:"provider"`
+	ExternalID string    `json:"external_id"`
+	Kind       string    `json:"kind"`
+	Name       string    `json:"name"`
+	URL        string    `json:"url"`
+	DataJSON   string    `json:"data_json"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type PersonalOverride struct {
+	ID        string    `json:"id"`
+	AccountID string    `json:"account_id"`
+	OwnerType string    `json:"owner_type"`
+	OwnerID   string    `json:"owner_id"`
+	DataJSON  string    `json:"data_json"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 func (n Node) IsClosed() bool {
 	switch strings.ToLower(strings.TrimSpace(n.State)) {
 	case "closed", "done", "merged", "cancelled", "canceled", "resolved":
