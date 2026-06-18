@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DepViz Live</title>
-  <link rel="stylesheet" href="./style.css?v=v4.1.14-dev">
+  <link rel="stylesheet" href="./style.css?v=v4.1.15-dev">
 </head>
 <body>
   <header class="topbar">
@@ -13,6 +13,10 @@
       <span id="status">stateless work graph</span>
     </div>
     <div class="actions">
+      <div class="modeSwitch" role="tablist" aria-label="Mode">
+        <button class="active" data-mode="stateful" type="button">Stateful</button>
+        <button data-mode="stateless" type="button">Stateless</button>
+      </div>
       <div class="githubAuth" aria-label="GitHub connection">
         <button id="backendGithubLoginBtn" type="button">Sign in</button>
         <button id="backendLogoutBtn" type="button">Sign out</button>
@@ -23,14 +27,14 @@
         <button id="forgetGithubTokenBtn" type="button">Forget</button>
         <span id="githubAuthState" class="tokenState">GitHub: public</span>
       </div>
-      <button id="hydrateGithubBtn" type="button">Refresh GitHub</button>
-      <button id="sampleBtn" type="button">Load sample</button>
-      <button id="shareBtn" type="button">Share link</button>
+      <button id="hydrateGithubBtn" class="statelessOnly" type="button">Refresh GitHub</button>
+      <button id="sampleBtn" class="statelessOnly" type="button">Load sample</button>
+      <button id="shareBtn" class="statelessOnly" type="button">Share link</button>
       <button id="exportBtn" type="button">Export JSON</button>
     </div>
   </header>
 
-  <main class="shell">
+  <main id="shell" class="shell">
     <section class="inputPane" aria-label="Input">
       <div class="paneHeader">
         <h1>Input</h1>
@@ -87,6 +91,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=v4.1.14-dev"></script>
+  <script src="./app.js?v=v4.1.15-dev"></script>
 </body>
 </html>

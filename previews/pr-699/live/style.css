@@ -92,7 +92,8 @@ button:disabled {
 
 .actions,
 .viewTabs,
-.filters {
+.filters,
+.modeSwitch {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -150,6 +151,14 @@ button:disabled {
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 10px;
+}
+
+.shell.statefulMode {
+  grid-template-columns: 1fr;
+}
+
+.shell.statefulMode .inputPane {
+  display: none;
 }
 
 .paneHeader,
