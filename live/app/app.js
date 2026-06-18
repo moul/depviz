@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.9-dev';
+const assetVersion = 'v4.1.10-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -38,6 +38,7 @@ const state = {
   showLocal: true,
   showClosed: true,
   githubRefresh: [],
+  githubFailures: [],
   selectedEdgeID: '',
   dismissedSuggestionIDs: new Set(),
   data: emptyExport(),
@@ -131,6 +132,7 @@ function readFile(event) {
 function update() {
   const text = dom.input.value;
   state.githubRefresh = [];
+  state.githubFailures = [];
   updateHighlight(text);
   dom.lineCount.textContent = `${countLines(text)} lines`;
   try {
@@ -254,12 +256,15 @@ async function hydrateGitHub() {
       try {
         updates.push(await fetchGitHubNode(ref, token));
       } catch (err) {
-        failures.push(`${ref.id}: ${err.message}`);
+        failures.push({ id: ref.id, message: err.message });
       }
     }
+    state.githubFailures = failures;
     if (updates.length > 0) {
       state.data = mergeHydratedNodes(state.data, updates);
       state.githubRefresh = githubRefreshItems(updates);
+    }
+    if (updates.length > 0 || failures.length > 0) {
       render();
     }
     const statusParts = [failures.length > 0
@@ -270,7 +275,7 @@ async function hydrateGitHub() {
     if (closedHidden > 0) statusParts.push(`${closedHidden} closed in refresh summary`);
     if (publicFallbacks > 0) statusParts.push(`${publicFallbacks} via public fallback`);
     dom.status.textContent = statusParts.join('; ');
-    dom.error.textContent = failures.slice(0, 2).join('  ');
+    dom.error.textContent = failures.slice(0, 2).map((item) => `${item.id}: ${item.message}`).join('  ');
   } finally {
     dom.hydrateGithub.disabled = false;
   }
@@ -1080,7 +1085,7 @@ function buildBrief(snapshot) {
       localOnly.push(briefItem(node, { reason: 'local-only planning card' }));
     }
     if (isPlaceholder(node) && !isLocal(node)) {
-      stale.push(briefItem(node, { reason: 'placeholder external ref; sync a wider scope' }));
+      stale.push(briefItem(node, { reason: 'placeholder external ref; refresh GitHub or sync/export a wider scope' }));
       continue;
     }
     const updated = Date.parse(node.updated_at || '');
@@ -1167,14 +1172,60 @@ function renderBrief(brief) {
   const githubRefresh = state.githubRefresh.length
     ? briefSection('GitHub refresh', state.githubRefresh, false)
     : '';
+  const githubDiagnostics = githubDiagnosticItems(state.data.snapshot);
   dom.brief.innerHTML = `<div class="briefGrid">
     ${githubRefresh}
+    ${githubDiagnostics.length ? briefSection('GitHub diagnostics', githubDiagnostics, false) : ''}
     ${briefSection('Next move', brief.next_move ? [brief.next_move] : [], true)}
     ${briefSection('Ready now', brief.ready || [], false)}
     ${briefSection('Blocking most work', brief.blockers || [], false)}
     ${briefSection('Local-only', brief.local_only || [], false)}
     ${briefSection('Stale external state', brief.stale || [], false)}
   </div>`;
+}
+
+function githubDiagnosticItems(snapshot) {
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const items = [];
+  for (const failure of state.githubFailures) {
+    const node = nodes.get(failure.id) || placeholderNode(failure.id);
+    items.push(briefItem(node, { reason: `refresh failed: ${failure.message}` }));
+  }
+  for (const node of snapshot.nodes) {
+    if (isLocal(node)) continue;
+    const data = nodeData(node);
+    if (isUnhydratedExternalRef(node)) {
+      items.push(briefItem(node, { reason: 'unhydrated title/state; refresh GitHub or sync/export a wider scope' }));
+      continue;
+    }
+    if (Array.isArray(data.metadata_errors) && data.metadata_errors.length > 0) {
+      items.push(briefItem(node, { reason: `partial GitHub metadata: ${data.metadata_errors.slice(0, 2).join(', ')}` }));
+      continue;
+    }
+    if (data.auth_fallback) {
+      items.push(briefItem(node, { reason: 'token lacked scope; refreshed through public GitHub fallback' }));
+    }
+  }
+  dedupeBriefItems(items);
+  sortItems(items);
+  return items.slice(0, 12);
+}
+
+function isUnhydratedExternalRef(node) {
+  const data = nodeData(node);
+  if (data.hydrated) return false;
+  if (!parseGitHubNodeID(node.id)) return isPlaceholder(node);
+  return isPlaceholder(node) || node.title === node.id || String(node.state || '').toLowerCase() === 'unknown';
+}
+
+function dedupeBriefItems(items) {
+  const seen = new Set();
+  for (let index = items.length - 1; index >= 0; index--) {
+    const item = items[index];
+    const key = `${item.id}\x00${item.reason}`;
+    if (seen.has(key)) items.splice(index, 1);
+    else seen.add(key);
+  }
 }
 
 function briefSection(title, items, wide) {

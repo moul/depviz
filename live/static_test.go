@@ -99,3 +99,25 @@ func TestLiveAssetsExposeEdgeInspectorWorkflow(t *testing.T) {
 		}
 	}
 }
+
+func TestLiveAssetsExposeGitHubDiagnostics(t *testing.T) {
+	fsys := AppFS()
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"diagnostics section", string(app), `GitHub diagnostics`},
+		{"refresh failures", string(app), `state.githubFailures`},
+		{"placeholder guidance", string(app), `refresh GitHub or sync/export a wider scope`},
+		{"partial metadata", string(app), `partial GitHub metadata`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
