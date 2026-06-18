@@ -125,6 +125,8 @@ func TestLiveAssetsExposeGraphZoomControls(t *testing.T) {
 		{"fit action", string(index), `data-graph-action="fit"`},
 		{"zoom helper", string(app), `function graphZoom(`},
 		{"fit helper", string(app), `function fitGraphToCanvas()`},
+		{"keyboard helper", string(app), `function handleGraphKeydown(event)`},
+		{"typing guard", string(app), `function isTypingTarget(target)`},
 		{"scale wrapper", string(style), `.graphScale`},
 	} {
 		if !strings.Contains(tc.body, tc.want) {
