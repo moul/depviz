@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.12-dev';
+const assetVersion = 'v4.1.13-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -114,6 +114,7 @@ function wireEvents() {
   dom.edgeInspector.addEventListener('click', handleEdgeInspectorClick);
   dom.graphCanvas.addEventListener('click', handleGraphClick);
   document.getElementById('graphView').addEventListener('click', handleGraphControlClick);
+  document.addEventListener('keydown', handleGraphKeydown);
 }
 
 async function loadSample() {
@@ -1297,7 +1298,42 @@ function renderGraph(snapshot, nodes) {
 function handleGraphControlClick(event) {
   const button = event.target.closest('[data-graph-action]');
   if (!button) return;
-  const action = button.dataset.graphAction;
+  applyGraphAction(button.dataset.graphAction);
+}
+
+function handleGraphKeydown(event) {
+  if (state.view !== 'graph' || isTypingTarget(event.target)) return;
+  const key = event.key.toLowerCase();
+  if (key === 'f') {
+    event.preventDefault();
+    applyGraphAction('fit');
+  }
+  if (key === '+' || key === '=') {
+    event.preventDefault();
+    applyGraphAction('in');
+  }
+  if (key === '-' || key === '_') {
+    event.preventDefault();
+    applyGraphAction('out');
+  }
+  if (key === '0') {
+    event.preventDefault();
+    applyGraphAction('reset');
+  }
+  if (key === 'escape' && state.selectedEdgeID) {
+    event.preventDefault();
+    state.selectedEdgeID = '';
+    render();
+    dom.status.textContent = 'edge selection cleared';
+  }
+}
+
+function isTypingTarget(target) {
+  const tag = String(target?.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || Boolean(target?.isContentEditable);
+}
+
+function applyGraphAction(action) {
   if (action === 'fit') {
     fitGraphToCanvas();
     return;
