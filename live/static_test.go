@@ -102,6 +102,37 @@ func TestLiveAssetsExposeEdgeInspectorWorkflow(t *testing.T) {
 	}
 }
 
+func TestLiveAssetsExposeGraphZoomControls(t *testing.T) {
+	fsys := AppFS()
+	index, err := fs.ReadFile(fsys, "index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	style, err := fs.ReadFile(fsys, "style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"toolbar", string(index), `class="graphToolbar"`},
+		{"fit action", string(index), `data-graph-action="fit"`},
+		{"zoom helper", string(app), `function graphZoom(`},
+		{"fit helper", string(app), `function fitGraphToCanvas()`},
+		{"scale wrapper", string(style), `.graphScale`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
+
 func TestLiveAssetsExposeGitHubDiagnostics(t *testing.T) {
 	fsys := AppFS()
 	app, err := fs.ReadFile(fsys, "app.js")

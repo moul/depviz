@@ -749,10 +749,30 @@ textarea::selection {
   background: var(--panel);
 }
 
+.graphToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.graphToolbar span {
+  min-width: 44px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.graphScale {
+  position: relative;
+}
+
 .graphInner {
   position: relative;
   min-width: 900px;
   min-height: 620px;
+  transform-origin: 0 0;
 }
 
 .edgeLayer {

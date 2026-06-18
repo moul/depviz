@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.11-dev';
+const assetVersion = 'v4.1.12-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -16,6 +16,7 @@ const dom = {
   stats: document.getElementById('stats'),
   suggestions: document.getElementById('suggestionPanel'),
   edgeInspector: document.getElementById('edgeInspector'),
+  graphZoomLabel: document.getElementById('graphZoomLabel'),
   brief: document.getElementById('briefView'),
   graph: document.getElementById('graphView'),
   graphCanvas: document.getElementById('graphCanvas'),
@@ -40,6 +41,8 @@ const state = {
   githubRefresh: [],
   githubFailures: [],
   selectedEdgeID: '',
+  graphZoom: 1,
+  graphLayout: { width: 900, height: 620 },
   dismissedSuggestionIDs: new Set(),
   data: emptyExport(),
 };
@@ -110,6 +113,7 @@ function wireEvents() {
   dom.suggestions.addEventListener('click', handleSuggestionClick);
   dom.edgeInspector.addEventListener('click', handleEdgeInspectorClick);
   dom.graphCanvas.addEventListener('click', handleGraphClick);
+  document.getElementById('graphView').addEventListener('click', handleGraphControlClick);
 }
 
 async function loadSample() {
@@ -1249,8 +1253,11 @@ function renderGraph(snapshot, nodes) {
   const selectedEdge = edgeByID(state.selectedEdgeID);
   const selectedEndpoints = selectedEdge ? new Set([selectedEdge.from_id, selectedEdge.to_id]) : new Set();
   const layout = graphLayout(snapshot, nodes);
+  state.graphLayout = { width: layout.width, height: layout.height };
+  const zoom = graphZoom();
   const positions = layout.positions;
-  let html = `<div class="graphInner" style="width:${layout.width}px;min-height:${layout.height}px">
+  let html = `<div class="graphScale" style="width:${Math.ceil(layout.width * zoom)}px;min-height:${Math.ceil(layout.height * zoom)}px">
+  <div class="graphInner" style="width:${layout.width}px;min-height:${layout.height}px;transform:scale(${zoom})">
     <svg class="edgeLayer" width="${layout.width}" height="${layout.height}" aria-hidden="true">
       <defs>
         <marker id="arrowHard" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#667085"></path></marker>
@@ -1282,8 +1289,39 @@ function renderGraph(snapshot, nodes) {
       ${badgesHTML(nodeBadges(node))}
     </article>`;
   }
-  html += '</div>';
+  html += '</div></div>';
   dom.graphCanvas.innerHTML = html;
+  dom.graphZoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+}
+
+function handleGraphControlClick(event) {
+  const button = event.target.closest('[data-graph-action]');
+  if (!button) return;
+  const action = button.dataset.graphAction;
+  if (action === 'fit') {
+    fitGraphToCanvas();
+    return;
+  }
+  if (action === 'reset') state.graphZoom = 1;
+  if (action === 'in') state.graphZoom = graphZoom(state.graphZoom + 0.15);
+  if (action === 'out') state.graphZoom = graphZoom(state.graphZoom - 0.15);
+  render();
+}
+
+function fitGraphToCanvas() {
+  const width = Math.max(1, state.graphLayout.width);
+  const height = Math.max(1, state.graphLayout.height);
+  const next = Math.min(
+    (dom.graphCanvas.clientWidth - 28) / width,
+    (dom.graphCanvas.clientHeight - 28) / height,
+  );
+  state.graphZoom = graphZoom(next);
+  render();
+  dom.graphCanvas.scrollTo({ top: 0, left: 0 });
+}
+
+function graphZoom(value = state.graphZoom) {
+  return Math.max(0.35, Math.min(1.8, Number(value) || 1));
 }
 
 function handleGraphClick(event) {
