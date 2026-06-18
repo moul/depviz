@@ -153,6 +153,11 @@ highlights the edge and its endpoints in the graph; `Promote` writes an official
 local relation back into the current input, so the decision survives share links
 and exports.
 
+Graph edges are selectable. Selecting one opens an edge inspector with endpoints,
+authority, confidence, soft/official status, and captured evidence. Suggested
+edges can be promoted or hidden from the inspector as well as from the suggestions
+panel.
+
 The graph view uses relation-aware placement: connected cards are arranged by
 dependency direction, while unrelated visible cards are kept in a compact pool.
 This keeps realistic imports, such as a hundred recent GitHub issues and PRs,

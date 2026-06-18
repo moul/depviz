@@ -15,6 +15,7 @@ const dom = {
   filter: document.getElementById('filterInput'),
   stats: document.getElementById('stats'),
   suggestions: document.getElementById('suggestionPanel'),
+  edgeInspector: document.getElementById('edgeInspector'),
   brief: document.getElementById('briefView'),
   graph: document.getElementById('graphView'),
   graphCanvas: document.getElementById('graphCanvas'),
@@ -106,6 +107,8 @@ function wireEvents() {
   });
   dom.hydrateGithub.addEventListener('click', hydrateGitHub);
   dom.suggestions.addEventListener('click', handleSuggestionClick);
+  dom.edgeInspector.addEventListener('click', handleEdgeInspectorClick);
+  dom.graphCanvas.addEventListener('click', handleGraphClick);
 }
 
 async function loadSample() {
@@ -1139,6 +1142,7 @@ function render() {
   dom.boardMeta.textContent = `${snapshot.nodes.length} nodes - ${snapshot.edges.length} edges`;
   renderStats(brief.counts || {}, snapshot);
   renderSuggestions(snapshot);
+  renderEdgeInspector(snapshot);
   dom.brief.classList.toggle('hidden', state.view !== 'brief');
   dom.graph.classList.toggle('hidden', state.view !== 'graph');
   dom.table.classList.toggle('hidden', state.view !== 'table');
@@ -1208,11 +1212,13 @@ function renderGraph(snapshot, nodes) {
     const to = positions.get(edge.to_id);
     if (!from || !to) continue;
     const soft = isSoftEdge(edge);
-    const selected = edge.id === state.selectedEdgeID;
+    const edgeID = edgeSelectionID(edge);
+    const selected = edgeID === state.selectedEdgeID;
     const kind = esc(edge.kind || 'edge');
     const authority = esc(edge.authority || '');
     const line = graphEdgeLine(from, to);
-    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
+    html += `<line class="graphEdgeHit" data-edge-id="${esc(edgeID)}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}"></line>`;
+    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}" data-edge-id="${esc(edgeID)}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
   }
   html += '</svg>';
   for (const node of nodes) {
@@ -1227,6 +1233,16 @@ function renderGraph(snapshot, nodes) {
   }
   html += '</div>';
   dom.graphCanvas.innerHTML = html;
+}
+
+function handleGraphClick(event) {
+  const target = event.target.closest?.('[data-edge-id]');
+  if (!target || !dom.graphCanvas.contains(target)) return;
+  const edgeID = target.dataset.edgeId || '';
+  if (!edgeByID(edgeID)) return;
+  state.selectedEdgeID = edgeID;
+  render();
+  dom.status.textContent = 'edge selected';
 }
 
 function graphLayout(snapshot, nodes) {
@@ -1389,7 +1405,7 @@ function renderTable(nodes) {
 
 function renderSuggestions(snapshot) {
   const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
-  const suggestions = suggestedEdges(snapshot).filter((edge) => !state.dismissedSuggestionIDs.has(edge.id));
+  const suggestions = suggestedEdges(snapshot).filter((edge) => !state.dismissedSuggestionIDs.has(edgeSelectionID(edge)));
   dom.suggestions.classList.toggle('hidden', suggestions.length === 0);
   if (suggestions.length === 0) {
     dom.suggestions.innerHTML = '';
@@ -1410,7 +1426,8 @@ function renderSuggestions(snapshot) {
 function renderSuggestion(edge, nodes) {
   const from = nodes.get(edge.from_id) || placeholderNode(edge.from_id);
   const to = nodes.get(edge.to_id) || placeholderNode(edge.to_id);
-  const selected = edge.id === state.selectedEdgeID;
+  const edgeID = edgeSelectionID(edge);
+  const selected = edgeID === state.selectedEdgeID;
   const evidence = evidenceText(edge);
   const kind = relationLabel(edge.kind);
   const confidence = confidenceLabel(edge);
@@ -1428,11 +1445,76 @@ function renderSuggestion(edge, nodes) {
       <span class="badge suggestionBadge">${esc(edge.authority || 'soft')}</span>
     </div>
     <div class="suggestionActions">
-      <button type="button" data-suggestion-action="focus" data-edge-id="${esc(edge.id)}">Focus</button>
-      <button type="button" class="primaryAction" data-suggestion-action="promote" data-edge-id="${esc(edge.id)}">Promote</button>
-      <button type="button" data-suggestion-action="dismiss" data-edge-id="${esc(edge.id)}">Hide</button>
+      <button type="button" data-suggestion-action="focus" data-edge-id="${esc(edgeID)}">Focus</button>
+      <button type="button" class="primaryAction" data-suggestion-action="promote" data-edge-id="${esc(edgeID)}">Promote</button>
+      <button type="button" data-suggestion-action="dismiss" data-edge-id="${esc(edgeID)}">Hide</button>
     </div>
   </article>`;
+}
+
+function renderEdgeInspector(snapshot) {
+  const edge = edgeByID(state.selectedEdgeID);
+  dom.edgeInspector.classList.toggle('hidden', !edge);
+  if (!edge) {
+    dom.edgeInspector.innerHTML = '';
+    return;
+  }
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const from = nodes.get(edge.from_id) || placeholderNode(edge.from_id);
+  const to = nodes.get(edge.to_id) || placeholderNode(edge.to_id);
+  const evidence = parseEvidence(edge);
+  const evidenceLine = evidenceText(edge);
+  const evidenceJSON = Object.keys(evidence).length ? JSON.stringify(evidence, null, 2) : '';
+  const confidence = confidenceLabel(edge);
+  const authority = edge.authority || 'local';
+  const suggested = isSuggestedEdge(edge) && !hasOfficialEquivalent(snapshot, edge);
+  const suggestionActions = suggested
+    ? `<button type="button" class="primaryAction" data-edge-action="promote">Promote</button>
+      <button type="button" data-edge-action="hide">Hide suggestion</button>`
+    : '';
+  dom.edgeInspector.innerHTML = `<section class="edgeBox" aria-label="Selected edge">
+    <div class="edgeHead">
+      <div>
+        <strong>Selected edge</strong>
+        <span>${esc(relationLabel(edge.kind))}</span>
+      </div>
+      <div class="edgeActions">
+        ${suggestionActions}
+        <button type="button" data-edge-action="clear">Clear</button>
+      </div>
+    </div>
+    <div class="edgeRoute">
+      <div class="edgeEndpoint">
+        <span>From</span>
+        <strong>${esc(shortNodeLabel(from))}</strong>
+      </div>
+      <div class="edgeArrow">${esc(relationLabel(edge.kind))}</div>
+      <div class="edgeEndpoint">
+        <span>To</span>
+        <strong>${esc(shortNodeLabel(to))}</strong>
+      </div>
+    </div>
+    <div class="edgeSignals">
+      <span class="badge edgeBadge">${esc(authority)}</span>
+      <span class="badge edgeBadge">${esc(confidence)}</span>
+      <span class="badge edgeBadge">${isSoftEdge(edge) ? 'soft' : 'official'}</span>
+    </div>
+    ${evidenceLine ? `<div class="edgeEvidence"><span>Evidence</span><code>${esc(evidenceLine)}</code></div>` : ''}
+    ${evidenceJSON ? `<details class="edgeJSON"><summary>Raw evidence</summary><pre>${esc(evidenceJSON)}</pre></details>` : ''}
+  </section>`;
+}
+
+function handleEdgeInspectorClick(event) {
+  const button = event.target.closest('[data-edge-action]');
+  if (!button) return;
+  const edgeID = state.selectedEdgeID;
+  if (button.dataset.edgeAction === 'clear') {
+    state.selectedEdgeID = '';
+    render();
+    dom.status.textContent = 'edge selection cleared';
+  }
+  if (button.dataset.edgeAction === 'promote') promoteSuggestedEdge(edgeID);
+  if (button.dataset.edgeAction === 'hide') dismissSuggestedEdge(edgeID);
 }
 
 function handleSuggestionClick(event) {
@@ -1621,7 +1703,11 @@ function edgeBlockedAndBlockerRaw(edge) {
 }
 
 function edgeByID(edgeID) {
-  return (state.data.snapshot.edges || []).find((edge) => edge.id === edgeID);
+  return (state.data.snapshot.edges || []).find((edge) => edgeSelectionID(edge) === edgeID);
+}
+
+function edgeSelectionID(edge) {
+  return edge.id || relationSignature(edge);
 }
 
 function relationLabel(kind) {
