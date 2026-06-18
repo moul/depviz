@@ -100,6 +100,17 @@ type BriefItem struct {
 	BlockerCount int    `json:"blocker_count,omitempty"`
 }
 
+type Account struct {
+	ID              string    `json:"id"`
+	PrimaryProvider string    `json:"primary_provider"`
+	Login           string    `json:"login"`
+	Name            string    `json:"name"`
+	AvatarURL       string    `json:"avatar_url"`
+	HTMLURL         string    `json:"html_url"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
 func (n Node) IsClosed() bool {
 	switch strings.ToLower(strings.TrimSpace(n.State)) {
 	case "closed", "done", "merged", "cancelled", "canceled", "resolved":

@@ -94,6 +94,7 @@ depviz brief
 depviz gen html --board default --view graph --out dist/depviz.html
 depviz gen json --board default --out dist/depviz.json
 depviz live --addr 127.0.0.1:8686
+depviz server --addr 127.0.0.1:8766 --base-url https://depviz.moul.io
 ```
 
 ## Live Mode
@@ -165,6 +166,33 @@ scan-friendly without changing the ready/blocker semantics.
 
 The static files live under `live/app/` and are deployable as-is through
 GitHub Pages. No Node.js build is required.
+
+## Backend Mode
+
+`depviz server` serves the same Live app plus `/api/*` endpoints backed by the
+local SQLite database. It is meant to sit behind a private reverse proxy or
+Cloudflare Tunnel while binding only to loopback:
+
+```text
+DEPVIZ_BASE_URL=https://depviz.moul.io \
+DEPVIZ_GITHUB_CLIENT_ID=... \
+DEPVIZ_GITHUB_CLIENT_SECRET=... \
+depviz server --addr 127.0.0.1:8766
+```
+
+Initial endpoints:
+
+```text
+GET /api/health
+GET /api/session
+GET /api/auth/github/start
+GET /api/auth/github/callback
+```
+
+When GitHub OAuth is configured, the daemon can create a local account, store
+the GitHub connection in `.depviz/state.db`, and issue an HTTP-only session
+cookie. The next backend slices can use that account connection for cached
+GitHub hydration and eventually write actions.
 
 The Pages workflow publishes:
 

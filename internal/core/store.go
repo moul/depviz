@@ -141,6 +141,52 @@ func (s *Store) Migrate(ctx context.Context) error {
 			source_id TEXT NOT NULL DEFAULT '',
 			updated_at TEXT NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS accounts (
+			id TEXT PRIMARY KEY,
+			primary_provider TEXT NOT NULL,
+			login TEXT NOT NULL,
+			name TEXT NOT NULL DEFAULT '',
+			avatar_url TEXT NOT NULL DEFAULT '',
+			html_url TEXT NOT NULL DEFAULT '',
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS oauth_connections (
+			id TEXT PRIMARY KEY,
+			account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+			provider TEXT NOT NULL,
+			external_id TEXT NOT NULL,
+			login TEXT NOT NULL,
+			scopes_json TEXT NOT NULL DEFAULT '[]',
+			token_json TEXT NOT NULL DEFAULT '{}',
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL,
+			UNIQUE(provider, external_id)
+		)`,
+		`CREATE TABLE IF NOT EXISTS oauth_states (
+			state TEXT PRIMARY KEY,
+			provider TEXT NOT NULL,
+			redirect_uri TEXT NOT NULL DEFAULT '/',
+			expires_at TEXT NOT NULL,
+			created_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS web_sessions (
+			token_hash TEXT PRIMARY KEY,
+			account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+			expires_at TEXT NOT NULL,
+			created_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS github_cache (
+			id TEXT PRIMARY KEY,
+			account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+			repo TEXT NOT NULL,
+			ref_id TEXT NOT NULL,
+			payload_json TEXT NOT NULL,
+			etag TEXT NOT NULL DEFAULT '',
+			fetched_at TEXT NOT NULL,
+			expires_at TEXT NOT NULL,
+			UNIQUE(account_id, repo, ref_id)
+		)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := s.db.ExecContext(ctx, stmt); err != nil {

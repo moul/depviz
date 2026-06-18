@@ -9,7 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"moul.io/depviz/v4/internal/backend"
 	"moul.io/depviz/v4/internal/core"
 	"moul.io/depviz/v4/live"
 )
@@ -60,6 +62,8 @@ func run(ctx context.Context, args []string) error {
 		return runSync(ctx, dbPath, args)
 	case "live":
 		return runLive(ctx, args)
+	case "server":
+		return runServer(ctx, dbPath, args)
 	default:
 		return fmt.Errorf("unknown command %q", cmd)
 	}
@@ -316,6 +320,38 @@ func runLive(ctx context.Context, args []string) error {
 	return http.ListenAndServe(*addr, http.FileServer(http.FS(live.AppFS())))
 }
 
+func runServer(ctx context.Context, dbPath string, args []string) error {
+	fs := flag.NewFlagSet("server", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	addr := fs.String("addr", envDefault("DEPVIZ_ADDR", "127.0.0.1:8766"), "listen address")
+	baseURL := fs.String("base-url", os.Getenv("DEPVIZ_BASE_URL"), "public base URL")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	s, err := core.OpenStore(ctx, dbPath)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	cfg := backend.Config{
+		Addr:               *addr,
+		BaseURL:            *baseURL,
+		GitHubClientID:     os.Getenv("DEPVIZ_GITHUB_CLIENT_ID"),
+		GitHubClientSecret: os.Getenv("DEPVIZ_GITHUB_CLIENT_SECRET"),
+		SessionTTL:         30 * 24 * time.Hour,
+	}
+	srv := backend.NewServer(s, cfg)
+	fmt.Printf("serving DepViz backend at http://%s\n", *addr)
+	return http.ListenAndServe(*addr, srv.Handler())
+}
+
+func envDefault(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
 func usage() {
 	fmt.Println(`depviz - local-first work graph
 
@@ -331,7 +367,12 @@ Usage:
   depviz gen html --board default --view graph --out dist/depviz.html
   depviz gen json --board default --out dist/depviz.json
   depviz live --addr 127.0.0.1:8686
+  depviz server --addr 127.0.0.1:8766 --base-url https://depviz.moul.io
 
 Environment:
-  DEPVIZ_DB   override .depviz/state.db`)
+  DEPVIZ_DB                    override .depviz/state.db
+  DEPVIZ_ADDR                  default server listen address
+  DEPVIZ_BASE_URL              public server URL for OAuth callbacks
+  DEPVIZ_GITHUB_CLIENT_ID      GitHub OAuth app client id
+  DEPVIZ_GITHUB_CLIENT_SECRET  GitHub OAuth app client secret`)
 }
