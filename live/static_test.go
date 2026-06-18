@@ -162,6 +162,37 @@ func TestLiveAssetsExposeBackendSessionUI(t *testing.T) {
 	}
 }
 
+func TestLiveAssetsExposeStatefulMode(t *testing.T) {
+	fsys := AppFS()
+	index, err := fs.ReadFile(fsys, "index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	style, err := fs.ReadFile(fsys, "style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"stateful button", string(index), `data-mode="stateful"`},
+		{"stateless button", string(index), `data-mode="stateless"`},
+		{"backend export", string(app), `./api/export?board=default`},
+		{"mode setter", string(app), `async function setMode(`},
+		{"stateful layout", string(style), `.shell.statefulMode`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
+
 func TestLiveAssetsExposeGitHubDiagnostics(t *testing.T) {
 	fsys := AppFS()
 	app, err := fs.ReadFile(fsys, "app.js")

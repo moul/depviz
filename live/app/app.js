@@ -1,10 +1,11 @@
-const assetVersion = 'v4.1.14-dev';
+const assetVersion = 'v4.1.15-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
 const views = new Set(['brief', 'graph', 'table']);
 
 const dom = {
+  shell: document.getElementById('shell'),
   input: document.getElementById('sourceInput'),
   syntax: document.getElementById('syntaxLayer'),
   status: document.getElementById('status'),
@@ -36,6 +37,7 @@ const dom = {
 };
 
 const state = {
+  mode: 'stateless',
   view: 'brief',
   filter: '',
   showExternal: true,
@@ -70,18 +72,24 @@ function emptyExport() {
   };
 }
 
-function boot() {
+async function boot() {
   dom.githubToken.value = sessionStorage.getItem(githubTokenStorageKey) || '';
   refreshGitHubAuthUI();
-  refreshBackendSession();
   wireEvents();
   setView(readURLView(), { persist: false, renderNow: false });
   const hashed = readHash();
   if (hashed) {
+    setMode('stateless', { renderNow: false });
     dom.input.value = hashed;
     update();
     return;
   }
+  await refreshBackendSession();
+  if (state.backendSession.available) {
+    await setMode('stateful', { renderNow: true });
+    return;
+  }
+  setMode('stateless', { renderNow: false });
   loadSample();
 }
 
@@ -101,6 +109,11 @@ function wireEvents() {
   for (const btn of document.querySelectorAll('[data-view]')) {
     btn.addEventListener('click', () => {
       setView(btn.dataset.view, { persist: true, renderNow: true });
+    });
+  }
+  for (const btn of document.querySelectorAll('[data-mode]')) {
+    btn.addEventListener('click', () => {
+      setMode(btn.dataset.mode, { renderNow: true });
     });
   }
   document.getElementById('sampleBtn').addEventListener('click', loadSample);
@@ -142,6 +155,7 @@ function readFile(event) {
 }
 
 function update() {
+  if (state.mode !== 'stateless') return;
   const text = dom.input.value;
   state.githubRefresh = [];
   state.githubFailures = [];
@@ -155,6 +169,42 @@ function update() {
     state.data = emptyExport();
     dom.error.textContent = err.message;
     dom.status.textContent = 'input error';
+  }
+  render();
+}
+
+async function setMode(mode, options = {}) {
+  const next = mode === 'stateful' && state.backendSession.available ? 'stateful' : 'stateless';
+  state.mode = next;
+  document.querySelectorAll('[data-mode]').forEach((item) => {
+    item.classList.toggle('active', item.dataset.mode === next);
+    if (item.dataset.mode === 'stateful') item.disabled = !state.backendSession.available;
+  });
+  dom.shell.classList.toggle('statefulMode', next === 'stateful');
+  document.querySelectorAll('.statelessOnly').forEach((item) => {
+    item.classList.toggle('hidden', next !== 'stateless');
+  });
+  if (next === 'stateful') {
+    await loadBackendBoard();
+    return;
+  }
+  if (options.renderNow !== false) update();
+}
+
+async function loadBackendBoard() {
+  dom.status.textContent = 'loading stateful graph';
+  dom.error.textContent = '';
+  state.githubRefresh = [];
+  state.githubFailures = [];
+  try {
+    const res = await fetch('./api/export?board=default', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    state.data = normalizeExport(await res.json());
+    dom.status.textContent = 'stateful backend graph';
+  } catch (err) {
+    state.data = emptyExport();
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'stateful load failed';
   }
   render();
 }
@@ -191,6 +241,7 @@ async function refreshBackendSession() {
     state.backendSession = { available: false, authenticated: false, github_oauth_configured: false };
   }
   refreshBackendAuthUI();
+  document.querySelector('[data-mode="stateful"]').disabled = !state.backendSession.available;
 }
 
 function refreshBackendAuthUI() {
@@ -1963,6 +2014,7 @@ function writeURLView(view) {
 }
 
 function shareLink() {
+  if (state.mode !== 'stateless') return;
   const encoded = encodeBase64URL(dom.input.value);
   const url = new URL(location.href);
   url.hash = `data=${encoded}`;

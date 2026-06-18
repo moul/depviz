@@ -56,6 +56,25 @@ func TestHealthAndAnonymousSession(t *testing.T) {
 	if session.Authenticated {
 		t.Fatal("anonymous session is authenticated")
 	}
+
+	res, err = http.Get(ts.URL + "/api/export")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var payload struct {
+		Snapshot struct {
+			Board struct {
+				ID string `json:"id"`
+			} `json:"board"`
+		} `json:"snapshot"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Snapshot.Board.ID != core.DefaultBoardID {
+		t.Fatalf("board id = %q, want %q", payload.Snapshot.Board.ID, core.DefaultBoardID)
+	}
 }
 
 func TestGitHubStartRequiresConfig(t *testing.T) {

@@ -47,6 +47,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.handleHealth)
 	mux.HandleFunc("/api/session", s.handleSession)
+	mux.HandleFunc("/api/export", s.handleExport)
 	mux.HandleFunc("/api/auth/github/start", s.handleGitHubStart)
 	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
 	mux.HandleFunc("/api/auth/logout", s.handleLogout)
@@ -59,6 +60,24 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"ok":                      true,
 		"github_oauth_configured": s.githubOAuthConfigured(),
 	})
+}
+
+func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	board := r.URL.Query().Get("board")
+	if board == "" {
+		board = core.DefaultBoardID
+	}
+	payload, err := s.store.BuildExport(r.Context(), board)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, payload)
 }
 
 func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
