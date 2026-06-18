@@ -135,6 +135,33 @@ func TestLiveAssetsExposeGraphZoomControls(t *testing.T) {
 	}
 }
 
+func TestLiveAssetsExposeBackendSessionUI(t *testing.T) {
+	fsys := AppFS()
+	index, err := fs.ReadFile(fsys, "index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"login button", string(index), `id="backendGithubLoginBtn"`},
+		{"logout button", string(index), `id="backendLogoutBtn"`},
+		{"session fetch", string(app), `function refreshBackendSession()`},
+		{"github start", string(app), `./api/auth/github/start`},
+		{"logout api", string(app), `./api/auth/logout`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
+
 func TestLiveAssetsExposeGitHubDiagnostics(t *testing.T) {
 	fsys := AppFS()
 	app, err := fs.ReadFile(fsys, "app.js")

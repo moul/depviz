@@ -74,3 +74,36 @@ func TestGitHubStartRequiresConfig(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
 	}
 }
+
+func TestLogoutClearsSessionCookie(t *testing.T) {
+	ctx := context.Background()
+	store, err := core.OpenStore(ctx, filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	account, err := store.UpsertOAuthAccount(ctx, core.OAuthAccountInput{
+		Provider:   "github",
+		ExternalID: "42",
+		Login:      "moul",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, _, err := store.CreateWebSession(ctx, account.ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := NewServer(store, Config{})
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if _, ok, err := store.AccountForWebSession(ctx, token); err != nil || ok {
+		t.Fatalf("session after logout ok=%v err=%v, want false nil", ok, err)
+	}
+}

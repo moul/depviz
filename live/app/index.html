@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DepViz Live</title>
-  <link rel="stylesheet" href="./style.css?v=v4.1.13-dev">
+  <link rel="stylesheet" href="./style.css?v=v4.1.14-dev">
 </head>
 <body>
   <header class="topbar">
@@ -14,6 +14,9 @@
     </div>
     <div class="actions">
       <div class="githubAuth" aria-label="GitHub connection">
+        <button id="backendGithubLoginBtn" type="button">Sign in</button>
+        <button id="backendLogoutBtn" type="button">Sign out</button>
+        <span id="backendAuthState" class="tokenState">DepViz: local</span>
         <button id="connectGithubBtn" type="button">Connect GitHub</button>
         <button id="pasteGithubTokenBtn" type="button">Use copied token</button>
         <input id="githubTokenInput" type="password" autocomplete="off" spellcheck="false" placeholder="token fallback" aria-label="GitHub token">
@@ -84,6 +87,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=v4.1.13-dev"></script>
+  <script src="./app.js?v=v4.1.14-dev"></script>
 </body>
 </html>

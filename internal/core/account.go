@@ -160,6 +160,14 @@ func (s *Store) AccountForWebSession(ctx context.Context, token string) (Account
 	return account, true, nil
 }
 
+func (s *Store) DeleteWebSession(ctx context.Context, token string) error {
+	if token == "" {
+		return nil
+	}
+	_, err := s.db.ExecContext(ctx, `DELETE FROM web_sessions WHERE token_hash = ?`, sessionHash(token))
+	return err
+}
+
 func (s *Store) UpsertGitHubCache(ctx context.Context, accountID, repo, refID, payloadJSON, etag string, ttl time.Duration) error {
 	if accountID == "" || repo == "" || refID == "" {
 		return errors.New("account id, repo, and ref id are required")

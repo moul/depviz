@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.13-dev';
+const assetVersion = 'v4.1.14-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -22,6 +22,9 @@ const dom = {
   graphCanvas: document.getElementById('graphCanvas'),
   table: document.getElementById('tableView'),
   githubToken: document.getElementById('githubTokenInput'),
+  backendGithubLogin: document.getElementById('backendGithubLoginBtn'),
+  backendLogout: document.getElementById('backendLogoutBtn'),
+  backendAuthState: document.getElementById('backendAuthState'),
   connectGithub: document.getElementById('connectGithubBtn'),
   pasteGithubToken: document.getElementById('pasteGithubTokenBtn'),
   forgetGithubToken: document.getElementById('forgetGithubTokenBtn'),
@@ -40,6 +43,7 @@ const state = {
   showClosed: true,
   githubRefresh: [],
   githubFailures: [],
+  backendSession: { available: false, authenticated: false, github_oauth_configured: false },
   selectedEdgeID: '',
   graphZoom: 1,
   graphLayout: { width: 900, height: 620 },
@@ -69,6 +73,7 @@ function emptyExport() {
 function boot() {
   dom.githubToken.value = sessionStorage.getItem(githubTokenStorageKey) || '';
   refreshGitHubAuthUI();
+  refreshBackendSession();
   wireEvents();
   setView(readURLView(), { persist: false, renderNow: false });
   const hashed = readHash();
@@ -103,6 +108,8 @@ function wireEvents() {
   document.getElementById('exportBtn').addEventListener('click', exportJSON);
   document.getElementById('fileInput').addEventListener('change', readFile);
   dom.connectGithub.addEventListener('click', connectGitHub);
+  dom.backendGithubLogin.addEventListener('click', signInWithBackendGitHub);
+  dom.backendLogout.addEventListener('click', signOutBackend);
   dom.pasteGithubToken.addEventListener('click', pasteGitHubToken);
   dom.forgetGithubToken.addEventListener('click', forgetGitHubToken);
   dom.githubToken.addEventListener('input', () => {
@@ -172,6 +179,49 @@ function refreshGitHubAuthUI() {
   const connected = Boolean(githubToken());
   dom.githubAuthState.textContent = connected ? 'GitHub: token' : 'GitHub: public';
   dom.forgetGithubToken.disabled = !connected;
+  refreshBackendAuthUI();
+}
+
+async function refreshBackendSession() {
+  try {
+    const res = await fetch('./api/session', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(String(res.status));
+    state.backendSession = { available: true, ...await res.json() };
+  } catch {
+    state.backendSession = { available: false, authenticated: false, github_oauth_configured: false };
+  }
+  refreshBackendAuthUI();
+}
+
+function refreshBackendAuthUI() {
+  const session = state.backendSession || {};
+  dom.backendGithubLogin.classList.toggle('hidden', !session.available || session.authenticated || !session.github_oauth_configured);
+  dom.backendLogout.classList.toggle('hidden', !session.available || !session.authenticated);
+  dom.backendAuthState.classList.toggle('hidden', !session.available);
+  if (!session.available) {
+    dom.backendAuthState.textContent = '';
+    return;
+  }
+  if (session.authenticated && session.account) {
+    dom.backendAuthState.textContent = `DepViz: @${session.account.login || 'account'}`;
+    return;
+  }
+  dom.backendAuthState.textContent = session.github_oauth_configured ? 'DepViz: signed out' : 'DepViz: local';
+}
+
+function signInWithBackendGitHub() {
+  const returnTo = `${location.pathname}${location.search}${location.hash}`;
+  location.href = `./api/auth/github/start?return_to=${encodeURIComponent(returnTo)}`;
+}
+
+async function signOutBackend() {
+  try {
+    await fetch('./api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    await refreshBackendSession();
+    dom.status.textContent = 'signed out';
+  } catch {
+    dom.status.textContent = 'sign out failed';
+  }
 }
 
 function connectGitHub() {

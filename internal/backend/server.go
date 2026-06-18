@@ -49,6 +49,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/session", s.handleSession)
 	mux.HandleFunc("/api/auth/github/start", s.handleGitHubStart)
 	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
+	mux.HandleFunc("/api/auth/logout", s.handleLogout)
 	mux.Handle("/", http.FileServer(http.FS(live.AppFS())))
 	return mux
 }
@@ -152,6 +153,28 @@ func (s *Server) handleGitHubCallback(w http.ResponseWriter, r *http.Request) {
 		Secure:   strings.HasPrefix(s.cfg.BaseURL, "https://"),
 	})
 	http.Redirect(w, r, returnTo, http.StatusFound)
+}
+
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	cookie, err := r.Cookie(sessionCookieName)
+	if err == nil {
+		_ = s.store.DeleteWebSession(r.Context(), cookie.Value)
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   strings.HasPrefix(s.cfg.BaseURL, "https://"),
+	})
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (s *Server) accountForRequest(r *http.Request) (core.Account, bool, error) {
