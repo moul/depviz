@@ -91,6 +91,8 @@ func TestLiveAssetsExposeEdgeInspectorWorkflow(t *testing.T) {
 	}{
 		{"inspector mount", string(index), `id="edgeInspector"`},
 		{"edge hit target", string(app), `class="graphEdgeHit"`},
+		{"edge locate", string(app), `data-edge-action="locate"`},
+		{"edge locate scroll", string(app), `function scrollSelectedEdgeIntoView()`},
 		{"inspector promote", string(app), `data-edge-action="promote"`},
 		{"edge actions", string(style), `.edgeActions`},
 	} {

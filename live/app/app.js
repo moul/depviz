@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.10-dev';
+const assetVersion = 'v4.1.11-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -1531,6 +1531,7 @@ function renderEdgeInspector(snapshot) {
       </div>
       <div class="edgeActions">
         ${suggestionActions}
+        <button type="button" data-edge-action="locate">Locate in graph</button>
         <button type="button" data-edge-action="clear">Clear</button>
       </div>
     </div>
@@ -1564,6 +1565,11 @@ function handleEdgeInspectorClick(event) {
     render();
     dom.status.textContent = 'edge selection cleared';
   }
+  if (button.dataset.edgeAction === 'locate') {
+    setView('graph', { persist: true, renderNow: true });
+    requestAnimationFrame(scrollSelectedEdgeIntoView);
+    dom.status.textContent = 'selected edge located';
+  }
   if (button.dataset.edgeAction === 'promote') promoteSuggestedEdge(edgeID);
   if (button.dataset.edgeAction === 'hide') dismissSuggestedEdge(edgeID);
 }
@@ -1582,10 +1588,15 @@ function focusSuggestedEdge(edgeID) {
   if (!edgeByID(edgeID)) return;
   state.selectedEdgeID = edgeID;
   setView('graph', { persist: true, renderNow: true });
-  requestAnimationFrame(() => {
-    dom.graphCanvas.querySelector('.selectedEndpoint')?.scrollIntoView({ block: 'center', inline: 'center' });
-  });
+  requestAnimationFrame(scrollSelectedEdgeIntoView);
   dom.status.textContent = 'suggested relation focused';
+}
+
+function scrollSelectedEdgeIntoView() {
+  const endpoints = dom.graphCanvas.querySelectorAll('.selectedEndpoint');
+  if (endpoints.length === 0) return;
+  const target = endpoints[Math.floor((endpoints.length - 1) / 2)];
+  target.scrollIntoView({ block: 'center', inline: 'center' });
 }
 
 function dismissSuggestedEdge(edgeID) {
