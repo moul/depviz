@@ -91,8 +91,65 @@ func TestLiveAssetsExposeEdgeInspectorWorkflow(t *testing.T) {
 	}{
 		{"inspector mount", string(index), `id="edgeInspector"`},
 		{"edge hit target", string(app), `class="graphEdgeHit"`},
+		{"edge locate", string(app), `data-edge-action="locate"`},
+		{"edge locate scroll", string(app), `function scrollSelectedEdgeIntoView()`},
 		{"inspector promote", string(app), `data-edge-action="promote"`},
 		{"edge actions", string(style), `.edgeActions`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
+
+func TestLiveAssetsExposeGraphZoomControls(t *testing.T) {
+	fsys := AppFS()
+	index, err := fs.ReadFile(fsys, "index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	style, err := fs.ReadFile(fsys, "style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"toolbar", string(index), `class="graphToolbar"`},
+		{"fit action", string(index), `data-graph-action="fit"`},
+		{"zoom helper", string(app), `function graphZoom(`},
+		{"fit helper", string(app), `function fitGraphToCanvas()`},
+		{"keyboard helper", string(app), `function handleGraphKeydown(event)`},
+		{"typing guard", string(app), `function isTypingTarget(target)`},
+		{"scale wrapper", string(style), `.graphScale`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
+
+func TestLiveAssetsExposeGitHubDiagnostics(t *testing.T) {
+	fsys := AppFS()
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"diagnostics section", string(app), `GitHub diagnostics`},
+		{"refresh failures", string(app), `state.githubFailures`},
+		{"placeholder guidance", string(app), `refresh GitHub or sync/export a wider scope`},
+		{"partial metadata", string(app), `partial GitHub metadata`},
 	} {
 		if !strings.Contains(tc.body, tc.want) {
 			t.Fatalf("%s: missing %q", tc.name, tc.want)

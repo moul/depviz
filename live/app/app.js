@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.9-dev';
+const assetVersion = 'v4.1.13-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -16,6 +16,7 @@ const dom = {
   stats: document.getElementById('stats'),
   suggestions: document.getElementById('suggestionPanel'),
   edgeInspector: document.getElementById('edgeInspector'),
+  graphZoomLabel: document.getElementById('graphZoomLabel'),
   brief: document.getElementById('briefView'),
   graph: document.getElementById('graphView'),
   graphCanvas: document.getElementById('graphCanvas'),
@@ -38,7 +39,10 @@ const state = {
   showLocal: true,
   showClosed: true,
   githubRefresh: [],
+  githubFailures: [],
   selectedEdgeID: '',
+  graphZoom: 1,
+  graphLayout: { width: 900, height: 620 },
   dismissedSuggestionIDs: new Set(),
   data: emptyExport(),
 };
@@ -109,6 +113,8 @@ function wireEvents() {
   dom.suggestions.addEventListener('click', handleSuggestionClick);
   dom.edgeInspector.addEventListener('click', handleEdgeInspectorClick);
   dom.graphCanvas.addEventListener('click', handleGraphClick);
+  document.getElementById('graphView').addEventListener('click', handleGraphControlClick);
+  document.addEventListener('keydown', handleGraphKeydown);
 }
 
 async function loadSample() {
@@ -131,6 +137,7 @@ function readFile(event) {
 function update() {
   const text = dom.input.value;
   state.githubRefresh = [];
+  state.githubFailures = [];
   updateHighlight(text);
   dom.lineCount.textContent = `${countLines(text)} lines`;
   try {
@@ -254,12 +261,15 @@ async function hydrateGitHub() {
       try {
         updates.push(await fetchGitHubNode(ref, token));
       } catch (err) {
-        failures.push(`${ref.id}: ${err.message}`);
+        failures.push({ id: ref.id, message: err.message });
       }
     }
+    state.githubFailures = failures;
     if (updates.length > 0) {
       state.data = mergeHydratedNodes(state.data, updates);
       state.githubRefresh = githubRefreshItems(updates);
+    }
+    if (updates.length > 0 || failures.length > 0) {
       render();
     }
     const statusParts = [failures.length > 0
@@ -270,7 +280,7 @@ async function hydrateGitHub() {
     if (closedHidden > 0) statusParts.push(`${closedHidden} closed in refresh summary`);
     if (publicFallbacks > 0) statusParts.push(`${publicFallbacks} via public fallback`);
     dom.status.textContent = statusParts.join('; ');
-    dom.error.textContent = failures.slice(0, 2).join('  ');
+    dom.error.textContent = failures.slice(0, 2).map((item) => `${item.id}: ${item.message}`).join('  ');
   } finally {
     dom.hydrateGithub.disabled = false;
   }
@@ -1080,7 +1090,7 @@ function buildBrief(snapshot) {
       localOnly.push(briefItem(node, { reason: 'local-only planning card' }));
     }
     if (isPlaceholder(node) && !isLocal(node)) {
-      stale.push(briefItem(node, { reason: 'placeholder external ref; sync a wider scope' }));
+      stale.push(briefItem(node, { reason: 'placeholder external ref; refresh GitHub or sync/export a wider scope' }));
       continue;
     }
     const updated = Date.parse(node.updated_at || '');
@@ -1167,14 +1177,60 @@ function renderBrief(brief) {
   const githubRefresh = state.githubRefresh.length
     ? briefSection('GitHub refresh', state.githubRefresh, false)
     : '';
+  const githubDiagnostics = githubDiagnosticItems(state.data.snapshot);
   dom.brief.innerHTML = `<div class="briefGrid">
     ${githubRefresh}
+    ${githubDiagnostics.length ? briefSection('GitHub diagnostics', githubDiagnostics, false) : ''}
     ${briefSection('Next move', brief.next_move ? [brief.next_move] : [], true)}
     ${briefSection('Ready now', brief.ready || [], false)}
     ${briefSection('Blocking most work', brief.blockers || [], false)}
     ${briefSection('Local-only', brief.local_only || [], false)}
     ${briefSection('Stale external state', brief.stale || [], false)}
   </div>`;
+}
+
+function githubDiagnosticItems(snapshot) {
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const items = [];
+  for (const failure of state.githubFailures) {
+    const node = nodes.get(failure.id) || placeholderNode(failure.id);
+    items.push(briefItem(node, { reason: `refresh failed: ${failure.message}` }));
+  }
+  for (const node of snapshot.nodes) {
+    if (isLocal(node)) continue;
+    const data = nodeData(node);
+    if (isUnhydratedExternalRef(node)) {
+      items.push(briefItem(node, { reason: 'unhydrated title/state; refresh GitHub or sync/export a wider scope' }));
+      continue;
+    }
+    if (Array.isArray(data.metadata_errors) && data.metadata_errors.length > 0) {
+      items.push(briefItem(node, { reason: `partial GitHub metadata: ${data.metadata_errors.slice(0, 2).join(', ')}` }));
+      continue;
+    }
+    if (data.auth_fallback) {
+      items.push(briefItem(node, { reason: 'token lacked scope; refreshed through public GitHub fallback' }));
+    }
+  }
+  dedupeBriefItems(items);
+  sortItems(items);
+  return items.slice(0, 12);
+}
+
+function isUnhydratedExternalRef(node) {
+  const data = nodeData(node);
+  if (data.hydrated) return false;
+  if (!parseGitHubNodeID(node.id)) return isPlaceholder(node);
+  return isPlaceholder(node) || node.title === node.id || String(node.state || '').toLowerCase() === 'unknown';
+}
+
+function dedupeBriefItems(items) {
+  const seen = new Set();
+  for (let index = items.length - 1; index >= 0; index--) {
+    const item = items[index];
+    const key = `${item.id}\x00${item.reason}`;
+    if (seen.has(key)) items.splice(index, 1);
+    else seen.add(key);
+  }
 }
 
 function briefSection(title, items, wide) {
@@ -1198,8 +1254,11 @@ function renderGraph(snapshot, nodes) {
   const selectedEdge = edgeByID(state.selectedEdgeID);
   const selectedEndpoints = selectedEdge ? new Set([selectedEdge.from_id, selectedEdge.to_id]) : new Set();
   const layout = graphLayout(snapshot, nodes);
+  state.graphLayout = { width: layout.width, height: layout.height };
+  const zoom = graphZoom();
   const positions = layout.positions;
-  let html = `<div class="graphInner" style="width:${layout.width}px;min-height:${layout.height}px">
+  let html = `<div class="graphScale" style="width:${Math.ceil(layout.width * zoom)}px;min-height:${Math.ceil(layout.height * zoom)}px">
+  <div class="graphInner" style="width:${layout.width}px;min-height:${layout.height}px;transform:scale(${zoom})">
     <svg class="edgeLayer" width="${layout.width}" height="${layout.height}" aria-hidden="true">
       <defs>
         <marker id="arrowHard" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#667085"></path></marker>
@@ -1231,8 +1290,74 @@ function renderGraph(snapshot, nodes) {
       ${badgesHTML(nodeBadges(node))}
     </article>`;
   }
-  html += '</div>';
+  html += '</div></div>';
   dom.graphCanvas.innerHTML = html;
+  dom.graphZoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+}
+
+function handleGraphControlClick(event) {
+  const button = event.target.closest('[data-graph-action]');
+  if (!button) return;
+  applyGraphAction(button.dataset.graphAction);
+}
+
+function handleGraphKeydown(event) {
+  if (state.view !== 'graph' || isTypingTarget(event.target)) return;
+  const key = event.key.toLowerCase();
+  if (key === 'f') {
+    event.preventDefault();
+    applyGraphAction('fit');
+  }
+  if (key === '+' || key === '=') {
+    event.preventDefault();
+    applyGraphAction('in');
+  }
+  if (key === '-' || key === '_') {
+    event.preventDefault();
+    applyGraphAction('out');
+  }
+  if (key === '0') {
+    event.preventDefault();
+    applyGraphAction('reset');
+  }
+  if (key === 'escape' && state.selectedEdgeID) {
+    event.preventDefault();
+    state.selectedEdgeID = '';
+    render();
+    dom.status.textContent = 'edge selection cleared';
+  }
+}
+
+function isTypingTarget(target) {
+  const tag = String(target?.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || Boolean(target?.isContentEditable);
+}
+
+function applyGraphAction(action) {
+  if (action === 'fit') {
+    fitGraphToCanvas();
+    return;
+  }
+  if (action === 'reset') state.graphZoom = 1;
+  if (action === 'in') state.graphZoom = graphZoom(state.graphZoom + 0.15);
+  if (action === 'out') state.graphZoom = graphZoom(state.graphZoom - 0.15);
+  render();
+}
+
+function fitGraphToCanvas() {
+  const width = Math.max(1, state.graphLayout.width);
+  const height = Math.max(1, state.graphLayout.height);
+  const next = Math.min(
+    (dom.graphCanvas.clientWidth - 28) / width,
+    (dom.graphCanvas.clientHeight - 28) / height,
+  );
+  state.graphZoom = graphZoom(next);
+  render();
+  dom.graphCanvas.scrollTo({ top: 0, left: 0 });
+}
+
+function graphZoom(value = state.graphZoom) {
+  return Math.max(0.35, Math.min(1.8, Number(value) || 1));
 }
 
 function handleGraphClick(event) {
@@ -1480,6 +1605,7 @@ function renderEdgeInspector(snapshot) {
       </div>
       <div class="edgeActions">
         ${suggestionActions}
+        <button type="button" data-edge-action="locate">Locate in graph</button>
         <button type="button" data-edge-action="clear">Clear</button>
       </div>
     </div>
@@ -1513,6 +1639,11 @@ function handleEdgeInspectorClick(event) {
     render();
     dom.status.textContent = 'edge selection cleared';
   }
+  if (button.dataset.edgeAction === 'locate') {
+    setView('graph', { persist: true, renderNow: true });
+    requestAnimationFrame(scrollSelectedEdgeIntoView);
+    dom.status.textContent = 'selected edge located';
+  }
   if (button.dataset.edgeAction === 'promote') promoteSuggestedEdge(edgeID);
   if (button.dataset.edgeAction === 'hide') dismissSuggestedEdge(edgeID);
 }
@@ -1531,10 +1662,15 @@ function focusSuggestedEdge(edgeID) {
   if (!edgeByID(edgeID)) return;
   state.selectedEdgeID = edgeID;
   setView('graph', { persist: true, renderNow: true });
-  requestAnimationFrame(() => {
-    dom.graphCanvas.querySelector('.selectedEndpoint')?.scrollIntoView({ block: 'center', inline: 'center' });
-  });
+  requestAnimationFrame(scrollSelectedEdgeIntoView);
   dom.status.textContent = 'suggested relation focused';
+}
+
+function scrollSelectedEdgeIntoView() {
+  const endpoints = dom.graphCanvas.querySelectorAll('.selectedEndpoint');
+  if (endpoints.length === 0) return;
+  const target = endpoints[Math.floor((endpoints.length - 1) / 2)];
+  target.scrollIntoView({ block: 'center', inline: 'center' });
 }
 
 function dismissSuggestedEdge(edgeID) {

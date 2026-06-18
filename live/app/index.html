@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DepViz Live</title>
-  <link rel="stylesheet" href="./style.css?v=v4.1.9-dev">
+  <link rel="stylesheet" href="./style.css?v=v4.1.13-dev">
 </head>
 <body>
   <header class="topbar">
@@ -71,12 +71,19 @@
       <div id="edgeInspector" class="edgeInspector hidden"></div>
       <div id="briefView" class="view"></div>
       <div id="graphView" class="view hidden">
+        <div class="graphToolbar" aria-label="Graph controls">
+          <button type="button" data-graph-action="fit">Fit</button>
+          <button type="button" data-graph-action="out">-</button>
+          <span id="graphZoomLabel">100%</span>
+          <button type="button" data-graph-action="in">+</button>
+          <button type="button" data-graph-action="reset">100%</button>
+        </div>
         <div id="graphCanvas" class="graphCanvas"></div>
       </div>
       <div id="tableView" class="view hidden"></div>
     </section>
   </main>
 
-  <script src="./app.js?v=v4.1.9-dev"></script>
+  <script src="./app.js?v=v4.1.13-dev"></script>
 </body>
 </html>
