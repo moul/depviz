@@ -194,6 +194,9 @@ make test
 go vet ./...
 ```
 
+Agents continuing project work should start with
+[docs/AGENT-HANDOFF.md](docs/AGENT-HANDOFF.md).
+
 Fixture dogfood:
 
 ```text
