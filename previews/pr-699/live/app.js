@@ -26,6 +26,12 @@ const dom = {
   backendGithubLogin: document.getElementById('backendGithubLoginBtn'),
   backendLogout: document.getElementById('backendLogoutBtn'),
   backendAuthState: document.getElementById('backendAuthState'),
+  settings: document.getElementById('settingsBtn'),
+  managePanel: document.getElementById('managePanel'),
+  boardList: document.getElementById('boardList'),
+  createBoardForm: document.getElementById('createBoardForm'),
+  newBoardName: document.getElementById('newBoardName'),
+  newBoardDescription: document.getElementById('newBoardDescription'),
   connectGithub: document.getElementById('connectGithubBtn'),
   pasteGithubToken: document.getElementById('pasteGithubTokenBtn'),
   forgetGithubToken: document.getElementById('forgetGithubTokenBtn'),
@@ -46,6 +52,9 @@ const state = {
   githubRefresh: [],
   githubFailures: [],
   backendSession: { available: false, authenticated: false, github_oauth_configured: false, github_app_configured: false },
+  manageOpen: false,
+  currentBoardID: 'default',
+  boards: [],
   selectedEdgeID: '',
   graphZoom: 1,
   graphLayout: { width: 900, height: 620 },
@@ -123,6 +132,9 @@ function wireEvents() {
   dom.connectGithub.addEventListener('click', connectGitHub);
   dom.backendGithubLogin.addEventListener('click', signInWithBackendGitHub);
   dom.backendLogout.addEventListener('click', signOutBackend);
+  dom.settings.addEventListener('click', toggleManagePanel);
+  dom.createBoardForm.addEventListener('submit', createBoard);
+  dom.boardList.addEventListener('click', handleBoardListClick);
   dom.pasteGithubToken.addEventListener('click', pasteGitHubToken);
   dom.forgetGithubToken.addEventListener('click', forgetGitHubToken);
   dom.githubToken.addEventListener('input', () => {
@@ -181,9 +193,7 @@ async function setMode(mode, options = {}) {
     if (item.dataset.mode === 'stateful') item.disabled = !state.backendSession.available;
   });
   dom.shell.classList.toggle('statefulMode', next === 'stateful');
-  document.querySelectorAll('.statelessOnly').forEach((item) => {
-    item.classList.toggle('hidden', next !== 'stateless');
-  });
+  syncModeVisibility();
   refreshBackendAuthUI();
   if (next === 'stateful') {
     await loadBackendBoard();
@@ -192,11 +202,23 @@ async function setMode(mode, options = {}) {
   if (options.renderNow !== false) update();
 }
 
+function syncModeVisibility() {
+  document.querySelectorAll('.statelessOnly').forEach((item) => {
+    item.classList.toggle('hidden', state.mode !== 'stateless');
+  });
+  document.querySelectorAll('.statefulOnly').forEach((item) => {
+    const show = state.mode === 'stateful' && state.backendSession.authenticated;
+    item.classList.toggle('hidden', !show || (item === dom.managePanel && !state.manageOpen));
+  });
+  dom.settings.classList.toggle('active', state.manageOpen && state.mode === 'stateful' && state.backendSession.authenticated);
+}
+
 async function loadBackendBoard() {
   if (!state.backendSession.authenticated) {
     state.data = emptyExport();
     dom.status.textContent = state.backendSession.github_oauth_configured ? 'sign in for stateful graph' : 'stateful backend needs oauth config';
     dom.error.textContent = '';
+    state.manageOpen = false;
     render();
     return;
   }
@@ -205,7 +227,9 @@ async function loadBackendBoard() {
   state.githubRefresh = [];
   state.githubFailures = [];
   try {
-    const res = await fetch('./api/export?board=default', { credentials: 'same-origin' });
+    if (state.boards.length === 0) await refreshBoards();
+    const board = encodeURIComponent(state.currentBoardID || 'default');
+    const res = await fetch(`./api/export?board=${board}`, { credentials: 'same-origin' });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     state.data = normalizeExport(await res.json());
     dom.status.textContent = 'stateful backend graph';
@@ -215,6 +239,85 @@ async function loadBackendBoard() {
     dom.status.textContent = 'stateful load failed';
   }
   render();
+}
+
+async function refreshBoards() {
+  if (!state.backendSession.authenticated) return;
+  const res = await fetch('./api/boards', { credentials: 'same-origin' });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  const payload = await res.json();
+  state.boards = Array.isArray(payload.boards) ? payload.boards.map(normalizeBoard) : [];
+  if (!state.boards.some((board) => board.id === state.currentBoardID)) {
+    state.currentBoardID = state.boards[0]?.id || 'default';
+  }
+  renderManagePanel();
+}
+
+function toggleManagePanel() {
+  state.manageOpen = !state.manageOpen;
+  dom.managePanel.classList.toggle('hidden', !state.manageOpen || state.mode !== 'stateful' || !state.backendSession.authenticated);
+  dom.settings.classList.toggle('active', state.manageOpen);
+  if (state.manageOpen) {
+    refreshBoards().catch((err) => {
+      dom.status.textContent = 'settings load failed';
+      dom.error.textContent = err.message;
+    });
+  }
+}
+
+async function createBoard(event) {
+  event.preventDefault();
+  const name = dom.newBoardName.value.trim();
+  const description = dom.newBoardDescription.value.trim();
+  if (!name) {
+    dom.status.textContent = 'view name required';
+    dom.newBoardName.focus();
+    return;
+  }
+  try {
+    const res = await fetch('./api/boards', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const payload = await res.json();
+    const board = normalizeBoard(payload.board || {});
+    state.currentBoardID = board.id || state.currentBoardID;
+    dom.newBoardName.value = '';
+    dom.newBoardDescription.value = '';
+    await refreshBoards();
+    await loadBackendBoard();
+    dom.status.textContent = 'view created';
+  } catch (err) {
+    dom.status.textContent = 'view create failed';
+    dom.error.textContent = err.message;
+  }
+}
+
+function handleBoardListClick(event) {
+  const btn = event.target.closest('[data-board-id]');
+  if (!btn) return;
+  state.currentBoardID = btn.dataset.boardId || 'default';
+  renderManagePanel();
+  loadBackendBoard();
+}
+
+function renderManagePanel() {
+  if (!dom.boardList) return;
+  if (!state.boards.length) {
+    dom.boardList.innerHTML = '<div class="emptyState">No saved views yet</div>';
+    return;
+  }
+  dom.boardList.innerHTML = state.boards.map((board) => {
+    const active = board.id === state.currentBoardID;
+    const description = board.description ? `<span>${esc(board.description)}</span>` : '<span>No description</span>';
+    return `<button class="${active ? 'active' : ''}" type="button" data-board-id="${esc(board.id)}">
+      <strong>${esc(board.name || board.id)}</strong>
+      ${description}
+    </button>`;
+  }).join('');
 }
 
 function persistGitHubToken() {
@@ -257,6 +360,7 @@ function refreshBackendAuthUI() {
   dom.backendGithubLogin.classList.toggle('hidden', !session.available || session.authenticated || !session.github_oauth_configured);
   dom.backendLogout.classList.toggle('hidden', !session.available || !session.authenticated);
   dom.backendAuthState.classList.toggle('hidden', !session.available);
+  syncModeVisibility();
   const provider = session.github_app_configured ? 'GitHub App' : 'DepViz';
   if (!session.available) {
     dom.backendAuthState.textContent = '';

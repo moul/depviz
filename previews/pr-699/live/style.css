@@ -161,6 +161,56 @@ button:disabled {
   display: none;
 }
 
+.managePanel {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 360px);
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.manageSection {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.manageSection h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.boardList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.boardList button {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
+.boardList button span,
+.emptyState {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.createBoardForm input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 8px 9px;
+}
+
 .paneHeader,
 .boardHeader {
   display: flex;
@@ -1108,6 +1158,10 @@ tr:last-child td {
   }
 
   .edgeRoute {
+    grid-template-columns: 1fr;
+  }
+
+  .managePanel {
     grid-template-columns: 1fr;
   }
 

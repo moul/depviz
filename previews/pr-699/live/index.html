@@ -30,6 +30,7 @@
       <button id="hydrateGithubBtn" class="statelessOnly" type="button">Refresh GitHub</button>
       <button id="sampleBtn" class="statelessOnly" type="button">Load sample</button>
       <button id="shareBtn" class="statelessOnly" type="button">Share link</button>
+      <button id="settingsBtn" class="statefulOnly" type="button">Settings</button>
       <button id="exportBtn" type="button">Export JSON</button>
     </div>
   </header>
@@ -64,6 +65,19 @@
           <button data-view="graph" type="button">Graph</button>
           <button data-view="table" type="button">Table</button>
         </div>
+      </div>
+
+      <div id="managePanel" class="managePanel statefulOnly hidden">
+        <div class="manageSection">
+          <h3>Graph Views</h3>
+          <div id="boardList" class="boardList"></div>
+        </div>
+        <form id="createBoardForm" class="manageSection createBoardForm">
+          <h3>New View</h3>
+          <input id="newBoardName" type="text" autocomplete="off" placeholder="Name" aria-label="New view name">
+          <input id="newBoardDescription" type="text" autocomplete="off" placeholder="Description" aria-label="New view description">
+          <button type="submit">Create</button>
+        </form>
       </div>
 
       <div class="filters">
