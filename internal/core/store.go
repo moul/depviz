@@ -216,6 +216,19 @@ func (s *Store) Migrate(ctx context.Context) error {
 			updated_at TEXT NOT NULL,
 			UNIQUE(account_id, owner_type, owner_id)
 		)`,
+		`CREATE TABLE IF NOT EXISTS github_installations (
+			id TEXT PRIMARY KEY,
+			installation_id INTEGER NOT NULL UNIQUE,
+			account_login TEXT NOT NULL DEFAULT '',
+			account_id INTEGER NOT NULL DEFAULT 0,
+			account_type TEXT NOT NULL DEFAULT '',
+			target_type TEXT NOT NULL DEFAULT '',
+			repository_mode TEXT NOT NULL DEFAULT '',
+			html_url TEXT NOT NULL DEFAULT '',
+			raw_json TEXT NOT NULL DEFAULT '{}',
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := s.db.ExecContext(ctx, stmt); err != nil {
@@ -464,6 +477,39 @@ func (s *Store) nodeExists(ctx context.Context, nodeID string) (bool, error) {
 	return count > 0, nil
 }
 
+func (s *Store) nodeByID(ctx context.Context, nodeID string) (Node, error) {
+	var n Node
+	var updated string
+	err := s.db.QueryRowContext(ctx, `SELECT id, kind, title, state, owner, data_json, updated_at FROM nodes WHERE id = ?`, nodeID).
+		Scan(&n.ID, &n.Kind, &n.Title, &n.State, &n.Owner, &n.DataJSON, &updated)
+	if err != nil {
+		return Node{}, err
+	}
+	n.UpdatedAt = parseTime(updated)
+	return n, nil
+}
+
+func (s *Store) availableNodeID(ctx context.Context, base string) (string, error) {
+	base = strings.TrimSpace(base)
+	if base == "" {
+		base = "task:untitled"
+	}
+	for i := 0; i < 1000; i++ {
+		id := base
+		if i > 0 {
+			id = fmt.Sprintf("%s-%d", base, i+1)
+		}
+		exists, err := s.nodeExists(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		if !exists {
+			return id, nil
+		}
+	}
+	return "", errors.New("could not allocate node id")
+}
+
 func (s *Store) boardItemExists(ctx context.Context, boardID, nodeID string) (bool, error) {
 	var count int
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM board_items WHERE board_id = ? AND node_id = ?`, boardID, nodeID).Scan(&count); err != nil {
@@ -495,9 +541,225 @@ func (s *Store) BoardList(ctx context.Context) ([]Board, error) {
 			return nil, err
 		}
 		b.UpdatedAt = parseTime(updated)
+		metrics, err := s.BoardMetrics(ctx, b.ID)
+		if err != nil {
+			return nil, err
+		}
+		b.Metrics = &metrics
 		boards = append(boards, b)
 	}
 	return boards, rows.Err()
+}
+
+func (s *Store) BoardMetrics(ctx context.Context, boardID string) (BoardMetrics, error) {
+	if boardID == "" {
+		boardID = DefaultBoardID
+	}
+	var m BoardMetrics
+	var latestNode string
+	err := s.db.QueryRowContext(ctx, `SELECT
+			COUNT(DISTINCT n.id),
+			COUNT(DISTINCT CASE WHEN lower(n.state) NOT IN ('closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved') THEN n.id END),
+			COUNT(DISTINCT CASE WHEN lower(n.state) IN ('closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved') THEN n.id END),
+			COUNT(DISTINCT CASE WHEN n.kind = 'note' OR n.id LIKE 'note:%' OR bi.local_state != '' THEN n.id END),
+			COUNT(DISTINCT CASE WHEN COALESCE(sr.source_id, '') != '' AND sr.source_id != ? THEN n.id END),
+			COALESCE(MAX(n.updated_at), '')
+		FROM board_items bi
+		JOIN nodes n ON n.id = bi.node_id
+		LEFT JOIN source_refs sr ON sr.node_id = n.id
+		WHERE bi.board_id = ?`, LocalSourceID, boardID).Scan(&m.Items, &m.Open, &m.Closed, &m.Local, &m.External, &latestNode)
+	if err != nil {
+		return BoardMetrics{}, err
+	}
+	var linkCount int
+	var latestEdge string
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*), COALESCE(MAX(observed_at), '') FROM edges WHERE scope_board_id = ? OR scope_board_id = ''`, boardID).Scan(&linkCount, &latestEdge); err != nil {
+		return BoardMetrics{}, err
+	}
+	var boardUpdated string
+	if err := s.db.QueryRowContext(ctx, `SELECT updated_at FROM boards WHERE id = ?`, boardID).Scan(&boardUpdated); err != nil {
+		return BoardMetrics{}, err
+	}
+	m.Links = linkCount
+	m.LastActivityAt = maxParsedTime(boardUpdated, latestNode, latestEdge)
+	syncAt, syncStatus, syncError, err := s.BoardSyncState(ctx, boardID)
+	if err != nil {
+		return BoardMetrics{}, err
+	}
+	m.LastSyncAt = syncAt
+	m.SyncStatus = syncStatus
+	m.SyncError = syncError
+	return m, nil
+}
+
+func (s *Store) BoardSyncState(ctx context.Context, boardID string) (time.Time, string, string, error) {
+	if boardID == "" {
+		boardID = DefaultBoardID
+	}
+	var payload string
+	var observed string
+	err := s.db.QueryRowContext(ctx, `SELECT data_json, observed_at FROM events
+		WHERE type = 'depviz.board_sync.v1' AND object_id = ?
+		ORDER BY observed_at DESC, seq DESC LIMIT 1`, boardID).Scan(&payload, &observed)
+	if errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, "never", "", nil
+	}
+	if err != nil {
+		return time.Time{}, "", "", err
+	}
+	var data struct {
+		Status string `json:"status"`
+		Error  string `json:"error"`
+	}
+	_ = json.Unmarshal([]byte(payload), &data)
+	if data.Status == "" {
+		data.Status = "unknown"
+	}
+	return parseTime(observed), data.Status, data.Error, nil
+}
+
+func (s *Store) RecordBoardSync(ctx context.Context, boardID, status string, details any) error {
+	if boardID == "" {
+		boardID = DefaultBoardID
+	}
+	payload := map[string]any{"status": strings.TrimSpace(status)}
+	if payload["status"] == "" {
+		payload["status"] = "unknown"
+	}
+	if details != nil {
+		if b, err := json.Marshal(details); err == nil {
+			_ = json.Unmarshal(b, &payload)
+			payload["status"] = strings.TrimSpace(status)
+			if payload["status"] == "" {
+				payload["status"] = "unknown"
+			}
+		}
+	}
+	data, _ := json.Marshal(payload)
+	return s.RecordEvent(ctx, "depviz.board_sync.v1", boardID, data)
+}
+
+func (s *Store) CreateBoard(ctx context.Context, name, description string) (Board, error) {
+	return s.CreateBoardWithConfig(ctx, name, description, "", `{}`)
+}
+
+func (s *Store) CreateBoardWithConfig(ctx context.Context, name, description, scopeQuery, configJSON string) (Board, error) {
+	name = strings.TrimSpace(name)
+	description = strings.TrimSpace(description)
+	scopeQuery = strings.TrimSpace(scopeQuery)
+	if name == "" {
+		return Board{}, errors.New("board name is required")
+	}
+	if configJSON == "" {
+		configJSON = `{}`
+	}
+	if !json.Valid([]byte(configJSON)) {
+		return Board{}, errors.New("board config must be valid json")
+	}
+	base := slug(name)
+	if base == "" {
+		base = "board"
+	}
+	id := base
+	for i := 0; i < 1000; i++ {
+		if i > 0 {
+			id = fmt.Sprintf("%s-%d", base, i+1)
+		}
+		var count int
+		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM boards WHERE id = ?`, id).Scan(&count); err != nil {
+			return Board{}, err
+		}
+		if count == 0 {
+			break
+		}
+		if i == 999 {
+			return Board{}, errors.New("could not allocate board id")
+		}
+	}
+	board := Board{
+		ID:          id,
+		Name:        name,
+		Description: description,
+		ScopeQuery:  scopeQuery,
+		ConfigJSON:  configJSON,
+		UpdatedAt:   nowUTC(),
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO boards(id, name, description, scope_query, parent_board_id, config_json, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?)`,
+		board.ID, board.Name, board.Description, board.ScopeQuery, board.ParentBoardID, board.ConfigJSON, formatTime(board.UpdatedAt))
+	return board, err
+}
+
+func (s *Store) AddTaskToBoard(ctx context.Context, boardID, title string) (Node, error) {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return Node{}, errors.New("task title is required")
+	}
+	id, err := s.availableNodeID(ctx, "task:"+slug(title))
+	if err != nil {
+		return Node{}, err
+	}
+	payload, _ := json.Marshal(map[string]any{"source": "local", "text": title})
+	n := Node{
+		ID:        id,
+		Kind:      "task",
+		Title:     title,
+		State:     "open",
+		DataJSON:  string(payload),
+		UpdatedAt: nowUTC(),
+	}
+	if err := s.UpsertNode(ctx, n); err != nil {
+		return Node{}, err
+	}
+	if err := s.UpsertSourceRef(ctx, n.ID, LocalSourceID, n.ID, ""); err != nil {
+		return Node{}, err
+	}
+	if err := s.AddNodeToBoard(ctx, boardID, n.ID, "card", "local"); err != nil {
+		return Node{}, err
+	}
+	if err := s.RecordEvent(ctx, "depviz.task.v1", n.ID, payload); err != nil {
+		return Node{}, err
+	}
+	return n, nil
+}
+
+func (s *Store) AddGitHubRefToBoard(ctx context.Context, boardID, repo, marker, number, title string) (Node, error) {
+	repo = strings.TrimSpace(repo)
+	marker = strings.TrimSpace(marker)
+	number = strings.TrimSpace(number)
+	if repo == "" || number == "" {
+		return Node{}, errors.New("github repo and number are required")
+	}
+	if marker != "!" {
+		marker = "#"
+	}
+	id := "gh:" + repo + marker + number
+	if err := s.ensureNodeInBoard(ctx, boardID, id); err != nil {
+		return Node{}, err
+	}
+	if strings.TrimSpace(title) != "" {
+		kind := "issue"
+		if marker == "!" {
+			kind = "pr"
+		}
+		n := Node{
+			ID:        id,
+			Kind:      kind,
+			Title:     strings.TrimSpace(title),
+			State:     "open",
+			DataJSON:  `{"source":"github","manual":true}`,
+			UpdatedAt: nowUTC(),
+		}
+		if err := s.UpsertNode(ctx, n); err != nil {
+			return Node{}, err
+		}
+	}
+	n, err := s.nodeByID(ctx, id)
+	if err != nil {
+		return Node{}, err
+	}
+	payload, _ := json.Marshal(map[string]any{"board": boardID, "repo": repo, "marker": marker, "number": number})
+	return n, s.RecordEvent(ctx, "depviz.github_ref.v1", id, payload)
 }
 
 func (s *Store) Snapshot(ctx context.Context, boardID string) (Snapshot, error) {
@@ -798,6 +1060,17 @@ func parseTime(s string) time.Time {
 		return time.Time{}
 	}
 	return t
+}
+
+func maxParsedTime(values ...string) time.Time {
+	var out time.Time
+	for _, value := range values {
+		t := parseTime(value)
+		if t.After(out) {
+			out = t
+		}
+	}
+	return out
 }
 
 func sortBriefItems(items []BriefItem) {

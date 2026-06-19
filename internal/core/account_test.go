@@ -56,3 +56,35 @@ func TestOAuthAccountAndWebSession(t *testing.T) {
 		t.Fatalf("login = %q, want moul", got.Login)
 	}
 }
+
+func TestGitHubInstallationsListsStoredInstallations(t *testing.T) {
+	ctx := context.Background()
+	s, err := OpenStore(ctx, filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+
+	if _, err := s.UpsertGitHubInstallation(ctx, GitHubInstallation{
+		InstallationID: 42,
+		AccountLogin:   "moul",
+		AccountID:      94029,
+		AccountType:    "User",
+		TargetType:     "User",
+		RepositoryMode: "all",
+		HTMLURL:        "https://github.com/settings/installations/42",
+		RawJSON:        `{"installation":{"id":42}}`,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	installations, err := s.GitHubInstallations(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(installations) != 1 {
+		t.Fatalf("installations = %d, want 1", len(installations))
+	}
+	if installations[0].InstallationID != 42 || installations[0].AccountLogin != "moul" {
+		t.Fatalf("installation = %+v, want moul/42", installations[0])
+	}
+}

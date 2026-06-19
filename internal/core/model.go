@@ -50,13 +50,27 @@ type Edge struct {
 }
 
 type Board struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Description   string    `json:"description"`
-	ScopeQuery    string    `json:"scope_query"`
-	ParentBoardID string    `json:"parent_board_id"`
-	ConfigJSON    string    `json:"config_json"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            string        `json:"id"`
+	Name          string        `json:"name"`
+	Description   string        `json:"description"`
+	ScopeQuery    string        `json:"scope_query"`
+	ParentBoardID string        `json:"parent_board_id"`
+	ConfigJSON    string        `json:"config_json"`
+	UpdatedAt     time.Time     `json:"updated_at"`
+	Metrics       *BoardMetrics `json:"metrics,omitempty"`
+}
+
+type BoardMetrics struct {
+	Items          int       `json:"items"`
+	Links          int       `json:"links"`
+	Open           int       `json:"open"`
+	Closed         int       `json:"closed"`
+	Local          int       `json:"local"`
+	External       int       `json:"external"`
+	LastActivityAt time.Time `json:"last_activity_at"`
+	LastSyncAt     time.Time `json:"last_sync_at"`
+	SyncStatus     string    `json:"sync_status"`
+	SyncError      string    `json:"sync_error,omitempty"`
 }
 
 type Snapshot struct {
@@ -142,6 +156,20 @@ type PersonalOverride struct {
 	OwnerID   string    `json:"owner_id"`
 	DataJSON  string    `json:"data_json"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type GitHubInstallation struct {
+	ID             string    `json:"id"`
+	InstallationID int64     `json:"installation_id"`
+	AccountLogin   string    `json:"account_login"`
+	AccountID      int64     `json:"account_id"`
+	AccountType    string    `json:"account_type"`
+	TargetType     string    `json:"target_type"`
+	RepositoryMode string    `json:"repository_mode"`
+	HTMLURL        string    `json:"html_url"`
+	RawJSON        string    `json:"raw_json"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 func (n Node) IsClosed() bool {

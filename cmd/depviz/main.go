@@ -334,11 +334,14 @@ func runServer(ctx context.Context, dbPath string, args []string) error {
 	}
 	defer s.Close()
 	cfg := backend.Config{
-		Addr:               *addr,
-		BaseURL:            *baseURL,
-		GitHubClientID:     os.Getenv("DEPVIZ_GITHUB_CLIENT_ID"),
-		GitHubClientSecret: os.Getenv("DEPVIZ_GITHUB_CLIENT_SECRET"),
-		SessionTTL:         30 * 24 * time.Hour,
+		Addr:                    *addr,
+		BaseURL:                 *baseURL,
+		GitHubClientID:          os.Getenv("DEPVIZ_GITHUB_CLIENT_ID"),
+		GitHubClientSecret:      os.Getenv("DEPVIZ_GITHUB_CLIENT_SECRET"),
+		GitHubAppID:             os.Getenv("DEPVIZ_GITHUB_APP_ID"),
+		GitHubAppPrivateKeyFile: os.Getenv("DEPVIZ_GITHUB_PRIVATE_KEY_FILE"),
+		GitHubWebhookSecret:     os.Getenv("DEPVIZ_GITHUB_WEBHOOK_SECRET"),
+		SessionTTL:              30 * 24 * time.Hour,
 	}
 	srv := backend.NewServer(s, cfg)
 	fmt.Printf("serving DepViz backend at http://%s\n", *addr)
@@ -374,5 +377,9 @@ Environment:
   DEPVIZ_ADDR                  default server listen address
   DEPVIZ_BASE_URL              public server URL for OAuth callbacks
   DEPVIZ_GITHUB_CLIENT_ID      GitHub OAuth app client id
-  DEPVIZ_GITHUB_CLIENT_SECRET  GitHub OAuth app client secret`)
+  DEPVIZ_GITHUB_CLIENT_SECRET  GitHub OAuth app client secret
+  DEPVIZ_GITHUB_APP_ID         GitHub App id
+  DEPVIZ_GITHUB_PRIVATE_KEY_FILE
+                               GitHub App private key PEM path
+  DEPVIZ_GITHUB_WEBHOOK_SECRET GitHub App webhook secret`)
 }

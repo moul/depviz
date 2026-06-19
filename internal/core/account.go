@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -271,6 +272,66 @@ func (s *Store) UpsertPersonalOverride(ctx context.Context, override PersonalOve
 			updated_at=excluded.updated_at`,
 		override.ID, override.AccountID, override.OwnerType, override.OwnerID, override.DataJSON, formatTime(override.UpdatedAt))
 	return override, err
+}
+
+func (s *Store) UpsertGitHubInstallation(ctx context.Context, installation GitHubInstallation) (GitHubInstallation, error) {
+	if installation.InstallationID == 0 {
+		return GitHubInstallation{}, errors.New("installation id is required")
+	}
+	if installation.ID == "" {
+		installation.ID = stableID("github-installation", fmt.Sprint(installation.InstallationID))
+	}
+	if installation.RawJSON == "" {
+		installation.RawJSON = `{}`
+	}
+	now := nowUTC()
+	var created string
+	err := s.db.QueryRowContext(ctx, `SELECT created_at FROM github_installations WHERE installation_id = ?`, installation.InstallationID).Scan(&created)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return GitHubInstallation{}, err
+		}
+		created = formatTime(now)
+	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO github_installations(id, installation_id, account_login, account_id, account_type, target_type, repository_mode, html_url, raw_json, created_at, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(installation_id) DO UPDATE SET
+			account_login=excluded.account_login,
+			account_id=excluded.account_id,
+			account_type=excluded.account_type,
+			target_type=excluded.target_type,
+			repository_mode=excluded.repository_mode,
+			html_url=excluded.html_url,
+			raw_json=excluded.raw_json,
+			updated_at=excluded.updated_at`,
+		installation.ID, installation.InstallationID, installation.AccountLogin, installation.AccountID, installation.AccountType, installation.TargetType, installation.RepositoryMode, installation.HTMLURL, installation.RawJSON, created, formatTime(now))
+	if err != nil {
+		return GitHubInstallation{}, err
+	}
+	installation.CreatedAt = parseTime(created)
+	installation.UpdatedAt = now
+	return installation, nil
+}
+
+func (s *Store) GitHubInstallations(ctx context.Context) ([]GitHubInstallation, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, installation_id, account_login, account_id, account_type, target_type, repository_mode, html_url, raw_json, created_at, updated_at
+		FROM github_installations ORDER BY updated_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var installations []GitHubInstallation
+	for rows.Next() {
+		var installation GitHubInstallation
+		var created, updated string
+		if err := rows.Scan(&installation.ID, &installation.InstallationID, &installation.AccountLogin, &installation.AccountID, &installation.AccountType, &installation.TargetType, &installation.RepositoryMode, &installation.HTMLURL, &installation.RawJSON, &created, &updated); err != nil {
+			return nil, err
+		}
+		installation.CreatedAt = parseTime(created)
+		installation.UpdatedAt = parseTime(updated)
+		installations = append(installations, installation)
+	}
+	return installations, rows.Err()
 }
 
 func (s *Store) UpsertGitHubCache(ctx context.Context, accountID, repo, refID, payloadJSON, etag string, ttl time.Duration) error {

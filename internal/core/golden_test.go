@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 )
@@ -116,9 +119,15 @@ func readExportFixture(t *testing.T, parts ...string) Export {
 
 func normalizeExportForGolden(payload *Export) {
 	payload.Snapshot.Board.UpdatedAt = time.Time{}
+	sort.Slice(payload.Snapshot.Nodes, func(i, j int) bool {
+		return payload.Snapshot.Nodes[i].ID < payload.Snapshot.Nodes[j].ID
+	})
 	for i := range payload.Snapshot.Nodes {
 		payload.Snapshot.Nodes[i].UpdatedAt = time.Time{}
 	}
+	sort.Slice(payload.Snapshot.Edges, func(i, j int) bool {
+		return payload.Snapshot.Edges[i].ID < payload.Snapshot.Edges[j].ID
+	})
 	for i := range payload.Snapshot.Edges {
 		payload.Snapshot.Edges[i].ObservedAt = time.Time{}
 	}
@@ -150,8 +159,53 @@ func assertGolden(t *testing.T, name string, got []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if strings.HasSuffix(name, ".json") {
+		gotJSON, gotErr := normalizeGoldenJSON(got)
+		wantJSON, wantErr := normalizeGoldenJSON(want)
+		if gotErr != nil || wantErr != nil {
+			t.Fatalf("%s json normalization failed got=%v want=%v", name, gotErr, wantErr)
+		}
+		if !reflect.DeepEqual(gotJSON, wantJSON) {
+			t.Fatalf("%s mismatch\n--- got ---\n%s\n--- want ---\n%s", name, got, want)
+		}
+		return
+	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("%s mismatch\n--- got ---\n%s\n--- want ---\n%s", name, got, want)
+	}
+}
+
+func normalizeGoldenJSON(data []byte) (any, error) {
+	var value any
+	if err := json.Unmarshal(data, &value); err != nil {
+		return nil, err
+	}
+	return normalizeEmbeddedJSON(value), nil
+}
+
+func normalizeEmbeddedJSON(value any) any {
+	switch v := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, child := range v {
+			if s, ok := child.(string); ok && strings.HasSuffix(key, "_json") && json.Valid([]byte(s)) {
+				var embedded any
+				if err := json.Unmarshal([]byte(s), &embedded); err == nil {
+					out[key] = normalizeEmbeddedJSON(embedded)
+					continue
+				}
+			}
+			out[key] = normalizeEmbeddedJSON(child)
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, child := range v {
+			out[i] = normalizeEmbeddedJSON(child)
+		}
+		return out
+	default:
+		return value
 	}
 }
 

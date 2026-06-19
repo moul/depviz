@@ -10,7 +10,7 @@ relates to gh:moul/depviz#6
 closes #7
 `
 	edges := extractDependencyEdges("moul/depviz", "gh:moul/depviz#1", body)
-	want := []extractedEdge{
+	want := []ExtractedEdge{
 		{From: "gh:moul/depviz#1", To: "gh:moul/depviz#2", Kind: "blocked_by", Confidence: 0.75},
 		{From: "gh:moul/depviz#1", To: "gh:moul/depviz2#3", Kind: "blocked_by", Confidence: 0.75},
 		{From: "gh:moul/depviz#1", To: "gh:moul/depviz!4", Kind: "blocks", Confidence: 0.75},
@@ -48,7 +48,7 @@ resolves gnolang/gno#5790
 testscript: reset verbose on new blocks by someone in rogpeppe/go-internal#293
 `
 	edges := extractDependencyEdges("gnolang/gno", "gh:gnolang/gno!1", body)
-	want := []extractedEdge{
+	want := []ExtractedEdge{
 		{From: "gh:gnolang/gno!1", To: "gh:gnolang/gno#5667", Kind: "closes", Confidence: 0.7},
 		{From: "gh:gnolang/gno!1", To: "gh:gnolang/gno#5790", Kind: "closes", Confidence: 0.7},
 	}
