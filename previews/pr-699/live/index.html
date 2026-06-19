@@ -30,7 +30,7 @@
       <button id="hydrateGithubBtn" class="statelessOnly" type="button">Refresh GitHub</button>
       <button id="sampleBtn" class="statelessOnly" type="button">Load sample</button>
       <button id="shareBtn" class="statelessOnly" type="button">Share link</button>
-      <button id="settingsBtn" class="statefulOnly" type="button">Settings</button>
+      <button id="settingsBtn" class="statefulOnly" type="button">User</button>
       <button id="exportBtn" type="button">Export JSON</button>
     </div>
   </header>
@@ -67,36 +67,87 @@
         </div>
       </div>
 
-      <div id="managePanel" class="managePanel statefulOnly hidden">
-        <div class="manageSection">
-          <h3>Graph Views</h3>
-          <div id="boardList" class="boardList"></div>
+      <div id="userPanel" class="userPanel statefulOnly hidden">
+        <strong id="userPanelTitle">Account</strong>
+        <span id="userPanelMeta">Signed in</span>
+      </div>
+
+      <div id="workspacePanel" class="workspacePanel statefulOnly hidden">
+        <nav class="workspaceNav" aria-label="Stateful workspace">
+          <button class="active" data-workspace-tab="views" type="button">Views</button>
+          <button data-workspace-tab="presets" type="button">Presets</button>
+          <button data-workspace-tab="add" type="button">Add</button>
+          <button data-workspace-tab="suggestions" type="button">Suggestions</button>
+          <button data-workspace-tab="debug" type="button">Debug</button>
+        </nav>
+
+        <div class="workspaceBody">
+          <section id="workspaceViews" class="workspaceTab">
+            <div class="workspaceHeader">
+              <div>
+                <h3>Views</h3>
+                <p>Saved graphs for repos, orgs, projects, and local work.</p>
+              </div>
+            </div>
+            <div id="boardList" class="boardList"></div>
+            <form id="createBoardForm" class="inlineForm">
+              <input id="newBoardName" type="text" autocomplete="off" placeholder="New empty view" aria-label="New view name">
+              <input id="newBoardDescription" type="text" autocomplete="off" placeholder="Description" aria-label="New view description">
+              <button type="submit">Create</button>
+            </form>
+          </section>
+
+          <section id="workspacePresets" class="workspaceTab hidden">
+            <div class="workspaceHeader">
+              <div>
+                <h3>GitHub Presets</h3>
+                <p>Create graph views from repositories or organizations available to your account.</p>
+              </div>
+              <button id="loadGitHubPresetsBtn" type="button">Load repos</button>
+            </div>
+            <div id="githubPresetList" class="presetList"></div>
+          </section>
+
+          <section id="workspaceAdd" class="workspaceTab hidden">
+            <div class="workspaceHeader">
+              <div>
+                <h3>Add Item</h3>
+                <p>Add a GitHub issue/PR, task, or note to the current view.</p>
+              </div>
+            </div>
+            <form id="addBoardItemForm" class="inlineForm addItemForm">
+              <select id="newItemKind" aria-label="New item kind">
+                <option value="auto">Auto</option>
+                <option value="github">GitHub issue/PR</option>
+                <option value="task">Task</option>
+                <option value="note">Note</option>
+              </select>
+              <input id="newItemRef" type="text" autocomplete="off" placeholder="GitHub URL, owner/repo#123, or text" aria-label="New item reference">
+              <input id="newItemTitle" type="text" autocomplete="off" placeholder="Optional title" aria-label="New item title">
+              <button type="submit">Add</button>
+            </form>
+          </section>
+
+          <section id="workspaceSuggestions" class="workspaceTab hidden">
+            <div class="workspaceHeader">
+              <div>
+                <h3>Suggestions</h3>
+                <p>Possible links inferred from the current graph.</p>
+              </div>
+            </div>
+            <div id="workspaceSuggestionList" class="workspaceList"></div>
+          </section>
+
+          <section id="workspaceDebug" class="workspaceTab hidden">
+            <div class="workspaceHeader">
+              <div>
+                <h3>Debug</h3>
+                <p>Current stateful session and selected graph details.</p>
+              </div>
+            </div>
+            <div id="debugPanel" class="debugPanel"></div>
+          </section>
         </div>
-        <div class="manageSection">
-          <h3>GitHub Presets</h3>
-          <div class="presetActions">
-            <button id="loadGitHubPresetsBtn" type="button">Load repos</button>
-          </div>
-          <div id="githubPresetList" class="presetList"></div>
-        </div>
-        <form id="createBoardForm" class="manageSection createBoardForm">
-          <h3>Empty View</h3>
-          <input id="newBoardName" type="text" autocomplete="off" placeholder="Name" aria-label="New view name">
-          <input id="newBoardDescription" type="text" autocomplete="off" placeholder="Description" aria-label="New view description">
-          <button type="submit">Create</button>
-        </form>
-        <form id="addBoardItemForm" class="manageSection createBoardForm">
-          <h3>Add Item</h3>
-          <select id="newItemKind" aria-label="New item kind">
-            <option value="auto">Auto</option>
-            <option value="github">GitHub issue/PR</option>
-            <option value="task">Task</option>
-            <option value="note">Note</option>
-          </select>
-          <input id="newItemRef" type="text" autocomplete="off" placeholder="GitHub URL, owner/repo#123, or text" aria-label="New item reference">
-          <input id="newItemTitle" type="text" autocomplete="off" placeholder="Optional title" aria-label="New item title">
-          <button type="submit">Add</button>
-        </form>
       </div>
 
       <div class="filters">

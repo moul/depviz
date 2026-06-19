@@ -161,9 +161,26 @@ button:disabled {
   display: none;
 }
 
-.managePanel {
+.userPanel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.userPanel span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.workspacePanel {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(260px, 360px);
+  grid-template-columns: 150px 1fr;
   gap: 12px;
   margin-top: 12px;
   padding: 12px;
@@ -172,35 +189,50 @@ button:disabled {
   background: #fbfcfe;
 }
 
-.manageSection {
-  min-width: 0;
+.workspaceNav {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 6px;
 }
 
-.manageSection h3 {
-  margin: 0;
-  font-size: 14px;
+.workspaceNav button {
+  text-align: left;
 }
 
-.boardList {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
+.workspaceBody,
+.workspaceTab {
+  min-width: 0;
 }
 
-.presetActions {
+.workspaceHeader {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.workspaceHeader h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.workspaceHeader p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.boardList,
+.presetList,
+.workspaceList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 8px;
 }
 
 .presetList {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
-  max-height: 260px;
+  max-height: 320px;
   overflow: auto;
 }
 
@@ -210,7 +242,8 @@ button:disabled {
   text-align: left;
 }
 
-.presetList button {
+.presetList button,
+.workspaceList div {
   display: grid;
   gap: 3px;
   text-align: left;
@@ -218,19 +251,61 @@ button:disabled {
 
 .boardList button span,
 .presetList button span,
+.workspaceList span,
 .emptyState {
   color: var(--muted);
   font-size: 12px;
 }
 
-.createBoardForm input,
-.createBoardForm select {
+.workspaceList div {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.inlineForm {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.addItemForm {
+  grid-template-columns: 140px minmax(240px, 1fr) minmax(180px, 0.7fr) auto;
+}
+
+.inlineForm input,
+.inlineForm select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--panel);
   color: var(--ink);
   padding: 8px 9px;
+}
+
+.debugPanel dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.debugPanel div {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.debugPanel dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.debugPanel dd {
+  margin: 2px 0 0;
 }
 
 .paneHeader,
@@ -1183,7 +1258,9 @@ tr:last-child td {
     grid-template-columns: 1fr;
   }
 
-  .managePanel {
+  .workspacePanel,
+  .inlineForm,
+  .addItemForm {
     grid-template-columns: 1fr;
   }
 

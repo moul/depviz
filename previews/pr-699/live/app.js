@@ -27,7 +27,10 @@ const dom = {
   backendLogout: document.getElementById('backendLogoutBtn'),
   backendAuthState: document.getElementById('backendAuthState'),
   settings: document.getElementById('settingsBtn'),
-  managePanel: document.getElementById('managePanel'),
+  userPanel: document.getElementById('userPanel'),
+  userPanelTitle: document.getElementById('userPanelTitle'),
+  userPanelMeta: document.getElementById('userPanelMeta'),
+  workspacePanel: document.getElementById('workspacePanel'),
   boardList: document.getElementById('boardList'),
   loadGitHubPresets: document.getElementById('loadGitHubPresetsBtn'),
   githubPresetList: document.getElementById('githubPresetList'),
@@ -38,6 +41,8 @@ const dom = {
   newItemKind: document.getElementById('newItemKind'),
   newItemRef: document.getElementById('newItemRef'),
   newItemTitle: document.getElementById('newItemTitle'),
+  workspaceSuggestionList: document.getElementById('workspaceSuggestionList'),
+  debugPanel: document.getElementById('debugPanel'),
   connectGithub: document.getElementById('connectGithubBtn'),
   pasteGithubToken: document.getElementById('pasteGithubTokenBtn'),
   forgetGithubToken: document.getElementById('forgetGithubTokenBtn'),
@@ -58,7 +63,8 @@ const state = {
   githubRefresh: [],
   githubFailures: [],
   backendSession: { available: false, authenticated: false, github_oauth_configured: false, github_app_configured: false },
-  manageOpen: false,
+  userPanelOpen: false,
+  workspaceTab: 'views',
   currentBoardID: 'default',
   boards: [],
   githubPresets: { repos: [], orgs: [], loaded: false },
@@ -139,7 +145,10 @@ function wireEvents() {
   dom.connectGithub.addEventListener('click', connectGitHub);
   dom.backendGithubLogin.addEventListener('click', signInWithBackendGitHub);
   dom.backendLogout.addEventListener('click', signOutBackend);
-  dom.settings.addEventListener('click', toggleManagePanel);
+  dom.settings.addEventListener('click', toggleUserPanel);
+  document.querySelectorAll('[data-workspace-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => setWorkspaceTab(btn.dataset.workspaceTab));
+  });
   dom.loadGitHubPresets.addEventListener('click', loadGitHubPresets);
   dom.createBoardForm.addEventListener('submit', createBoard);
   dom.addBoardItemForm.addEventListener('submit', addBoardItem);
@@ -218,9 +227,10 @@ function syncModeVisibility() {
   });
   document.querySelectorAll('.statefulOnly').forEach((item) => {
     const show = state.mode === 'stateful' && state.backendSession.authenticated;
-    item.classList.toggle('hidden', !show || (item === dom.managePanel && !state.manageOpen));
+    item.classList.toggle('hidden', !show || (item === dom.userPanel && !state.userPanelOpen));
   });
-  dom.settings.classList.toggle('active', state.manageOpen && state.mode === 'stateful' && state.backendSession.authenticated);
+  dom.settings.classList.toggle('active', state.userPanelOpen && state.mode === 'stateful' && state.backendSession.authenticated);
+  renderWorkspaceTabs();
 }
 
 async function loadBackendBoard() {
@@ -228,7 +238,7 @@ async function loadBackendBoard() {
     state.data = emptyExport();
     dom.status.textContent = state.backendSession.github_oauth_configured ? 'sign in for stateful graph' : 'stateful backend needs oauth config';
     dom.error.textContent = '';
-    state.manageOpen = false;
+    state.userPanelOpen = false;
     render();
     return;
   }
@@ -263,16 +273,17 @@ async function refreshBoards() {
   renderManagePanel();
 }
 
-function toggleManagePanel() {
-  state.manageOpen = !state.manageOpen;
-  dom.managePanel.classList.toggle('hidden', !state.manageOpen || state.mode !== 'stateful' || !state.backendSession.authenticated);
-  dom.settings.classList.toggle('active', state.manageOpen);
-  if (state.manageOpen) {
-    refreshBoards().catch((err) => {
-      dom.status.textContent = 'settings load failed';
-      dom.error.textContent = err.message;
-    });
-  }
+function toggleUserPanel() {
+  state.userPanelOpen = !state.userPanelOpen;
+  syncModeVisibility();
+  renderUserPanel();
+}
+
+function setWorkspaceTab(tab) {
+  state.workspaceTab = ['views', 'presets', 'add', 'suggestions', 'debug'].includes(tab) ? tab : 'views';
+  renderWorkspaceTabs();
+  if (state.workspaceTab === 'suggestions') renderWorkspaceSuggestions();
+  if (state.workspaceTab === 'debug') renderDebugPanel();
 }
 
 async function createBoard(event) {
@@ -429,17 +440,71 @@ function renderManagePanel() {
   if (!dom.boardList) return;
   if (!state.boards.length) {
     dom.boardList.innerHTML = '<div class="emptyState">No saved views yet</div>';
+  } else {
+    dom.boardList.innerHTML = state.boards.map((board) => {
+      const active = board.id === state.currentBoardID;
+      const description = board.description ? `<span>${esc(board.description)}</span>` : '<span>No description</span>';
+      return `<button class="${active ? 'active' : ''}" type="button" data-board-id="${esc(board.id)}">
+        <strong>${esc(board.name || board.id)}</strong>
+        ${description}
+      </button>`;
+    }).join('');
+  }
+  if (state.githubPresets.loaded) renderGitHubPresets();
+  renderDebugPanel();
+  renderWorkspaceSuggestions();
+}
+
+function renderWorkspaceTabs() {
+  document.querySelectorAll('[data-workspace-tab]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.workspaceTab === state.workspaceTab);
+  });
+  document.querySelectorAll('.workspaceTab').forEach((panel) => {
+    panel.classList.toggle('hidden', panel.id !== `workspace${capitalize(state.workspaceTab)}`);
+  });
+}
+
+function renderUserPanel() {
+  const session = state.backendSession || {};
+  const account = session.account || {};
+  const provider = session.github_app_configured ? 'GitHub App' : 'DepViz';
+  dom.userPanelTitle.textContent = account.login ? `${provider}: @${account.login}` : provider;
+  dom.userPanelMeta.textContent = [
+    session.github_app_configured ? 'App auth configured' : 'OAuth mode',
+    session.github_webhook_configured ? 'webhook active' : 'webhook pending',
+  ].join(' - ');
+}
+
+function renderDebugPanel() {
+  if (!dom.debugPanel) return;
+  const board = state.data.snapshot.board || {};
+  const counts = state.data.brief.counts || {};
+  dom.debugPanel.innerHTML = `<dl>
+    <div><dt>Current view</dt><dd>${esc(board.name || state.currentBoardID)}</dd></div>
+    <div><dt>View id</dt><dd>${esc(state.currentBoardID)}</dd></div>
+    <div><dt>Scope</dt><dd>${esc(board.scope_query || 'none')}</dd></div>
+    <div><dt>Nodes</dt><dd>${esc(counts.nodes || 0)}</dd></div>
+    <div><dt>GitHub App</dt><dd>${state.backendSession.github_app_configured ? 'configured' : 'not configured'}</dd></div>
+    <div><dt>Webhook</dt><dd>${state.backendSession.github_webhook_configured ? 'configured' : 'not configured'}</dd></div>
+  </dl>`;
+}
+
+function renderWorkspaceSuggestions() {
+  if (!dom.workspaceSuggestionList) return;
+  const suggestions = suggestedEdges(state.data.snapshot).slice(0, 12);
+  if (!suggestions.length) {
+    dom.workspaceSuggestionList.innerHTML = '<div class="emptyState">No suggestions for the current view</div>';
     return;
   }
-  dom.boardList.innerHTML = state.boards.map((board) => {
-    const active = board.id === state.currentBoardID;
-    const description = board.description ? `<span>${esc(board.description)}</span>` : '<span>No description</span>';
-    return `<button class="${active ? 'active' : ''}" type="button" data-board-id="${esc(board.id)}">
-      <strong>${esc(board.name || board.id)}</strong>
-      ${description}
-    </button>`;
-  }).join('');
-  if (state.githubPresets.loaded) renderGitHubPresets();
+  dom.workspaceSuggestionList.innerHTML = suggestions.map((edge) => `<div>
+    <strong>${esc(edge.from)} -> ${esc(edge.to)}</strong>
+    <span>${esc(edge.kind || 'related')}</span>
+  </div>`).join('');
+}
+
+function capitalize(value) {
+  value = String(value || '');
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function persistGitHubToken() {
@@ -486,13 +551,16 @@ function refreshBackendAuthUI() {
   const provider = session.github_app_configured ? 'GitHub App' : 'DepViz';
   if (!session.available) {
     dom.backendAuthState.textContent = '';
+    renderUserPanel();
     return;
   }
   if (session.authenticated && session.account) {
     dom.backendAuthState.textContent = `${provider}: @${session.account.login || 'account'}`;
+    renderUserPanel();
     return;
   }
   dom.backendAuthState.textContent = session.github_oauth_configured ? `${provider}: signed out` : 'DepViz: local';
+  renderUserPanel();
 }
 
 function signInWithBackendGitHub() {
@@ -1490,6 +1558,8 @@ function render() {
   renderStats(brief.counts || {}, snapshot);
   renderSuggestions(snapshot);
   renderEdgeInspector(snapshot);
+  renderWorkspaceSuggestions();
+  renderDebugPanel();
   dom.brief.classList.toggle('hidden', state.view !== 'brief');
   dom.graph.classList.toggle('hidden', state.view !== 'graph');
   dom.table.classList.toggle('hidden', state.view !== 'table');
