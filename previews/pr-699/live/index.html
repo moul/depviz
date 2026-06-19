@@ -72,11 +72,30 @@
           <h3>Graph Views</h3>
           <div id="boardList" class="boardList"></div>
         </div>
+        <div class="manageSection">
+          <h3>GitHub Presets</h3>
+          <div class="presetActions">
+            <button id="loadGitHubPresetsBtn" type="button">Load repos</button>
+          </div>
+          <div id="githubPresetList" class="presetList"></div>
+        </div>
         <form id="createBoardForm" class="manageSection createBoardForm">
-          <h3>New View</h3>
+          <h3>Empty View</h3>
           <input id="newBoardName" type="text" autocomplete="off" placeholder="Name" aria-label="New view name">
           <input id="newBoardDescription" type="text" autocomplete="off" placeholder="Description" aria-label="New view description">
           <button type="submit">Create</button>
+        </form>
+        <form id="addBoardItemForm" class="manageSection createBoardForm">
+          <h3>Add Item</h3>
+          <select id="newItemKind" aria-label="New item kind">
+            <option value="auto">Auto</option>
+            <option value="github">GitHub issue/PR</option>
+            <option value="task">Task</option>
+            <option value="note">Note</option>
+          </select>
+          <input id="newItemRef" type="text" autocomplete="off" placeholder="GitHub URL, owner/repo#123, or text" aria-label="New item reference">
+          <input id="newItemTitle" type="text" autocomplete="off" placeholder="Optional title" aria-label="New item title">
+          <button type="submit">Add</button>
         </form>
       </div>
 

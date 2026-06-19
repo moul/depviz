@@ -29,9 +29,15 @@ const dom = {
   settings: document.getElementById('settingsBtn'),
   managePanel: document.getElementById('managePanel'),
   boardList: document.getElementById('boardList'),
+  loadGitHubPresets: document.getElementById('loadGitHubPresetsBtn'),
+  githubPresetList: document.getElementById('githubPresetList'),
   createBoardForm: document.getElementById('createBoardForm'),
   newBoardName: document.getElementById('newBoardName'),
   newBoardDescription: document.getElementById('newBoardDescription'),
+  addBoardItemForm: document.getElementById('addBoardItemForm'),
+  newItemKind: document.getElementById('newItemKind'),
+  newItemRef: document.getElementById('newItemRef'),
+  newItemTitle: document.getElementById('newItemTitle'),
   connectGithub: document.getElementById('connectGithubBtn'),
   pasteGithubToken: document.getElementById('pasteGithubTokenBtn'),
   forgetGithubToken: document.getElementById('forgetGithubTokenBtn'),
@@ -55,6 +61,7 @@ const state = {
   manageOpen: false,
   currentBoardID: 'default',
   boards: [],
+  githubPresets: { repos: [], orgs: [], loaded: false },
   selectedEdgeID: '',
   graphZoom: 1,
   graphLayout: { width: 900, height: 620 },
@@ -133,8 +140,11 @@ function wireEvents() {
   dom.backendGithubLogin.addEventListener('click', signInWithBackendGitHub);
   dom.backendLogout.addEventListener('click', signOutBackend);
   dom.settings.addEventListener('click', toggleManagePanel);
+  dom.loadGitHubPresets.addEventListener('click', loadGitHubPresets);
   dom.createBoardForm.addEventListener('submit', createBoard);
+  dom.addBoardItemForm.addEventListener('submit', addBoardItem);
   dom.boardList.addEventListener('click', handleBoardListClick);
+  dom.githubPresetList.addEventListener('click', handlePresetClick);
   dom.pasteGithubToken.addEventListener('click', pasteGitHubToken);
   dom.forgetGithubToken.addEventListener('click', forgetGitHubToken);
   dom.githubToken.addEventListener('input', () => {
@@ -275,23 +285,60 @@ async function createBoard(event) {
     return;
   }
   try {
-    const res = await fetch('./api/boards', {
+    await createBoardFromPreset({ name, description, preset: 'empty' });
+    dom.newBoardName.value = '';
+    dom.newBoardDescription.value = '';
+  } catch (err) {
+    dom.status.textContent = 'view create failed';
+    dom.error.textContent = err.message;
+  }
+}
+
+async function createBoardFromPreset(input) {
+  const res = await fetch('./api/boards', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  const payload = await res.json();
+  const board = normalizeBoard(payload.board || {});
+  state.currentBoardID = board.id || state.currentBoardID;
+  await refreshBoards();
+  await loadBackendBoard();
+  dom.status.textContent = 'view created';
+  return board;
+}
+
+async function addBoardItem(event) {
+  event.preventDefault();
+  const ref = dom.newItemRef.value.trim();
+  const title = dom.newItemTitle.value.trim();
+  if (!ref && !title) {
+    dom.status.textContent = 'item text required';
+    dom.newItemRef.focus();
+    return;
+  }
+  try {
+    const res = await fetch('./api/board-items', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify({
+        board_id: state.currentBoardID || 'default',
+        kind: dom.newItemKind.value,
+        ref,
+        title,
+      }),
     });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    const payload = await res.json();
-    const board = normalizeBoard(payload.board || {});
-    state.currentBoardID = board.id || state.currentBoardID;
-    dom.newBoardName.value = '';
-    dom.newBoardDescription.value = '';
-    await refreshBoards();
+    dom.newItemRef.value = '';
+    dom.newItemTitle.value = '';
     await loadBackendBoard();
-    dom.status.textContent = 'view created';
+    dom.status.textContent = 'item added';
   } catch (err) {
-    dom.status.textContent = 'view create failed';
+    dom.status.textContent = 'item add failed';
     dom.error.textContent = err.message;
   }
 }
@@ -302,6 +349,80 @@ function handleBoardListClick(event) {
   state.currentBoardID = btn.dataset.boardId || 'default';
   renderManagePanel();
   loadBackendBoard();
+}
+
+async function loadGitHubPresets() {
+  dom.status.textContent = 'loading github presets';
+  dom.githubPresetList.innerHTML = '<div class="emptyState">Loading GitHub repositories and orgs...</div>';
+  try {
+    const [reposRes, orgsRes] = await Promise.all([
+      fetch('./api/github/repos', { credentials: 'same-origin' }),
+      fetch('./api/github/orgs', { credentials: 'same-origin' }),
+    ]);
+    if (!reposRes.ok) throw new Error(`repos ${reposRes.status}`);
+    if (!orgsRes.ok) throw new Error(`orgs ${orgsRes.status}`);
+    const reposPayload = await reposRes.json();
+    const orgsPayload = await orgsRes.json();
+    state.githubPresets = {
+      repos: Array.isArray(reposPayload.repos) ? reposPayload.repos : [],
+      orgs: Array.isArray(orgsPayload.orgs) ? orgsPayload.orgs : [],
+      loaded: true,
+    };
+    renderGitHubPresets();
+    dom.status.textContent = 'github presets loaded';
+  } catch (err) {
+    dom.githubPresetList.innerHTML = `<div class="emptyState">Could not load GitHub presets: ${esc(err.message)}</div>`;
+    dom.status.textContent = 'github presets failed';
+  }
+}
+
+function renderGitHubPresets() {
+  const repos = state.githubPresets.repos.slice(0, 24);
+  const orgs = state.githubPresets.orgs.slice(0, 24);
+  if (!repos.length && !orgs.length) {
+    dom.githubPresetList.innerHTML = '<div class="emptyState">No repos or orgs visible to this account yet</div>';
+    return;
+  }
+  const repoItems = repos.map((repo) => presetButton({
+    type: 'repo',
+    id: repo.full_name || repo.FullName || '',
+    label: repo.full_name || repo.FullName || repo.name || repo.Name || 'repo',
+    meta: repo.private ? 'private repo' : 'repo',
+  })).join('');
+  const orgItems = orgs.map((org) => presetButton({
+    type: 'org',
+    id: org.login || org.Login || '',
+    label: org.login || org.Login || 'org',
+    meta: 'org',
+  })).join('');
+  dom.githubPresetList.innerHTML = `${repoItems}${orgItems}`;
+}
+
+function presetButton(item) {
+  return `<button type="button" data-preset-type="${esc(item.type)}" data-preset-id="${esc(item.id)}">
+    <strong>${esc(item.label)}</strong>
+    <span>${esc(item.meta)}</span>
+  </button>`;
+}
+
+function handlePresetClick(event) {
+  const btn = event.target.closest('[data-preset-type]');
+  if (!btn) return;
+  const type = btn.dataset.presetType;
+  const id = btn.dataset.presetId;
+  if (!id) return;
+  const name = type === 'repo' ? id : `${id} org`;
+  createBoardFromPreset({
+    name,
+    description: type === 'repo' ? `GitHub repo ${id}` : `GitHub org ${id}`,
+    preset: type,
+    provider: 'github',
+    owner: type === 'org' ? id : id.split('/')[0],
+    repo: type === 'repo' ? id : '',
+  }).catch((err) => {
+    dom.status.textContent = 'preset view failed';
+    dom.error.textContent = err.message;
+  });
 }
 
 function renderManagePanel() {
@@ -318,6 +439,7 @@ function renderManagePanel() {
       ${description}
     </button>`;
   }).join('');
+  if (state.githubPresets.loaded) renderGitHubPresets();
 }
 
 function persistGitHubToken() {

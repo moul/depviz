@@ -190,19 +190,41 @@ button:disabled {
   gap: 8px;
 }
 
+.presetActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.presetList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+
 .boardList button {
   display: grid;
   gap: 3px;
   text-align: left;
 }
 
+.presetList button {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
 .boardList button span,
+.presetList button span,
 .emptyState {
   color: var(--muted);
   font-size: 12px;
 }
 
-.createBoardForm input {
+.createBoardForm input,
+.createBoardForm select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 6px;
