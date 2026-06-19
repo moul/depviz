@@ -45,7 +45,7 @@ const state = {
   showClosed: true,
   githubRefresh: [],
   githubFailures: [],
-  backendSession: { available: false, authenticated: false, github_oauth_configured: false },
+  backendSession: { available: false, authenticated: false, github_oauth_configured: false, github_app_configured: false },
   selectedEdgeID: '',
   graphZoom: 1,
   graphLayout: { width: 900, height: 620 },
@@ -184,6 +184,7 @@ async function setMode(mode, options = {}) {
   document.querySelectorAll('.statelessOnly').forEach((item) => {
     item.classList.toggle('hidden', next !== 'stateless');
   });
+  refreshBackendAuthUI();
   if (next === 'stateful') {
     await loadBackendBoard();
     return;
@@ -245,7 +246,7 @@ async function refreshBackendSession() {
     if (!res.ok) throw new Error(String(res.status));
     state.backendSession = { available: true, ...await res.json() };
   } catch {
-    state.backendSession = { available: false, authenticated: false, github_oauth_configured: false };
+    state.backendSession = { available: false, authenticated: false, github_oauth_configured: false, github_app_configured: false };
   }
   refreshBackendAuthUI();
   document.querySelector('[data-mode="stateful"]').disabled = !state.backendSession.available;
@@ -256,15 +257,16 @@ function refreshBackendAuthUI() {
   dom.backendGithubLogin.classList.toggle('hidden', !session.available || session.authenticated || !session.github_oauth_configured);
   dom.backendLogout.classList.toggle('hidden', !session.available || !session.authenticated);
   dom.backendAuthState.classList.toggle('hidden', !session.available);
+  const provider = session.github_app_configured ? 'GitHub App' : 'DepViz';
   if (!session.available) {
     dom.backendAuthState.textContent = '';
     return;
   }
   if (session.authenticated && session.account) {
-    dom.backendAuthState.textContent = `DepViz: @${session.account.login || 'account'}`;
+    dom.backendAuthState.textContent = `${provider}: @${session.account.login || 'account'}`;
     return;
   }
-  dom.backendAuthState.textContent = session.github_oauth_configured ? 'DepViz: signed out' : 'DepViz: local';
+  dom.backendAuthState.textContent = session.github_oauth_configured ? `${provider}: signed out` : 'DepViz: local';
 }
 
 function signInWithBackendGitHub() {

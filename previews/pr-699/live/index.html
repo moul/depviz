@@ -21,11 +21,11 @@
         <button id="backendGithubLoginBtn" type="button">Sign in</button>
         <button id="backendLogoutBtn" type="button">Sign out</button>
         <span id="backendAuthState" class="tokenState">DepViz: local</span>
-        <button id="connectGithubBtn" type="button">Connect GitHub</button>
-        <button id="pasteGithubTokenBtn" type="button">Use copied token</button>
-        <input id="githubTokenInput" type="password" autocomplete="off" spellcheck="false" placeholder="token fallback" aria-label="GitHub token">
-        <button id="forgetGithubTokenBtn" type="button">Forget</button>
-        <span id="githubAuthState" class="tokenState">GitHub: public</span>
+        <button id="connectGithubBtn" class="statelessOnly" type="button">Connect GitHub</button>
+        <button id="pasteGithubTokenBtn" class="statelessOnly" type="button">Use copied token</button>
+        <input id="githubTokenInput" class="statelessOnly" type="password" autocomplete="off" spellcheck="false" placeholder="token fallback" aria-label="GitHub token">
+        <button id="forgetGithubTokenBtn" class="statelessOnly" type="button">Forget</button>
+        <span id="githubAuthState" class="tokenState statelessOnly">GitHub: public</span>
       </div>
       <button id="hydrateGithubBtn" class="statelessOnly" type="button">Refresh GitHub</button>
       <button id="sampleBtn" class="statelessOnly" type="button">Load sample</button>
