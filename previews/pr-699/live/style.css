@@ -346,9 +346,64 @@ button:disabled {
 
 .boardList button {
   display: grid;
-  gap: 3px;
+  gap: 5px;
   text-align: left;
-  min-height: 58px;
+  min-height: 76px;
+}
+
+.boardListTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.boardListTitle strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boardMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.boardMetrics span,
+.freshnessBadge {
+  width: max-content;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  padding: 1px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.freshnessBadge {
+  flex: 0 0 auto;
+}
+
+.freshnessFresh {
+  border-color: rgba(21, 128, 61, 0.28);
+  background: rgba(21, 128, 61, 0.08);
+  color: var(--green);
+}
+
+.freshnessRecent {
+  border-color: rgba(180, 83, 9, 0.28);
+  background: rgba(180, 83, 9, 0.08);
+  color: var(--amber);
+}
+
+.freshnessStale {
+  border-color: rgba(185, 28, 28, 0.24);
+  background: rgba(185, 28, 28, 0.07);
+  color: var(--red);
 }
 
 .presetList button,

@@ -538,10 +538,19 @@ function renderManagePanel() {
   } else {
     dom.boardList.innerHTML = state.boards.map((board) => {
       const active = board.id === state.currentBoardID;
-      const description = board.description ? `<span>${esc(board.description)}</span>` : '<span>No description</span>';
+      const metrics = board.metrics || {};
+      const description = board.description ? `<span>${esc(board.description)}</span>` : `<span>${esc(board.scope_query || 'local view')}</span>`;
       return `<button class="${active ? 'active' : ''}" type="button" data-board-id="${esc(board.id)}">
-        <strong>${esc(board.name || board.id)}</strong>
+        <span class="boardListTitle">
+          <strong>${esc(board.name || board.id)}</strong>
+          <span class="freshnessBadge ${freshnessClass(metrics.last_activity_at || board.updated_at)}">${esc(freshnessLabel(metrics.last_activity_at || board.updated_at))}</span>
+        </span>
         ${description}
+        <span class="boardMetrics">
+          <span>${esc(metrics.items || 0)} items</span>
+          <span>${esc(metrics.links || 0)} links</span>
+          <span>${esc(metrics.open || 0)} open</span>
+        </span>
       </button>`;
     }).join('');
   }
@@ -609,6 +618,33 @@ function renderWorkspaceSuggestions() {
 function capitalize(value) {
   value = String(value || '');
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function freshnessLabel(value) {
+  const age = ageMs(value);
+  if (!Number.isFinite(age)) return 'unknown';
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (age < hour) return 'fresh';
+  if (age < day) return `${Math.max(1, Math.floor(age / hour))}h`;
+  if (age < 14 * day) return `${Math.max(1, Math.floor(age / day))}d`;
+  return 'stale';
+}
+
+function freshnessClass(value) {
+  const age = ageMs(value);
+  if (!Number.isFinite(age)) return 'freshnessUnknown';
+  const day = 24 * 60 * 60 * 1000;
+  if (age < day) return 'freshnessFresh';
+  if (age < 7 * day) return 'freshnessRecent';
+  return 'freshnessStale';
+}
+
+function ageMs(value) {
+  const parsed = Date.parse(value || '');
+  if (!Number.isFinite(parsed)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, Date.now() - parsed);
 }
 
 function persistGitHubToken() {
@@ -1495,6 +1531,19 @@ function normalizeBoard(board) {
     parent_board_id: board.parent_board_id || board.ParentBoardID || '',
     config_json: board.config_json || board.ConfigJSON || '{}',
     updated_at: board.updated_at || board.UpdatedAt || '',
+    metrics: normalizeBoardMetrics(board.metrics || board.Metrics || {}),
+  };
+}
+
+function normalizeBoardMetrics(metrics) {
+  return {
+    items: Number(metrics.items || metrics.Items || 0),
+    links: Number(metrics.links || metrics.Links || 0),
+    open: Number(metrics.open || metrics.Open || 0),
+    closed: Number(metrics.closed || metrics.Closed || 0),
+    local: Number(metrics.local || metrics.Local || 0),
+    external: Number(metrics.external || metrics.External || 0),
+    last_activity_at: metrics.last_activity_at || metrics.LastActivityAt || '',
   };
 }
 
