@@ -492,6 +492,34 @@ button:disabled {
   display: none;
 }
 
+.draftGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.draftGroup summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 30px;
+  border: 1px dashed var(--line);
+  border-radius: 7px;
+  background: #f8fafc;
+  color: var(--muted);
+  padding: 5px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.draftGroup summary strong {
+  border-radius: 999px;
+  background: #e5eaf2;
+  color: #344054;
+  padding: 1px 7px;
+  font-size: 10px;
+}
+
 .boardMetrics {
   display: flex;
   flex-wrap: wrap;
@@ -1060,20 +1088,21 @@ textarea::selection {
 
 .suggestionBox {
   border: 1px solid #fed7aa;
-  border-radius: 6px;
+  border-radius: 7px;
   background: #fff7ed;
-  padding: 7px;
+  padding: 7px 8px;
 }
 
 .suggestionHead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 6px;
+  margin-bottom: 7px;
 }
 
 .suggestionHead strong {
+  display: block;
   font-size: 14px;
 }
 
@@ -1086,18 +1115,18 @@ textarea::selection {
 
 .suggestionList {
   display: grid;
-  gap: 7px;
+  gap: 5px;
 }
 
 .suggestionRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   border: 1px solid #fed7aa;
   border-radius: 5px;
   background: #ffffff;
-  padding: 6px;
+  padding: 5px 6px;
 }
 
 .suggestionRow.selectedSuggestion {
@@ -1141,6 +1170,11 @@ textarea::selection {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.suggestionActions button {
+  min-height: 26px;
+  padding: 3px 7px;
 }
 
 .suggestionBadge {
@@ -1307,9 +1341,39 @@ textarea::selection {
   transform-origin: 0 0;
 }
 
+.graphColumnHeader {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 204px;
+  min-height: 34px;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  background: #f8fafc;
+  padding: 6px 8px;
+  box-shadow: 0 1px 1px rgba(16, 24, 40, 0.04);
+  pointer-events: none;
+}
+
+.graphColumnHeader strong {
+  color: #111827;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.graphColumnHeader span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .edgeLayer {
   position: absolute;
   inset: 0;
+  z-index: 1;
   overflow: visible;
   pointer-events: auto;
 }
@@ -1349,13 +1413,22 @@ textarea::selection {
 
 .nodeCard {
   position: absolute;
+  z-index: 2;
   width: 204px;
-  min-height: 68px;
+  min-height: 92px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 7px;
   background: #ffffff;
-  padding: 7px;
-  box-shadow: 0 1px 5px rgba(16, 24, 40, 0.08);
+  padding: 7px 8px;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.10);
+  cursor: pointer;
+}
+
+.nodeCard:hover,
+.nodeCard.selectedNode,
+.nodeCard.selectedEndpoint {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15), 0 8px 22px rgba(16, 24, 40, 0.14);
 }
 
 .nodeCard.note {
@@ -1424,17 +1497,49 @@ tr.ci-success td:first-child {
 
 .nodeId {
   color: var(--muted);
-  font-size: 12px;
-  margin-bottom: 4px;
+  font-size: 10px;
+  margin-top: 5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.nodeTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.nodeKind,
+.nodeRef {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.nodeKind {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.nodeRef {
+  background: #f3f4f6;
+  color: #475467;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
 .nodeTitle {
   font-weight: 650;
+  line-height: 1.25;
   overflow-wrap: anywhere;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .nodeCard.closed .nodeId,
@@ -1444,6 +1549,7 @@ tr.ci-success td:first-child {
   white-space: nowrap;
 }
 
+.nodeCard.closed .nodeTop,
 .nodeCard.closed .nodeId {
   display: none;
 }

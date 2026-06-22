@@ -568,7 +568,20 @@ function renderManagePanel() {
   if (!state.boards.length) {
     dom.boardList.innerHTML = '<div class="emptyState">No saved views yet</div>';
   } else {
-    dom.boardList.innerHTML = state.boards.map((board) => {
+    const usefulBoards = state.boards.filter((board) => !isDraftBoard(board) || board.id === state.currentBoardID);
+    const draftBoards = state.boards.filter((board) => isDraftBoard(board) && board.id !== state.currentBoardID);
+    const boardButtons = usefulBoards.map(renderBoardListButton).join('');
+    const draftList = draftBoards.length
+      ? `<details class="draftGroup"><summary>Draft views <strong>${draftBoards.length}</strong></summary>${draftBoards.map(renderBoardListButton).join('')}</details>`
+      : '';
+    dom.boardList.innerHTML = boardButtons + draftList;
+  }
+  if (state.githubPresets.loaded) renderGitHubPresets();
+  renderDebugPanel();
+  renderWorkspaceSuggestions();
+}
+
+function renderBoardListButton(board) {
       const active = board.id === state.currentBoardID;
       const metrics = board.metrics || {};
       const draft = isDraftBoard(board);
@@ -587,11 +600,6 @@ function renderManagePanel() {
           <span><strong>${esc(metrics.open || 0)}</strong> open</span>
         </span>
       </button>`;
-    }).join('');
-  }
-  if (state.githubPresets.loaded) renderGitHubPresets();
-  renderDebugPanel();
-  renderWorkspaceSuggestions();
 }
 
 function renderWorkspaceTabs() {
@@ -1913,6 +1921,7 @@ function renderGraph(snapshot, nodes) {
   const positions = layout.positions;
   let html = `<div class="graphScale" style="width:${Math.ceil(layout.width * zoom)}px;min-height:${Math.ceil(layout.height * zoom)}px">
   <div class="graphInner" style="width:${layout.width}px;min-height:${layout.height}px;transform:scale(${zoom})">
+    ${graphColumnHeaders(layout)}
     <svg class="edgeLayer" width="${layout.width}" height="${layout.height}" aria-hidden="true">
       <defs>
         <marker id="arrowHard" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#667085"></path></marker>
@@ -1938,15 +1947,25 @@ function renderGraph(snapshot, nodes) {
     const pos = positions.get(node.id);
     const klass = ['nodeCard', ...nodeCardClasses(node), selectedEndpoints.has(node.id) ? 'selectedEndpoint' : '', node.id === state.selectedNodeID ? 'selectedNode' : '', isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
+    const ref = nodeReferenceLabel(node);
+    const kind = nodeKindLabel(node);
     html += `<article class="${klass}" data-node-id="${esc(node.id)}" style="transform:translate(${pos.x}px, ${pos.y}px)">
-      <div class="nodeId">${id}</div>
+      <div class="nodeTop"><span class="nodeKind">${esc(kind)}</span><span class="nodeRef">${esc(ref)}</span></div>
       <div class="nodeTitle">${esc(node.title)}</div>
+      <div class="nodeId">${id}</div>
       ${badgesHTML(nodeBadges(node))}
     </article>`;
   }
   html += '</div></div>';
   dom.graphCanvas.innerHTML = html;
   dom.graphZoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+}
+
+function graphColumnHeaders(layout) {
+  return (layout.columns || []).map((column) => `<div class="graphColumnHeader" style="transform:translate(${column.x}px, ${column.y}px)">
+    <strong>${esc(column.title)}</strong>
+    <span>${esc(column.count)} item${column.count === 1 ? '' : 's'}</span>
+  </div>`).join('');
 }
 
 function handleGraphControlClick(event) {
@@ -2032,11 +2051,11 @@ function handleGraphClick(event) {
 
 function graphLayout(snapshot, nodes) {
   const cardWidth = 204;
-  const cardHeight = 88;
+  const cardHeight = 104;
   const xGap = 246;
   const yGap = 104;
   const padX = 26;
-  const padY = 30;
+  const padY = 72;
   const visible = new Set(nodes.map((node) => node.id));
   const layoutEdges = graphLayoutEdges(snapshot, visible);
   const connected = new Set(layoutEdges.flatMap((edge) => [edge.from, edge.to]));
@@ -2046,7 +2065,9 @@ function graphLayout(snapshot, nodes) {
 
   if (connectedNodes.length === 0) {
     placeNodeGrid(isolatedNodes, positions, { x: padX, y: padY, cols: graphGridColumns(isolatedNodes.length), xGap, yGap });
-    return graphLayoutSize(positions, cardWidth, cardHeight, padX, padY);
+    const layout = graphLayoutSize(positions, cardWidth, cardHeight, padX, padY);
+    layout.columns = [{ x: padX, y: 24, title: 'Unlinked work', count: isolatedNodes.length }];
+    return layout;
   }
 
   const ranks = graphRanks(connectedNodes, layoutEdges);
@@ -2057,18 +2078,31 @@ function graphLayout(snapshot, nodes) {
     columns.get(rank).push(node);
   }
   const orderedRanks = Array.from(columns.keys()).sort((a, b) => a - b);
+  const columnMeta = [];
   for (const [index, rank] of orderedRanks.entries()) {
     const column = columns.get(rank).sort((a, b) => graphDegree(layoutEdges, b.id) - graphDegree(layoutEdges, a.id) || graphNodeSort(a, b));
-    placeNodeGrid(column, positions, { x: padX + index * xGap, y: padY, cols: 1, xGap, yGap });
+    const x = padX + index * xGap;
+    placeNodeGrid(column, positions, { x, y: padY, cols: 1, xGap, yGap });
+    columnMeta.push({ x, y: 24, title: graphRankTitle(index, orderedRanks.length), count: column.length });
   }
 
   if (isolatedNodes.length > 0) {
     const isolatedCols = graphGridColumns(isolatedNodes.length);
     const isolatedX = padX + orderedRanks.length * xGap + 38;
     placeNodeGrid(isolatedNodes, positions, { x: isolatedX, y: padY, cols: isolatedCols, xGap: 236, yGap: 102 });
+    columnMeta.push({ x: isolatedX, y: 24, title: 'Unlinked', count: isolatedNodes.length });
   }
 
-  return graphLayoutSize(positions, cardWidth, cardHeight, padX, padY);
+  const layout = graphLayoutSize(positions, cardWidth, cardHeight, padX, padY);
+  layout.columns = columnMeta;
+  return layout;
+}
+
+function graphRankTitle(index, total) {
+  if (total <= 1) return 'Connected work';
+  if (index === 0) return 'Upstream';
+  if (index === total - 1) return 'Downstream';
+  return `Layer ${index + 1}`;
 }
 
 function graphLayoutEdges(snapshot, visible) {
@@ -2159,7 +2193,7 @@ function graphNodeSort(a, b) {
 
 function graphEdgeLine(from, to) {
   const cardWidth = 204;
-  const centerY = 39;
+  const centerY = 50;
   if (from.x === to.x) {
     return { x1: from.x + cardWidth / 2, y1: from.y + centerY, x2: to.x + cardWidth / 2, y2: to.y + centerY };
   }
@@ -2210,12 +2244,16 @@ function renderSuggestions(snapshot) {
     dom.suggestions.innerHTML = '';
     return;
   }
-  const rows = suggestions.slice(0, 8).map((edge) => renderSuggestion(edge, nodes)).join('');
-  const more = suggestions.length > 8 ? `<div class="suggestionMore">${suggestions.length - 8} more hidden by the compact panel</div>` : '';
+  const limit = state.view === 'graph' ? 3 : 8;
+  const rows = suggestions.slice(0, limit).map((edge) => renderSuggestion(edge, nodes)).join('');
+  const more = suggestions.length > limit ? `<div class="suggestionMore">${suggestions.length - limit} more in Links</div>` : '';
   dom.suggestions.innerHTML = `<section class="suggestionBox" aria-label="Suggested relations">
     <div class="suggestionHead">
-      <strong>Suggested relations</strong>
-      <span>${suggestions.length} soft edge${suggestions.length === 1 ? '' : 's'} from GitHub or low-confidence sources</span>
+      <div>
+        <strong>Suggested relations</strong>
+        <span>${suggestions.length} soft edge${suggestions.length === 1 ? '' : 's'} from GitHub or low-confidence sources</span>
+      </div>
+      <button type="button" data-suggestion-action="review-all">Review all</button>
     </div>
     <div class="suggestionList">${rows}</div>
     ${more}
@@ -2230,7 +2268,7 @@ function renderSuggestion(edge, nodes) {
   const evidence = evidenceText(edge);
   const kind = relationLabel(edge.kind);
   const confidence = confidenceLabel(edge);
-  return `<article class="suggestionRow ${selected ? 'selectedSuggestion' : ''}">
+  return `<article class="suggestionRow ${selected ? 'selectedSuggestion' : ''}" data-edge-id="${esc(edgeID)}">
     <div class="suggestionMain">
       <div class="suggestionRelation">
         <strong>${esc(shortNodeLabel(from))}</strong>
@@ -2411,6 +2449,11 @@ function handleSuggestionClick(event) {
   if (!button) return;
   const edgeID = button.dataset.edgeId || '';
   const action = button.dataset.suggestionAction;
+  if (action === 'review-all') {
+    setWorkspaceTab('suggestions');
+    dom.status.textContent = 'all suggested relations visible in Links';
+    return;
+  }
   if (action === 'focus') focusSuggestedEdge(edgeID);
   if (action === 'promote') promoteSuggestedEdge(edgeID);
   if (action === 'dismiss') dismissSuggestedEdge(edgeID);
@@ -2774,11 +2817,25 @@ function nodeCardClasses(node) {
   ];
 }
 
+function nodeKindLabel(node) {
+  if (node.kind === 'pr') return 'PR';
+  if (node.kind === 'issue') return 'Issue';
+  if (isLocal(node)) return 'Note';
+  return capitalize(node.kind || 'Task');
+}
+
+function nodeReferenceLabel(node) {
+  const ref = parseGitHubNodeID(node.id);
+  if (ref) return `${ref.marker}${ref.number}`;
+  if (String(node.id || '').startsWith('note:')) return 'local';
+  return String(node.id || '').replace(/^gh:/, '').slice(0, 28);
+}
+
 function nodeBadges(node) {
   const data = nodeData(node);
   const badges = [];
   if (isLocal(node)) {
-    badges.push(badge('type-local', '📝 note'));
+    badges.push(badge('type-local', 'note'));
     return badges;
   }
   badges.push(typeBadge(node));
@@ -2799,9 +2856,9 @@ function plainBadges(item) {
 
 function typeBadge(node) {
   const kind = node.kind || 'task';
-  if (kind === 'pr') return badge('type-pr', '🔀 PR');
-  if (kind === 'issue') return badge('type-issue', '📌 issue');
-  if (kind === 'note') return badge('type-local', '📝 note');
+  if (kind === 'pr') return badge('type-pr', 'PR');
+  if (kind === 'issue') return badge('type-issue', 'issue');
+  if (kind === 'note') return badge('type-local', 'note');
   return badge('type-task', '▣ task');
 }
 
