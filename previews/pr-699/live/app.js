@@ -22,6 +22,7 @@ const dom = {
   graph: document.getElementById('graphView'),
   graphFocus: document.getElementById('graphFocusPanel'),
   graphCanvas: document.getElementById('graphCanvas'),
+  graphDriver: document.getElementById('graphDriverSelect'),
   graphConnectedToggle: document.getElementById('graphConnectedToggle'),
   graphUnlinkedToggle: document.getElementById('graphUnlinkedToggle'),
   table: document.getElementById('tableView'),
@@ -81,6 +82,7 @@ const state = {
   lastSync: null,
   selectedEdgeID: '',
   selectedNodeID: '',
+  graphDriver: 'pairs',
   graphZoom: 1,
   graphLayout: { width: 900, height: 620 },
   showGraphAllConnected: false,
@@ -187,6 +189,10 @@ function wireEvents() {
   dom.graphCanvas.addEventListener('click', handleGraphClick);
   document.getElementById('graphView').addEventListener('click', handleGraphControlClick);
   dom.graphFocus.addEventListener('click', handleGraphFocusClick);
+  dom.graphDriver.addEventListener('change', () => {
+    state.graphDriver = dom.graphDriver.value;
+    render();
+  });
   document.addEventListener('keydown', handleGraphKeydown);
 }
 
@@ -1924,8 +1930,8 @@ function graphVisibleNodeSelection(snapshot, nodes) {
   const connected = new Set(graphLayoutEdges(snapshot, visible).flatMap((edge) => [edge.from, edge.to]));
   const connectedNodes = nodes.filter((node) => connected.has(node.id));
   const unlinkedNodes = nodes.filter((node) => !connected.has(node.id));
-  if (state.showGraphUnlinked) return { nodes, hidden: { connected: 0, unlinked: 0 } };
-  if (state.showGraphAllConnected) return { nodes: connectedNodes.length ? connectedNodes : nodes.slice(0, 24), hidden: { connected: 0, unlinked: unlinkedNodes.length } };
+  if (state.showGraphUnlinked || state.graphDriver === 'backlog') return { nodes, hidden: { connected: 0, unlinked: 0 } };
+  if (state.showGraphAllConnected || state.graphDriver === 'connected') return { nodes: connectedNodes.length ? connectedNodes : nodes.slice(0, 24), hidden: { connected: 0, unlinked: unlinkedNodes.length } };
 
   const overviewIDs = new Set();
   for (const edge of graphFocusEdges(snapshot)) {
@@ -1933,7 +1939,8 @@ function graphVisibleNodeSelection(snapshot, nodes) {
     overviewIDs.add(edge.to_id);
   }
   if (state.selectedNodeID) overviewIDs.add(state.selectedNodeID);
-  for (const edge of graphOverviewEdges(snapshot, visible)) {
+  const edgeLimit = state.graphDriver === 'focus' ? 4 : state.graphDriver === 'pairs' ? 12 : 8;
+  for (const edge of graphOverviewEdges(snapshot, visible).slice(0, edgeLimit)) {
     if (overviewIDs.size >= 14 && !overviewIDs.has(edge.from) && !overviewIDs.has(edge.to)) break;
     overviewIDs.add(edge.from);
     overviewIDs.add(edge.to);
@@ -1969,6 +1976,11 @@ function graphRelationScore(edge, snapshot) {
 }
 
 function renderGraph(snapshot, nodes, hidden = {}) {
+  if (dom.graphDriver && dom.graphDriver.value !== state.graphDriver) dom.graphDriver.value = state.graphDriver;
+  if (state.graphDriver === 'pairs') {
+    renderGraphPairs(snapshot, nodes, hidden);
+    return;
+  }
   const hiddenConnected = Number(hidden.connected || 0);
   const hiddenUnlinked = Number(hidden.unlinked || 0);
   if (dom.graphConnectedToggle) {
@@ -2045,6 +2057,74 @@ function renderGraph(snapshot, nodes, hidden = {}) {
   html += '</div></div>';
   dom.graphCanvas.innerHTML = html;
   dom.graphZoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+}
+
+function renderGraphPairs(snapshot, nodes, hidden = {}) {
+  if (dom.graphConnectedToggle) {
+    dom.graphConnectedToggle.textContent = hidden.connected ? `Show more connected (${hidden.connected})` : 'Connected shown';
+    dom.graphConnectedToggle.classList.remove('active');
+    dom.graphConnectedToggle.disabled = !hidden.connected;
+  }
+  if (dom.graphUnlinkedToggle) {
+    dom.graphUnlinkedToggle.textContent = hidden.unlinked ? `Show unlinked (${hidden.unlinked})` : 'Backlog hidden';
+    dom.graphUnlinkedToggle.classList.toggle('active', state.showGraphUnlinked);
+    dom.graphUnlinkedToggle.disabled = !hidden.unlinked && !state.showGraphUnlinked;
+  }
+  state.graphLayout = { width: 900, height: 620 };
+  dom.graphZoomLabel.textContent = 'pairs';
+  const visible = new Set(nodes.map((node) => node.id));
+  const nodesByID = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const pairs = graphPairEdges(snapshot, visible);
+  const hiddenConnected = Number(hidden.connected || 0);
+  const hiddenUnlinked = Number(hidden.unlinked || 0);
+  const hiddenSummary = hiddenConnected > 0 || hiddenUnlinked > 0
+    ? `<div class="graphHiddenSummary">
+        ${hiddenConnected > 0 ? `<span><strong>${hiddenConnected}</strong> connected items hidden</span> <button type="button" data-graph-action="toggle-connected">Show connected</button>` : ''}
+        ${hiddenUnlinked > 0 ? `<span><strong>${hiddenUnlinked}</strong> unlinked items hidden</span> <button type="button" data-graph-action="toggle-unlinked">Show backlog</button>` : ''}
+      </div>`
+    : '';
+  if (!pairs.length) {
+    dom.graphCanvas.innerHTML = `${hiddenSummary}<div class="graphEmpty">No visible relations for this driver.</div>`;
+    return;
+  }
+  dom.graphCanvas.innerHTML = `${hiddenSummary}<div class="graphPairs">
+    ${pairs.map((edge) => {
+      const from = nodesByID.get(edge.from_id) || placeholderNode(edge.from_id);
+      const to = nodesByID.get(edge.to_id) || placeholderNode(edge.to_id);
+      const selected = edgeSelectionID(edge) === state.selectedEdgeID;
+      return `<article class="graphPair ${selected ? 'selectedPair' : ''}" data-edge-id="${esc(edgeSelectionID(edge))}">
+        ${renderGraphPairNode(from, 'From')}
+        <div class="graphPairRelation">
+          <strong>${esc(relationLabel(edge.kind))}</strong>
+          <span>${esc(confidenceLabel(edge))} · ${esc(edge.authority || 'local')}</span>
+        </div>
+        ${renderGraphPairNode(to, 'To')}
+      </article>`;
+    }).join('')}
+  </div>`;
+}
+
+function graphPairEdges(snapshot, visible) {
+  return (snapshot.edges || [])
+    .filter((edge) => visible.has(edge.from_id) && visible.has(edge.to_id))
+    .sort((a, b) => graphRawEdgeScore(b) - graphRawEdgeScore(a) || String(a.from_id).localeCompare(String(b.from_id)))
+    .slice(0, state.showGraphAllConnected ? 50 : 12);
+}
+
+function graphRawEdgeScore(edge) {
+  let score = Number(edge.confidence || 1) * 10;
+  if (!isSoftEdge(edge)) score += 10;
+  if (!isNonBlockingEdgeKind(String(edge.kind || '').toLowerCase())) score += 6;
+  if (state.selectedNodeID && (edge.from_id === state.selectedNodeID || edge.to_id === state.selectedNodeID)) score += 20;
+  return score;
+}
+
+function renderGraphPairNode(node, label) {
+  return `<button type="button" class="graphPairNode" data-node-id="${esc(node.id)}">
+    <span>${esc(label)} · ${esc(nodeKindLabel(node))} ${esc(nodeReferenceLabel(node))}</span>
+    <strong>${esc(node.title || node.id)}</strong>
+    <div>${badgesHTML(nodeBadges(node).slice(0, 3))}</div>
+  </button>`;
 }
 
 function graphColumnHeaders(layout) {
@@ -2213,6 +2293,12 @@ function graphZoom(value = state.graphZoom) {
 }
 
 function handleGraphClick(event) {
+  const nodeTarget = event.target.closest?.('[data-node-id]');
+  if (nodeTarget && dom.graphCanvas.contains(nodeTarget)) {
+    selectNode(nodeTarget.dataset.nodeId || '');
+    requestAnimationFrame(scrollSelectedNodeIntoView);
+    return;
+  }
   const edgeTarget = event.target.closest?.('[data-edge-id]');
   if (edgeTarget && dom.graphCanvas.contains(edgeTarget)) {
     const edgeID = edgeTarget.dataset.edgeId || '';
@@ -2223,10 +2309,6 @@ function handleGraphClick(event) {
     dom.status.textContent = 'edge selected';
     return;
   }
-  const nodeTarget = event.target.closest?.('[data-node-id]');
-  if (!nodeTarget || !dom.graphCanvas.contains(nodeTarget)) return;
-  selectNode(nodeTarget.dataset.nodeId || '');
-  requestAnimationFrame(scrollSelectedNodeIntoView);
 }
 
 function graphLayout(snapshot, nodes) {

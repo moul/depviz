@@ -191,6 +191,13 @@
             <div id="briefView" class="view"></div>
             <div id="graphView" class="view hidden">
               <div class="graphToolbar" aria-label="Graph controls">
+                <select id="graphDriverSelect" aria-label="Graph driver">
+                  <option value="pairs">Relation pairs</option>
+                  <option value="overview">Overview columns</option>
+                  <option value="focus">Focus neighborhood</option>
+                  <option value="connected">All connected</option>
+                  <option value="backlog">Backlog map</option>
+                </select>
                 <button type="button" data-graph-action="fit">Fit</button>
                 <button type="button" id="graphConnectedToggle" data-graph-action="toggle-connected">Show more connected</button>
                 <button type="button" id="graphUnlinkedToggle" data-graph-action="toggle-unlinked">Show unlinked</button>
