@@ -108,6 +108,7 @@ async function boot() {
   refreshGitHubAuthUI();
   wireEvents();
   setView(readURLView(), { persist: false, renderNow: false });
+  state.currentBoardID = readURLBoard() || state.currentBoardID;
   const hashed = readHash();
   if (hashed) {
     setMode('stateless', { renderNow: false });
@@ -281,9 +282,10 @@ async function refreshBoards() {
   const res = await fetch('./api/boards', { credentials: 'same-origin' });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   const payload = await res.json();
-  state.boards = Array.isArray(payload.boards) ? payload.boards.map(normalizeBoard) : [];
+  state.boards = sortBoards(Array.isArray(payload.boards) ? payload.boards.map(normalizeBoard) : []);
   if (!state.boards.some((board) => board.id === state.currentBoardID)) {
-    state.currentBoardID = state.boards[0]?.id || 'default';
+    state.currentBoardID = preferredBoardID(state.boards);
+    writeURLBoard(state.currentBoardID);
   }
   renderManagePanel();
 }
@@ -332,6 +334,7 @@ async function createBoardFromPreset(input) {
   const payload = await res.json();
   const board = normalizeBoard(payload.board || {});
   state.currentBoardID = board.id || state.currentBoardID;
+  writeURLBoard(state.currentBoardID);
   await refreshBoards();
   if (['repo', 'org', 'my-work'].includes(input.preset)) {
     try {
@@ -415,6 +418,7 @@ function handleBoardListClick(event) {
   const btn = event.target.closest('[data-board-id]');
   if (!btn) return;
   state.currentBoardID = btn.dataset.boardId || 'default';
+  writeURLBoard(state.currentBoardID);
   renderManagePanel();
   loadBackendBoard();
 }
@@ -556,8 +560,9 @@ function renderManagePanel() {
     dom.boardList.innerHTML = state.boards.map((board) => {
       const active = board.id === state.currentBoardID;
       const metrics = board.metrics || {};
+      const draft = isDraftBoard(board);
       const description = board.description ? `<span>${esc(board.description)}</span>` : `<span>${esc(board.scope_query || 'local view')}</span>`;
-      return `<button class="${active ? 'active' : ''}" type="button" data-board-id="${esc(board.id)}">
+      return `<button class="${[active ? 'active' : '', draft ? 'draftBoard' : ''].filter(Boolean).join(' ')}" type="button" data-board-id="${esc(board.id)}">
         <span class="boardListTitle">
           <strong>${esc(board.name || board.id)}</strong>
           <span class="freshnessBadge ${syncClass(metrics)}">${esc(syncLabel(metrics))}</span>
@@ -669,6 +674,7 @@ function freshnessClass(value) {
 }
 
 function syncLabel(metrics = {}) {
+  if (Number(metrics.items || 0) === 0) return 'draft';
   const status = String(metrics.sync_status || '').toLowerCase();
   if (status === 'running') return 'syncing';
   if (status === 'failed') return 'sync failed';
@@ -678,11 +684,37 @@ function syncLabel(metrics = {}) {
 }
 
 function syncClass(metrics = {}) {
+  if (Number(metrics.items || 0) === 0) return 'freshnessDraft';
   const status = String(metrics.sync_status || '').toLowerCase();
   if (status === 'running') return 'freshnessRecent';
   if (status === 'failed') return 'freshnessStale';
   if (metrics.last_sync_at) return freshnessClass(metrics.last_sync_at);
   return freshnessClass(metrics.last_activity_at);
+}
+
+function sortBoards(boards) {
+  return boards.slice().sort((a, b) => boardRank(a) - boardRank(b) || boardActivityScore(b) - boardActivityScore(a) || String(a.name).localeCompare(String(b.name)));
+}
+
+function boardRank(board) {
+  const metrics = board.metrics || {};
+  if ((metrics.items || 0) > 0 && (metrics.open || 0) > 0) return 0;
+  if ((metrics.items || 0) > 0) return 1;
+  if (String(metrics.sync_status || '') === 'failed') return 2;
+  return 3;
+}
+
+function boardActivityScore(board) {
+  return Date.parse(board.metrics?.last_activity_at || board.updated_at || '') || 0;
+}
+
+function preferredBoardID(boards) {
+  const active = boards.find((board) => !isDraftBoard(board));
+  return active?.id || boards[0]?.id || 'default';
+}
+
+function isDraftBoard(board) {
+  return Number(board.metrics?.items || 0) === 0;
 }
 
 function ageMs(value) {
@@ -2652,6 +2684,17 @@ function writeURLView(view) {
   const url = new URL(location.href);
   if (view === 'brief') url.searchParams.delete('view');
   else url.searchParams.set('view', view);
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function readURLBoard() {
+  return new URLSearchParams(location.search).get('board') || '';
+}
+
+function writeURLBoard(boardID) {
+  const url = new URL(location.href);
+  if (!boardID || boardID === 'default') url.searchParams.delete('board');
+  else url.searchParams.set('board', boardID);
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 }
 

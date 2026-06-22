@@ -356,6 +356,18 @@ button:disabled {
   padding: 7px 8px;
 }
 
+.boardList button.draftBoard {
+  min-height: 42px;
+  border-style: dashed;
+  background: #f8fafc;
+  opacity: 0.78;
+}
+
+.boardList button.draftBoard:not(.active) .boardMetrics,
+.boardList button.draftBoard:not(.active) > span:not(.boardListTitle) {
+  display: none;
+}
+
 .boardListTitle {
   display: flex;
   align-items: center;
@@ -409,6 +421,13 @@ button:disabled {
   border-color: rgba(185, 28, 28, 0.24);
   background: rgba(185, 28, 28, 0.07);
   color: var(--red);
+}
+
+.freshnessDraft,
+.freshnessUnknown {
+  border-color: var(--line-soft);
+  background: #f8fafc;
+  color: var(--muted);
 }
 
 .presetList button,
