@@ -532,7 +532,7 @@ async function syncBoard(boardID, options = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ board_id: boardID, limit: 100 }),
     });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
     state.lastSync = await res.json();
     if (!options.quiet) {
       await loadBackendBoard();
@@ -549,6 +549,17 @@ async function syncBoard(boardID, options = {}) {
   } finally {
     dom.syncBoard.disabled = false;
   }
+}
+
+async function responseErrorMessage(res) {
+  let detail = '';
+  try {
+    const data = await res.clone().json();
+    detail = data.error || data.message || '';
+  } catch (_) {
+    detail = (await res.text()).trim();
+  }
+  return detail || `${res.status} ${res.statusText}`;
 }
 
 function renderManagePanel() {
