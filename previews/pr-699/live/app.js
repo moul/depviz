@@ -20,6 +20,7 @@ const dom = {
   graphZoomLabel: document.getElementById('graphZoomLabel'),
   brief: document.getElementById('briefView'),
   graph: document.getElementById('graphView'),
+  graphFocus: document.getElementById('graphFocusPanel'),
   graphCanvas: document.getElementById('graphCanvas'),
   table: document.getElementById('tableView'),
   itemInspector: document.getElementById('itemInspector'),
@@ -181,6 +182,7 @@ function wireEvents() {
   dom.table.addEventListener('click', handleNodePickClick);
   dom.graphCanvas.addEventListener('click', handleGraphClick);
   document.getElementById('graphView').addEventListener('click', handleGraphControlClick);
+  dom.graphFocus.addEventListener('click', handleGraphFocusClick);
   document.addEventListener('keydown', handleGraphKeydown);
 }
 
@@ -1811,6 +1813,7 @@ function render() {
   renderWorkspaceSummary();
   renderStats(brief.counts || {}, snapshot);
   renderSuggestions(snapshot);
+  renderGraphFocusPanel(snapshot);
   renderEdgeInspector(snapshot);
   renderItemInspector(snapshot);
   renderWorkspaceSuggestions();
@@ -1915,6 +1918,8 @@ function renderGraph(snapshot, nodes) {
   const visible = new Set(nodes.map((node) => node.id));
   const selectedEdge = edgeByID(state.selectedEdgeID);
   const selectedEndpoints = selectedEdge ? new Set([selectedEdge.from_id, selectedEdge.to_id]) : new Set();
+  const focusEdges = graphFocusEdges(snapshot);
+  const focusNodeIDs = new Set(focusEdges.flatMap((edge) => [edge.from_id, edge.to_id]));
   const layout = graphLayout(snapshot, nodes);
   state.graphLayout = { width: layout.width, height: layout.height };
   const zoom = graphZoom();
@@ -1936,16 +1941,25 @@ function renderGraph(snapshot, nodes) {
     const soft = isSoftEdge(edge);
     const edgeID = edgeSelectionID(edge);
     const selected = edgeID === state.selectedEdgeID;
+    const inFocus = focusEdges.some((focusEdge) => edgeSelectionID(focusEdge) === edgeID);
     const kind = esc(edge.kind || 'edge');
     const authority = esc(edge.authority || '');
     const line = graphEdgeLine(from, to);
     html += `<line class="graphEdgeHit" data-edge-id="${esc(edgeID)}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}"></line>`;
-    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}" data-edge-id="${esc(edgeID)}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
+    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}${inFocus ? ' focusEdge' : ''}" data-edge-id="${esc(edgeID)}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
   }
   html += '</svg>';
   for (const node of nodes) {
     const pos = positions.get(node.id);
-    const klass = ['nodeCard', ...nodeCardClasses(node), selectedEndpoints.has(node.id) ? 'selectedEndpoint' : '', node.id === state.selectedNodeID ? 'selectedNode' : '', isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
+    const klass = [
+      'nodeCard',
+      ...nodeCardClasses(node),
+      selectedEndpoints.has(node.id) ? 'selectedEndpoint' : '',
+      node.id === state.selectedNodeID ? 'selectedNode' : '',
+      focusNodeIDs.has(node.id) && node.id !== state.selectedNodeID ? 'focusNode' : '',
+      state.selectedNodeID && !focusNodeIDs.has(node.id) && node.id !== state.selectedNodeID ? 'dimNode' : '',
+      isBlocked(node.id, snapshot) ? 'blocked' : 'ready',
+    ].filter(Boolean).join(' ');
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
     const ref = nodeReferenceLabel(node);
     const kind = nodeKindLabel(node);
@@ -1966,6 +1980,97 @@ function graphColumnHeaders(layout) {
     <strong>${esc(column.title)}</strong>
     <span>${esc(column.count)} item${column.count === 1 ? '' : 's'}</span>
   </div>`).join('');
+}
+
+function renderGraphFocusPanel(snapshot) {
+  if (!dom.graphFocus) return;
+  const node = nodeByID(state.selectedNodeID);
+  dom.graphFocus.classList.toggle('hidden', state.view !== 'graph' || !node);
+  if (state.view !== 'graph' || !node) {
+    dom.graphFocus.innerHTML = '';
+    return;
+  }
+  const blockers = graphBlockingNeighbors(snapshot, node.id, 'blockers');
+  const blocked = graphBlockingNeighbors(snapshot, node.id, 'blocked');
+  const related = graphRelatedNeighbors(snapshot, node.id).slice(0, 4);
+  const blockerHTML = graphFocusNodeList(blockers, 'No active blockers');
+  const blockedHTML = graphFocusNodeList(blocked, 'Blocks nothing active');
+  const relatedHTML = graphFocusNodeList(related, 'No extra links');
+  dom.graphFocus.innerHTML = `<section class="graphFocusBox">
+    <div class="graphFocusHead">
+      <div>
+        <span>${esc(nodeKindLabel(node))} ${esc(nodeReferenceLabel(node))}</span>
+        <strong>${esc(node.title || node.id)}</strong>
+      </div>
+      <button type="button" data-graph-focus-action="clear">Clear</button>
+    </div>
+    <div class="graphFocusColumns">
+      <div><h3>Blockers</h3>${blockerHTML}</div>
+      <div><h3>Unlocks</h3>${blockedHTML}</div>
+      <div><h3>Related</h3>${relatedHTML}</div>
+    </div>
+  </section>`;
+}
+
+function graphFocusNodeList(nodes, emptyText) {
+  if (!nodes.length) return `<div class="graphFocusEmpty">${esc(emptyText)}</div>`;
+  return nodes.slice(0, 5).map((node) => `<button type="button" class="graphFocusNode" data-node-id="${esc(node.id)}">
+    <span>${esc(nodeReferenceLabel(node))}</span>
+    <strong>${esc(node.title || node.id)}</strong>
+  </button>`).join('');
+}
+
+function graphFocusEdges(snapshot) {
+  const id = state.selectedNodeID;
+  if (!id) return [];
+  return (snapshot.edges || []).filter((edge) => edge.from_id === id || edge.to_id === id);
+}
+
+function graphBlockingNeighbors(snapshot, nodeID, direction) {
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const out = [];
+  for (const edge of snapshot.edges || []) {
+    const [blocked, blocker] = edgeBlockedAndBlocker(edge);
+    if (!blocked || !blocker) continue;
+    const candidateID = direction === 'blockers' && blocked === nodeID ? blocker : direction === 'blocked' && blocker === nodeID ? blocked : '';
+    if (!candidateID) continue;
+    const node = nodes.get(candidateID);
+    if (node && !isClosed(node)) out.push(node);
+  }
+  return out.sort(graphNodeSort);
+}
+
+function graphRelatedNeighbors(snapshot, nodeID) {
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const seen = new Set();
+  const out = [];
+  for (const edge of snapshot.edges || []) {
+    if (!isNonBlockingEdgeKind(String(edge.kind || '').toLowerCase())) continue;
+    const otherID = edge.from_id === nodeID ? edge.to_id : edge.to_id === nodeID ? edge.from_id : '';
+    if (!otherID || seen.has(otherID)) continue;
+    const node = nodes.get(otherID);
+    if (node) {
+      seen.add(otherID);
+      out.push(node);
+    }
+  }
+  return out.sort(graphNodeSort);
+}
+
+function handleGraphFocusClick(event) {
+  const nodeButton = event.target.closest('[data-node-id]');
+  if (nodeButton && dom.graphFocus.contains(nodeButton)) {
+    selectNode(nodeButton.dataset.nodeId || '');
+    requestAnimationFrame(scrollSelectedNodeIntoView);
+    return;
+  }
+  const button = event.target.closest('[data-graph-focus-action]');
+  if (!button) return;
+  if (button.dataset.graphFocusAction === 'clear') {
+    state.selectedNodeID = '';
+    state.selectedEdgeID = '';
+    render();
+  }
 }
 
 function handleGraphControlClick(event) {
@@ -2047,6 +2152,7 @@ function handleGraphClick(event) {
   const nodeTarget = event.target.closest?.('[data-node-id]');
   if (!nodeTarget || !dom.graphCanvas.contains(nodeTarget)) return;
   selectNode(nodeTarget.dataset.nodeId || '');
+  requestAnimationFrame(scrollSelectedNodeIntoView);
 }
 
 function graphLayout(snapshot, nodes) {
@@ -2472,6 +2578,12 @@ function scrollSelectedEdgeIntoView() {
   if (endpoints.length === 0) return;
   const target = endpoints[Math.floor((endpoints.length - 1) / 2)];
   target.scrollIntoView({ block: 'center', inline: 'center' });
+}
+
+function scrollSelectedNodeIntoView() {
+  const node = dom.graphCanvas.querySelector('.selectedNode');
+  if (!node) return;
+  node.scrollIntoView({ block: 'center', inline: 'center' });
 }
 
 function dismissSuggestedEdge(edgeID) {

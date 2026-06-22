@@ -1330,6 +1330,85 @@ textarea::selection {
   text-align: center;
 }
 
+.graphFocusPanel {
+  margin-bottom: 7px;
+}
+
+.graphFocusBox {
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  background: #f8fbff;
+  padding: 8px;
+}
+
+.graphFocusHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+
+.graphFocusHead span {
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.graphFocusHead strong {
+  display: block;
+  margin-top: 2px;
+  color: #111827;
+  line-height: 1.25;
+}
+
+.graphFocusColumns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.graphFocusColumns h3 {
+  margin: 0 0 5px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.graphFocusNode {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 38px;
+  margin-top: 4px;
+  text-align: left;
+}
+
+.graphFocusNode span {
+  color: var(--blue);
+  font: 10px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.graphFocusNode strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graphFocusEmpty {
+  min-height: 38px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--muted);
+  padding: 9px 8px;
+  font-size: 11px;
+}
+
 .graphScale {
   position: relative;
 }
@@ -1397,6 +1476,12 @@ textarea::selection {
   stroke-dasharray: none;
 }
 
+.graphEdge.focusEdge {
+  stroke: #2563eb;
+  stroke-width: 2.6;
+  stroke-dasharray: none;
+}
+
 .graphEdgeHit {
   cursor: pointer;
   pointer-events: stroke;
@@ -1429,6 +1514,15 @@ textarea::selection {
 .nodeCard.selectedEndpoint {
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15), 0 8px 22px rgba(16, 24, 40, 0.14);
+}
+
+.nodeCard.focusNode {
+  border-color: #93c5fd;
+  background: #f8fbff;
+}
+
+.nodeCard.dimNode {
+  opacity: 0.42;
 }
 
 .nodeCard.note {
