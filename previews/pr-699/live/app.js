@@ -572,17 +572,19 @@ function renderManagePanel() {
       const active = board.id === state.currentBoardID;
       const metrics = board.metrics || {};
       const draft = isDraftBoard(board);
-      const description = board.description ? `<span>${esc(board.description)}</span>` : `<span>${esc(board.scope_query || 'local view')}</span>`;
+      const scope = board.scope_query || 'local view';
+      const description = board.description || scope;
       return `<button class="${[active ? 'active' : '', draft ? 'draftBoard' : ''].filter(Boolean).join(' ')}" type="button" data-board-id="${esc(board.id)}">
         <span class="boardListTitle">
           <strong>${esc(board.name || board.id)}</strong>
           <span class="freshnessBadge ${syncClass(metrics)}">${esc(syncLabel(metrics))}</span>
         </span>
-        ${description}
+        <span class="boardScope">${esc(scope)}</span>
+        <span class="boardDescription">${esc(description)}</span>
         <span class="boardMetrics">
-          <span>${esc(metrics.items || 0)} items</span>
-          <span>${esc(metrics.links || 0)} links</span>
-          <span>${esc(metrics.open || 0)} open</span>
+          <span><strong>${esc(metrics.items || 0)}</strong> items</span>
+          <span><strong>${esc(metrics.links || 0)}</strong> links</span>
+          <span><strong>${esc(metrics.open || 0)}</strong> open</span>
         </span>
       </button>`;
     }).join('');
@@ -1822,7 +1824,7 @@ function renderStats(counts, snapshot) {
     ['Local', counts.local_only || 0],
     ['Stale', counts.stale || 0],
   ];
-  dom.stats.innerHTML = values.map(([label, value]) => `<div class="stat"><strong>${value}</strong>${label}</div>`).join('');
+  dom.stats.innerHTML = values.map(([label, value]) => `<div class="stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
 }
 
 function renderBrief(brief) {
@@ -1887,7 +1889,7 @@ function dedupeBriefItems(items) {
 
 function briefSection(title, items, wide) {
   const body = items.length ? items.map(renderItem).join('') : '<div class="reason">none</div>';
-  return `<section class="briefSection ${wide ? 'wide' : ''}"><h3>${esc(title)}</h3>${body}</section>`;
+  return `<section class="briefSection ${wide ? 'wide' : ''}"><h3><span>${esc(title)}</span><strong>${items.length}</strong></h3>${body}</section>`;
 }
 
 function renderItem(item) {
