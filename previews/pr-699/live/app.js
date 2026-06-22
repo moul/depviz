@@ -31,6 +31,7 @@ const dom = {
   userPanelTitle: document.getElementById('userPanelTitle'),
   userPanelMeta: document.getElementById('userPanelMeta'),
   workspacePanel: document.getElementById('workspacePanel'),
+  workspaceSummary: document.getElementById('workspaceSummary'),
   boardList: document.getElementById('boardList'),
   loadGitHubPresets: document.getElementById('loadGitHubPresetsBtn'),
   githubPresetList: document.getElementById('githubPresetList'),
@@ -38,9 +39,14 @@ const dom = {
   newBoardName: document.getElementById('newBoardName'),
   newBoardDescription: document.getElementById('newBoardDescription'),
   addBoardItemForm: document.getElementById('addBoardItemForm'),
+  addBoardLinkForm: document.getElementById('addBoardLinkForm'),
   newItemKind: document.getElementById('newItemKind'),
   newItemRef: document.getElementById('newItemRef'),
   newItemTitle: document.getElementById('newItemTitle'),
+  newLinkFrom: document.getElementById('newLinkFrom'),
+  newLinkKind: document.getElementById('newLinkKind'),
+  newLinkTo: document.getElementById('newLinkTo'),
+  syncBoard: document.getElementById('syncBoardBtn'),
   workspaceSuggestionList: document.getElementById('workspaceSuggestionList'),
   debugPanel: document.getElementById('debugPanel'),
   connectGithub: document.getElementById('connectGithubBtn'),
@@ -67,7 +73,8 @@ const state = {
   workspaceTab: 'views',
   currentBoardID: 'default',
   boards: [],
-  githubPresets: { repos: [], orgs: [], loaded: false },
+  githubPresets: { repos: [], orgs: [], projects: [], loaded: false },
+  lastSync: null,
   selectedEdgeID: '',
   graphZoom: 1,
   graphLayout: { width: 900, height: 620 },
@@ -152,6 +159,8 @@ function wireEvents() {
   dom.loadGitHubPresets.addEventListener('click', loadGitHubPresets);
   dom.createBoardForm.addEventListener('submit', createBoard);
   dom.addBoardItemForm.addEventListener('submit', addBoardItem);
+  dom.addBoardLinkForm.addEventListener('submit', addBoardLink);
+  dom.syncBoard.addEventListener('click', syncCurrentBoard);
   dom.boardList.addEventListener('click', handleBoardListClick);
   dom.githubPresetList.addEventListener('click', handlePresetClick);
   dom.pasteGithubToken.addEventListener('click', pasteGitHubToken);
@@ -280,7 +289,7 @@ function toggleUserPanel() {
 }
 
 function setWorkspaceTab(tab) {
-  state.workspaceTab = ['views', 'presets', 'add', 'suggestions', 'debug'].includes(tab) ? tab : 'views';
+  state.workspaceTab = ['views', 'presets', 'suggestions', 'debug'].includes(tab) ? tab : 'views';
   renderWorkspaceTabs();
   if (state.workspaceTab === 'suggestions') renderWorkspaceSuggestions();
   if (state.workspaceTab === 'debug') renderDebugPanel();
@@ -317,6 +326,13 @@ async function createBoardFromPreset(input) {
   const board = normalizeBoard(payload.board || {});
   state.currentBoardID = board.id || state.currentBoardID;
   await refreshBoards();
+  if (input.preset === 'repo' && input.repo) {
+    try {
+      await syncBoard(board.id || state.currentBoardID, { quiet: true });
+    } catch (err) {
+      dom.error.textContent = `initial sync failed: ${err.message}`;
+    }
+  }
   await loadBackendBoard();
   dom.status.textContent = 'view created';
   return board;
@@ -354,6 +370,38 @@ async function addBoardItem(event) {
   }
 }
 
+async function addBoardLink(event) {
+  event.preventDefault();
+  const from = dom.newLinkFrom.value.trim();
+  const to = dom.newLinkTo.value.trim();
+  if (!from || !to) {
+    dom.status.textContent = 'two item refs required';
+    (from ? dom.newLinkTo : dom.newLinkFrom).focus();
+    return;
+  }
+  try {
+    const res = await fetch('./api/board-links', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        board_id: state.currentBoardID || 'default',
+        from,
+        to,
+        kind: dom.newLinkKind.value,
+      }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    dom.newLinkFrom.value = '';
+    dom.newLinkTo.value = '';
+    await loadBackendBoard();
+    dom.status.textContent = 'link added';
+  } catch (err) {
+    dom.status.textContent = 'link add failed';
+    dom.error.textContent = err.message;
+  }
+}
+
 function handleBoardListClick(event) {
   const btn = event.target.closest('[data-board-id]');
   if (!btn) return;
@@ -364,19 +412,23 @@ function handleBoardListClick(event) {
 
 async function loadGitHubPresets() {
   dom.status.textContent = 'loading github presets';
-  dom.githubPresetList.innerHTML = '<div class="emptyState">Loading GitHub repositories and orgs...</div>';
+  dom.githubPresetList.innerHTML = '<div class="emptyState">Loading GitHub repositories, orgs, and projects...</div>';
   try {
-    const [reposRes, orgsRes] = await Promise.all([
+    const [reposRes, orgsRes, projectsRes] = await Promise.all([
       fetch('./api/github/repos', { credentials: 'same-origin' }),
       fetch('./api/github/orgs', { credentials: 'same-origin' }),
+      fetch('./api/github/projects', { credentials: 'same-origin' }),
     ]);
     if (!reposRes.ok) throw new Error(`repos ${reposRes.status}`);
     if (!orgsRes.ok) throw new Error(`orgs ${orgsRes.status}`);
+    if (!projectsRes.ok) throw new Error(`projects ${projectsRes.status}`);
     const reposPayload = await reposRes.json();
     const orgsPayload = await orgsRes.json();
+    const projectsPayload = await projectsRes.json();
     state.githubPresets = {
       repos: Array.isArray(reposPayload.repos) ? reposPayload.repos : [],
       orgs: Array.isArray(orgsPayload.orgs) ? orgsPayload.orgs : [],
+      projects: Array.isArray(projectsPayload.projects) ? projectsPayload.projects : [],
       loaded: true,
     };
     renderGitHubPresets();
@@ -390,8 +442,9 @@ async function loadGitHubPresets() {
 function renderGitHubPresets() {
   const repos = state.githubPresets.repos.slice(0, 24);
   const orgs = state.githubPresets.orgs.slice(0, 24);
-  if (!repos.length && !orgs.length) {
-    dom.githubPresetList.innerHTML = '<div class="emptyState">No repos or orgs visible to this account yet</div>';
+  const projects = state.githubPresets.projects.slice(0, 24);
+  if (!repos.length && !orgs.length && !projects.length) {
+    dom.githubPresetList.innerHTML = '<div class="emptyState">No repos, orgs, or projects visible to this account yet</div>';
     return;
   }
   const repoItems = repos.map((repo) => presetButton({
@@ -406,7 +459,13 @@ function renderGitHubPresets() {
     label: org.login || org.Login || 'org',
     meta: 'org',
   })).join('');
-  dom.githubPresetList.innerHTML = `${repoItems}${orgItems}`;
+  const projectItems = projects.map((project) => presetButton({
+    type: 'project',
+    id: project.id || project.ID || '',
+    label: project.title || project.Title || 'project',
+    meta: `project${project.owner || project.Owner ? ` - ${project.owner || project.Owner}` : ''}`,
+  })).join('');
+  dom.githubPresetList.innerHTML = `${repoItems}${orgItems}${projectItems}`;
 }
 
 function presetButton(item) {
@@ -423,12 +482,13 @@ function handlePresetClick(event) {
   const id = btn.dataset.presetId;
   if (!id) return;
   const name = type === 'repo' ? id : `${id} org`;
+  const owner = type === 'org' ? id : type === 'repo' ? id.split('/')[0] : '';
   createBoardFromPreset({
-    name,
-    description: type === 'repo' ? `GitHub repo ${id}` : `GitHub org ${id}`,
+    name: type === 'project' ? btn.querySelector('strong')?.textContent || 'GitHub project' : name,
+    description: type === 'repo' ? `GitHub repo ${id}` : type === 'project' ? `GitHub project ${id}` : `GitHub org ${id}`,
     preset: type,
     provider: 'github',
-    owner: type === 'org' ? id : id.split('/')[0],
+    owner,
     repo: type === 'repo' ? id : '',
   }).catch((err) => {
     dom.status.textContent = 'preset view failed';
@@ -436,8 +496,43 @@ function handlePresetClick(event) {
   });
 }
 
+async function syncCurrentBoard() {
+  await syncBoard(state.currentBoardID || 'default');
+}
+
+async function syncBoard(boardID, options = {}) {
+  if (!options.quiet) {
+    dom.status.textContent = 'syncing github view';
+    dom.syncBoard.disabled = true;
+  }
+  try {
+    const res = await fetch('./api/board-sync', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board_id: boardID, limit: 100 }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    state.lastSync = await res.json();
+    if (!options.quiet) {
+      await loadBackendBoard();
+      dom.status.textContent = `synced ${state.lastSync.items || 0} GitHub items`;
+    }
+    return state.lastSync;
+  } catch (err) {
+    if (!options.quiet) {
+      dom.status.textContent = 'github sync failed';
+      dom.error.textContent = err.message;
+    }
+    throw err;
+  } finally {
+    dom.syncBoard.disabled = false;
+  }
+}
+
 function renderManagePanel() {
   if (!dom.boardList) return;
+  renderWorkspaceSummary();
   if (!state.boards.length) {
     dom.boardList.innerHTML = '<div class="emptyState">No saved views yet</div>';
   } else {
@@ -464,6 +559,14 @@ function renderWorkspaceTabs() {
   });
 }
 
+function renderWorkspaceSummary() {
+  if (!dom.workspaceSummary) return;
+  const board = state.data.snapshot.board || {};
+  const scope = board.scope_query || 'local view';
+  const counts = state.data.brief.counts || {};
+  dom.workspaceSummary.textContent = `${board.name || state.currentBoardID || 'Default'} - ${scope} - ${counts.nodes || 0} items`;
+}
+
 function renderUserPanel() {
   const session = state.backendSession || {};
   const account = session.account || {};
@@ -484,6 +587,7 @@ function renderDebugPanel() {
     <div><dt>View id</dt><dd>${esc(state.currentBoardID)}</dd></div>
     <div><dt>Scope</dt><dd>${esc(board.scope_query || 'none')}</dd></div>
     <div><dt>Nodes</dt><dd>${esc(counts.nodes || 0)}</dd></div>
+    <div><dt>Last sync</dt><dd>${state.lastSync ? `${esc(state.lastSync.items || 0)} items / ${esc(state.lastSync.links || 0)} links` : 'not synced here'}</dd></div>
     <div><dt>GitHub App</dt><dd>${state.backendSession.github_app_configured ? 'configured' : 'not configured'}</dd></div>
     <div><dt>Webhook</dt><dd>${state.backendSession.github_webhook_configured ? 'configured' : 'not configured'}</dd></div>
   </dl>`;
@@ -1555,6 +1659,7 @@ function render() {
   const nodes = visibleNodes(snapshot.nodes);
   dom.boardTitle.textContent = snapshot.board.name || 'Default';
   dom.boardMeta.textContent = `${snapshot.nodes.length} nodes - ${snapshot.edges.length} edges`;
+  renderWorkspaceSummary();
   renderStats(brief.counts || {}, snapshot);
   renderSuggestions(snapshot);
   renderEdgeInspector(snapshot);

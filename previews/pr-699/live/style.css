@@ -161,6 +161,35 @@ button:disabled {
   display: none;
 }
 
+.shell.statefulMode .workPane {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  grid-template-areas:
+    "header header"
+    "user user"
+    "workspace canvas";
+  align-items: start;
+  gap: 12px;
+}
+
+.shell.statefulMode .boardHeader {
+  grid-area: header;
+}
+
+.shell.statefulMode .userPanel {
+  grid-area: user;
+}
+
+.canvasStack {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.shell.statefulMode .canvasStack {
+  grid-area: canvas;
+}
+
 .userPanel {
   margin-top: 10px;
   padding: 10px 12px;
@@ -180,8 +209,8 @@ button:disabled {
 
 .workspacePanel {
   display: grid;
-  grid-template-columns: 150px 1fr;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
   margin-top: 12px;
   padding: 12px;
   border: 1px solid var(--line);
@@ -189,14 +218,93 @@ button:disabled {
   background: #fbfcfe;
 }
 
+.shell.statefulMode .workspacePanel {
+  grid-area: workspace;
+  position: sticky;
+  top: 68px;
+  max-height: calc(100vh - 84px);
+  overflow: auto;
+}
+
+.workspaceTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.workspaceTop h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.workspaceTop p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.quickAddForm {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.quickAddForm input,
+.quickAddForm select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 8px 9px;
+}
+
+.quickAddForm input:nth-of-type(1),
+.quickAddForm input:nth-of-type(2),
+.quickAddForm button {
+  grid-column: 1 / -1;
+}
+
+.quickLinkForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.quickLinkForm input,
+.quickLinkForm select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 8px 9px;
+}
+
+.quickLinkForm input:first-child {
+  grid-column: 1 / -1;
+}
+
 .workspaceNav {
   display: grid;
-  align-content: start;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
 .workspaceNav button {
-  text-align: left;
+  text-align: center;
+  padding: 7px 6px;
 }
 
 .workspaceBody,
@@ -227,12 +335,12 @@ button:disabled {
 .presetList,
 .workspaceList {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: 1fr;
   gap: 8px;
 }
 
 .presetList {
-  max-height: 320px;
+  max-height: 360px;
   overflow: auto;
 }
 
@@ -240,6 +348,7 @@ button:disabled {
   display: grid;
   gap: 3px;
   text-align: left;
+  min-height: 58px;
 }
 
 .presetList button,
@@ -266,13 +375,13 @@ button:disabled {
 
 .inlineForm {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  grid-template-columns: 1fr;
   gap: 8px;
   margin-top: 10px;
 }
 
 .addItemForm {
-  grid-template-columns: 140px minmax(240px, 1fr) minmax(180px, 0.7fr) auto;
+  grid-template-columns: 1fr;
 }
 
 .inlineForm input,
@@ -1256,6 +1365,20 @@ tr:last-child td {
 
   .edgeRoute {
     grid-template-columns: 1fr;
+  }
+
+  .shell.statefulMode .workPane {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "user"
+      "workspace"
+      "canvas";
+  }
+
+  .shell.statefulMode .workspacePanel {
+    position: static;
+    max-height: none;
   }
 
   .workspacePanel,

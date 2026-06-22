@@ -73,11 +73,42 @@
       </div>
 
       <div id="workspacePanel" class="workspacePanel statefulOnly hidden">
+        <div class="workspaceTop">
+          <div>
+            <h3>Workspace</h3>
+            <p id="workspaceSummary">Pick or create a view.</p>
+          </div>
+          <button id="syncBoardBtn" type="button">Sync</button>
+        </div>
+
+        <form id="addBoardItemForm" class="quickAddForm">
+          <select id="newItemKind" aria-label="New item kind">
+            <option value="auto">Auto</option>
+            <option value="github">GitHub issue/PR</option>
+            <option value="task">Task</option>
+            <option value="note">Note</option>
+          </select>
+          <input id="newItemRef" type="text" autocomplete="off" placeholder="Paste issue, PR, URL, or task" aria-label="New item reference">
+          <input id="newItemTitle" type="text" autocomplete="off" placeholder="Optional title" aria-label="New item title">
+          <button class="primaryAction" type="submit">Add</button>
+        </form>
+
+        <form id="addBoardLinkForm" class="quickLinkForm">
+          <input id="newLinkFrom" type="text" autocomplete="off" placeholder="From item" aria-label="Link from item">
+          <select id="newLinkKind" aria-label="Link kind">
+            <option value="blocked_by">depends on</option>
+            <option value="blocks">blocks</option>
+            <option value="relates_to">relates to</option>
+            <option value="addresses">addresses</option>
+          </select>
+          <input id="newLinkTo" type="text" autocomplete="off" placeholder="To item" aria-label="Link to item">
+          <button type="submit">Link</button>
+        </form>
+
         <nav class="workspaceNav" aria-label="Stateful workspace">
           <button class="active" data-workspace-tab="views" type="button">Views</button>
-          <button data-workspace-tab="presets" type="button">Presets</button>
-          <button data-workspace-tab="add" type="button">Add</button>
-          <button data-workspace-tab="suggestions" type="button">Suggestions</button>
+          <button data-workspace-tab="presets" type="button">Sources</button>
+          <button data-workspace-tab="suggestions" type="button">Links</button>
           <button data-workspace-tab="debug" type="button">Debug</button>
         </nav>
 
@@ -108,26 +139,6 @@
             <div id="githubPresetList" class="presetList"></div>
           </section>
 
-          <section id="workspaceAdd" class="workspaceTab hidden">
-            <div class="workspaceHeader">
-              <div>
-                <h3>Add Item</h3>
-                <p>Add a GitHub issue/PR, task, or note to the current view.</p>
-              </div>
-            </div>
-            <form id="addBoardItemForm" class="inlineForm addItemForm">
-              <select id="newItemKind" aria-label="New item kind">
-                <option value="auto">Auto</option>
-                <option value="github">GitHub issue/PR</option>
-                <option value="task">Task</option>
-                <option value="note">Note</option>
-              </select>
-              <input id="newItemRef" type="text" autocomplete="off" placeholder="GitHub URL, owner/repo#123, or text" aria-label="New item reference">
-              <input id="newItemTitle" type="text" autocomplete="off" placeholder="Optional title" aria-label="New item title">
-              <button type="submit">Add</button>
-            </form>
-          </section>
-
           <section id="workspaceSuggestions" class="workspaceTab hidden">
             <div class="workspaceHeader">
               <div>
@@ -150,28 +161,30 @@
         </div>
       </div>
 
-      <div class="filters">
-        <input id="filterInput" type="search" placeholder="Filter id, title, state, label" aria-label="Filter cards">
-        <label><input id="showExternal" type="checkbox" checked> External</label>
-        <label><input id="showLocal" type="checkbox" checked> Local</label>
-        <label><input id="showClosed" type="checkbox" checked> Closed</label>
-      </div>
-
-      <div class="stats" id="stats"></div>
-      <div id="suggestionPanel" class="suggestionPanel hidden"></div>
-      <div id="edgeInspector" class="edgeInspector hidden"></div>
-      <div id="briefView" class="view"></div>
-      <div id="graphView" class="view hidden">
-        <div class="graphToolbar" aria-label="Graph controls">
-          <button type="button" data-graph-action="fit">Fit</button>
-          <button type="button" data-graph-action="out">-</button>
-          <span id="graphZoomLabel">100%</span>
-          <button type="button" data-graph-action="in">+</button>
-          <button type="button" data-graph-action="reset">100%</button>
+      <div class="canvasStack">
+        <div class="filters">
+          <input id="filterInput" type="search" placeholder="Filter id, title, state, label" aria-label="Filter cards">
+          <label><input id="showExternal" type="checkbox" checked> External</label>
+          <label><input id="showLocal" type="checkbox" checked> Local</label>
+          <label><input id="showClosed" type="checkbox" checked> Closed</label>
         </div>
-        <div id="graphCanvas" class="graphCanvas"></div>
+
+        <div class="stats" id="stats"></div>
+        <div id="suggestionPanel" class="suggestionPanel hidden"></div>
+        <div id="edgeInspector" class="edgeInspector hidden"></div>
+        <div id="briefView" class="view"></div>
+        <div id="graphView" class="view hidden">
+          <div class="graphToolbar" aria-label="Graph controls">
+            <button type="button" data-graph-action="fit">Fit</button>
+            <button type="button" data-graph-action="out">-</button>
+            <span id="graphZoomLabel">100%</span>
+            <button type="button" data-graph-action="in">+</button>
+            <button type="button" data-graph-action="reset">100%</button>
+          </div>
+          <div id="graphCanvas" class="graphCanvas"></div>
+        </div>
+        <div id="tableView" class="view hidden"></div>
       </div>
-      <div id="tableView" class="view hidden"></div>
     </section>
   </main>
 
