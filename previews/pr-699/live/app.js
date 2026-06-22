@@ -22,6 +22,7 @@ const dom = {
   graph: document.getElementById('graphView'),
   graphCanvas: document.getElementById('graphCanvas'),
   table: document.getElementById('tableView'),
+  itemInspector: document.getElementById('itemInspector'),
   githubToken: document.getElementById('githubTokenInput'),
   backendGithubLogin: document.getElementById('backendGithubLoginBtn'),
   backendLogout: document.getElementById('backendLogoutBtn'),
@@ -76,6 +77,7 @@ const state = {
   githubPresets: { repos: [], orgs: [], projects: [], loaded: false },
   lastSync: null,
   selectedEdgeID: '',
+  selectedNodeID: '',
   graphZoom: 1,
   graphLayout: { width: 900, height: 620 },
   dismissedSuggestionIDs: new Set(),
@@ -171,7 +173,11 @@ function wireEvents() {
   });
   dom.hydrateGithub.addEventListener('click', hydrateGitHub);
   dom.suggestions.addEventListener('click', handleSuggestionClick);
+  dom.workspaceSuggestionList.addEventListener('click', handleSuggestionClick);
   dom.edgeInspector.addEventListener('click', handleEdgeInspectorClick);
+  dom.itemInspector.addEventListener('click', handleItemInspectorClick);
+  dom.brief.addEventListener('click', handleNodePickClick);
+  dom.table.addEventListener('click', handleNodePickClick);
   dom.graphCanvas.addEventListener('click', handleGraphClick);
   document.getElementById('graphView').addEventListener('click', handleGraphControlClick);
   document.addEventListener('keydown', handleGraphKeydown);
@@ -289,8 +295,9 @@ function toggleUserPanel() {
 }
 
 function setWorkspaceTab(tab) {
-  state.workspaceTab = ['views', 'presets', 'suggestions', 'debug'].includes(tab) ? tab : 'views';
+  state.workspaceTab = ['views', 'actions', 'presets', 'suggestions', 'debug'].includes(tab) ? tab : 'views';
   renderWorkspaceTabs();
+  if (state.workspaceTab === 'presets') renderGitHubPresets();
   if (state.workspaceTab === 'suggestions') renderWorkspaceSuggestions();
   if (state.workspaceTab === 'debug') renderDebugPanel();
 }
@@ -326,7 +333,7 @@ async function createBoardFromPreset(input) {
   const board = normalizeBoard(payload.board || {});
   state.currentBoardID = board.id || state.currentBoardID;
   await refreshBoards();
-  if (input.preset === 'repo' && input.repo) {
+  if (['repo', 'org', 'my-work'].includes(input.preset)) {
     try {
       await syncBoard(board.id || state.currentBoardID, { quiet: true });
     } catch (err) {
@@ -363,6 +370,7 @@ async function addBoardItem(event) {
     dom.newItemRef.value = '';
     dom.newItemTitle.value = '';
     await loadBackendBoard();
+    await refreshBoards();
     dom.status.textContent = 'item added';
   } catch (err) {
     dom.status.textContent = 'item add failed';
@@ -395,6 +403,7 @@ async function addBoardLink(event) {
     dom.newLinkFrom.value = '';
     dom.newLinkTo.value = '';
     await loadBackendBoard();
+    await refreshBoards();
     dom.status.textContent = 'link added';
   } catch (err) {
     dom.status.textContent = 'link add failed';
@@ -440,11 +449,17 @@ async function loadGitHubPresets() {
 }
 
 function renderGitHubPresets() {
+  const builtinItems = presetButton({
+    type: 'my-work',
+    id: 'my-work',
+    label: 'My Work',
+    meta: 'assigned, authored, mentioned',
+  });
   const repos = state.githubPresets.repos.slice(0, 24);
   const orgs = state.githubPresets.orgs.slice(0, 24);
   const projects = state.githubPresets.projects.slice(0, 24);
   if (!repos.length && !orgs.length && !projects.length) {
-    dom.githubPresetList.innerHTML = '<div class="emptyState">No repos, orgs, or projects visible to this account yet</div>';
+    dom.githubPresetList.innerHTML = `${builtinItems}<div class="emptyState">No repos, orgs, or projects loaded yet</div>`;
     return;
   }
   const repoItems = repos.map((repo) => presetButton({
@@ -465,7 +480,7 @@ function renderGitHubPresets() {
     label: project.title || project.Title || 'project',
     meta: `project${project.owner || project.Owner ? ` - ${project.owner || project.Owner}` : ''}`,
   })).join('');
-  dom.githubPresetList.innerHTML = `${repoItems}${orgItems}${projectItems}`;
+  dom.githubPresetList.innerHTML = `${builtinItems}${repoItems}${orgItems}${projectItems}`;
 }
 
 function presetButton(item) {
@@ -481,15 +496,16 @@ function handlePresetClick(event) {
   const type = btn.dataset.presetType;
   const id = btn.dataset.presetId;
   if (!id) return;
-  const name = type === 'repo' ? id : `${id} org`;
+  const name = type === 'repo' ? id : type === 'my-work' ? 'My Work' : `${id} org`;
   const owner = type === 'org' ? id : type === 'repo' ? id.split('/')[0] : '';
   createBoardFromPreset({
     name: type === 'project' ? btn.querySelector('strong')?.textContent || 'GitHub project' : name,
-    description: type === 'repo' ? `GitHub repo ${id}` : type === 'project' ? `GitHub project ${id}` : `GitHub org ${id}`,
+    description: type === 'repo' ? `GitHub repo ${id}` : type === 'project' ? `GitHub project ${id}` : type === 'my-work' ? 'GitHub work involving me' : `GitHub org ${id}`,
     preset: type,
     provider: 'github',
     owner,
     repo: type === 'repo' ? id : '',
+    source_id: type === 'project' ? id : '',
   }).catch((err) => {
     dom.status.textContent = 'preset view failed';
     dom.error.textContent = err.message;
@@ -516,6 +532,7 @@ async function syncBoard(boardID, options = {}) {
     state.lastSync = await res.json();
     if (!options.quiet) {
       await loadBackendBoard();
+      await refreshBoards();
       dom.status.textContent = `synced ${state.lastSync.items || 0} GitHub items`;
     }
     return state.lastSync;
@@ -543,7 +560,7 @@ function renderManagePanel() {
       return `<button class="${active ? 'active' : ''}" type="button" data-board-id="${esc(board.id)}">
         <span class="boardListTitle">
           <strong>${esc(board.name || board.id)}</strong>
-          <span class="freshnessBadge ${freshnessClass(metrics.last_activity_at || board.updated_at)}">${esc(freshnessLabel(metrics.last_activity_at || board.updated_at))}</span>
+          <span class="freshnessBadge ${syncClass(metrics)}">${esc(syncLabel(metrics))}</span>
         </span>
         ${description}
         <span class="boardMetrics">
@@ -596,10 +613,19 @@ function renderDebugPanel() {
     <div><dt>View id</dt><dd>${esc(state.currentBoardID)}</dd></div>
     <div><dt>Scope</dt><dd>${esc(board.scope_query || 'none')}</dd></div>
     <div><dt>Nodes</dt><dd>${esc(counts.nodes || 0)}</dd></div>
-    <div><dt>Last sync</dt><dd>${state.lastSync ? `${esc(state.lastSync.items || 0)} items / ${esc(state.lastSync.links || 0)} links` : 'not synced here'}</dd></div>
+    <div><dt>Last sync</dt><dd>${esc(currentBoardSyncLabel())}</dd></div>
     <div><dt>GitHub App</dt><dd>${state.backendSession.github_app_configured ? 'configured' : 'not configured'}</dd></div>
     <div><dt>Webhook</dt><dd>${state.backendSession.github_webhook_configured ? 'configured' : 'not configured'}</dd></div>
   </dl>`;
+}
+
+function currentBoard() {
+  return state.boards.find((board) => board.id === state.currentBoardID) || normalizeBoard(state.data.snapshot.board || {});
+}
+
+function currentBoardSyncLabel() {
+  const metrics = currentBoard().metrics || {};
+  return `${syncLabel(metrics)}${metrics.sync_error ? ` - ${metrics.sync_error}` : ''}`;
 }
 
 function renderWorkspaceSuggestions() {
@@ -610,8 +636,9 @@ function renderWorkspaceSuggestions() {
     return;
   }
   dom.workspaceSuggestionList.innerHTML = suggestions.map((edge) => `<div>
-    <strong>${esc(edge.from)} -> ${esc(edge.to)}</strong>
-    <span>${esc(edge.kind || 'related')}</span>
+    <strong>${esc(edge.from_id || edge.from)} -> ${esc(edge.to_id || edge.to)}</strong>
+    <span>${esc(relationLabel(edge.kind || 'related'))}</span>
+    <button type="button" class="primaryAction" data-suggestion-action="promote" data-edge-id="${esc(edgeSelectionID(edge))}">Accept</button>
   </div>`).join('');
 }
 
@@ -639,6 +666,23 @@ function freshnessClass(value) {
   if (age < day) return 'freshnessFresh';
   if (age < 7 * day) return 'freshnessRecent';
   return 'freshnessStale';
+}
+
+function syncLabel(metrics = {}) {
+  const status = String(metrics.sync_status || '').toLowerCase();
+  if (status === 'running') return 'syncing';
+  if (status === 'failed') return 'sync failed';
+  if (status === 'never') return 'never synced';
+  if (metrics.last_sync_at) return freshnessLabel(metrics.last_sync_at);
+  return freshnessLabel(metrics.last_activity_at);
+}
+
+function syncClass(metrics = {}) {
+  const status = String(metrics.sync_status || '').toLowerCase();
+  if (status === 'running') return 'freshnessRecent';
+  if (status === 'failed') return 'freshnessStale';
+  if (metrics.last_sync_at) return freshnessClass(metrics.last_sync_at);
+  return freshnessClass(metrics.last_activity_at);
 }
 
 function ageMs(value) {
@@ -1544,6 +1588,9 @@ function normalizeBoardMetrics(metrics) {
     local: Number(metrics.local || metrics.Local || 0),
     external: Number(metrics.external || metrics.External || 0),
     last_activity_at: metrics.last_activity_at || metrics.LastActivityAt || '',
+    last_sync_at: metrics.last_sync_at || metrics.LastSyncAt || '',
+    sync_status: metrics.sync_status || metrics.SyncStatus || '',
+    sync_error: metrics.sync_error || metrics.SyncError || '',
   };
 }
 
@@ -1712,6 +1759,7 @@ function render() {
   renderStats(brief.counts || {}, snapshot);
   renderSuggestions(snapshot);
   renderEdgeInspector(snapshot);
+  renderItemInspector(snapshot);
   renderWorkspaceSuggestions();
   renderDebugPanel();
   dom.brief.classList.toggle('hidden', state.view !== 'brief');
@@ -1807,7 +1855,7 @@ function renderItem(item) {
   const label = url ? `<a href="${esc(url)}">${id}</a>` : id;
   const badges = badgesHTML(item.badges || plainBadges(item));
   const klass = ['item', isClosed({ state: item.state || item.State }) ? 'closedItem' : ''].filter(Boolean).join(' ');
-  return `<div class="${klass}"><div class="itemHead"><strong>${label} ${title}</strong>${badges}</div><div class="reason">${reason}</div></div>`;
+  return `<div class="${klass}" data-node-id="${esc(item.id || item.ID || '')}"><div class="itemHead"><strong>${label} ${title}</strong>${badges}</div><div class="reason">${reason}</div></div>`;
 }
 
 function renderGraph(snapshot, nodes) {
@@ -1843,7 +1891,7 @@ function renderGraph(snapshot, nodes) {
   html += '</svg>';
   for (const node of nodes) {
     const pos = positions.get(node.id);
-    const klass = ['nodeCard', ...nodeCardClasses(node), selectedEndpoints.has(node.id) ? 'selectedEndpoint' : '', isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
+    const klass = ['nodeCard', ...nodeCardClasses(node), selectedEndpoints.has(node.id) ? 'selectedEndpoint' : '', node.id === state.selectedNodeID ? 'selectedNode' : '', isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
     html += `<article class="${klass}" data-node-id="${esc(node.id)}" style="transform:translate(${pos.x}px, ${pos.y}px)">
       <div class="nodeId">${id}</div>
@@ -1922,20 +1970,26 @@ function graphZoom(value = state.graphZoom) {
 }
 
 function handleGraphClick(event) {
-  const target = event.target.closest?.('[data-edge-id]');
-  if (!target || !dom.graphCanvas.contains(target)) return;
-  const edgeID = target.dataset.edgeId || '';
-  if (!edgeByID(edgeID)) return;
-  state.selectedEdgeID = edgeID;
-  render();
-  dom.status.textContent = 'edge selected';
+  const edgeTarget = event.target.closest?.('[data-edge-id]');
+  if (edgeTarget && dom.graphCanvas.contains(edgeTarget)) {
+    const edgeID = edgeTarget.dataset.edgeId || '';
+    if (!edgeByID(edgeID)) return;
+    state.selectedEdgeID = edgeID;
+    state.selectedNodeID = '';
+    render();
+    dom.status.textContent = 'edge selected';
+    return;
+  }
+  const nodeTarget = event.target.closest?.('[data-node-id]');
+  if (!nodeTarget || !dom.graphCanvas.contains(nodeTarget)) return;
+  selectNode(nodeTarget.dataset.nodeId || '');
 }
 
 function graphLayout(snapshot, nodes) {
-  const cardWidth = 218;
+  const cardWidth = 204;
   const cardHeight = 88;
-  const xGap = 282;
-  const yGap = 126;
+  const xGap = 246;
+  const yGap = 104;
   const padX = 26;
   const padY = 30;
   const visible = new Set(nodes.map((node) => node.id));
@@ -2059,7 +2113,7 @@ function graphNodeSort(a, b) {
 }
 
 function graphEdgeLine(from, to) {
-  const cardWidth = 218;
+  const cardWidth = 204;
   const centerY = 39;
   if (from.x === to.x) {
     return { x1: from.x + cardWidth / 2, y1: from.y + centerY, x2: to.x + cardWidth / 2, y2: to.y + centerY };
@@ -2075,7 +2129,7 @@ function renderTable(nodes) {
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
     const klass = nodeCardClasses(node).filter(Boolean).join(' ');
     const labelText = labels(node).join(', ');
-    return `<tr class="${klass}">
+    return `<tr class="${klass}" data-node-id="${esc(node.id)}">
       <td><div class="tableItem"><div class="tableItemID">${id}</div><div class="tableItemTitle">${esc(node.title)}</div></div></td>
       <td>${badgesHTML(nodeBadges(node))}</td>
       <td>${esc(labelText)}</td>
@@ -2087,6 +2141,20 @@ function renderTable(nodes) {
     <thead><tr><th>Item</th><th>Signals</th><th>Labels</th></tr></thead>
     <tbody>${rows || empty}</tbody>
   </table>`;
+}
+
+function handleNodePickClick(event) {
+  const target = event.target.closest('[data-node-id]');
+  if (!target) return;
+  selectNode(target.dataset.nodeId || '');
+}
+
+function selectNode(nodeID) {
+  if (!nodeByID(nodeID)) return;
+  state.selectedNodeID = nodeID;
+  state.selectedEdgeID = '';
+  render();
+  dom.status.textContent = 'item selected';
 }
 
 function renderSuggestions(snapshot) {
@@ -2191,6 +2259,90 @@ function renderEdgeInspector(snapshot) {
   </section>`;
 }
 
+function renderItemInspector(snapshot) {
+  if (!dom.itemInspector) return;
+  const node = nodeByID(state.selectedNodeID);
+  dom.itemInspector.classList.toggle('hidden', !node || state.mode !== 'stateful');
+  if (!node || state.mode !== 'stateful') {
+    dom.itemInspector.innerHTML = '';
+    return;
+  }
+  const incoming = (snapshot.edges || []).filter((edge) => edge.to_id === node.id);
+  const outgoing = (snapshot.edges || []).filter((edge) => edge.from_id === node.id);
+  const data = nodeData(node);
+  const github = parseGitHubNodeID(node.id);
+  const labelsHTML = labels(node).slice(0, 10).map((label) => `<span>${esc(label)}</span>`).join('');
+  dom.itemInspector.innerHTML = `<section class="inspectorBox">
+    <div class="inspectorHead">
+      <div>
+        <span>${esc(node.kind || 'item')}</span>
+        <strong>${esc(node.title || node.id)}</strong>
+      </div>
+      <button type="button" data-item-action="close">×</button>
+    </div>
+    <div class="inspectorMeta">
+      <span>${esc(node.id)}</span>
+      <span>${esc(node.state || 'unknown')}</span>
+      ${node.owner ? `<span>@${esc(node.owner)}</span>` : ''}
+      ${github ? `<span>${esc(github.repo)}</span>` : ''}
+    </div>
+    ${labelsHTML ? `<div class="inspectorLabels">${labelsHTML}</div>` : ''}
+    <div class="inspectorActions">
+      ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
+      <button type="button" data-item-action="link-from">Link from</button>
+      <button type="button" data-item-action="link-to">Link to</button>
+    </div>
+    <div class="inspectorSection">
+      <h3>Links</h3>
+      ${renderInspectorLinks('Out', outgoing)}
+      ${renderInspectorLinks('In', incoming)}
+    </div>
+    <details class="inspectorRaw">
+      <summary>Raw data</summary>
+      <pre>${esc(JSON.stringify(data, null, 2))}</pre>
+    </details>
+  </section>`;
+}
+
+function renderInspectorLinks(label, edges) {
+  if (!edges.length) return `<div class="inspectorLink empty">${esc(label)}: none</div>`;
+  return edges.slice(0, 8).map((edge) => {
+    const otherID = label === 'Out' ? edge.to_id : edge.from_id;
+    const other = nodeByID(otherID) || placeholderNode(otherID);
+    return `<button type="button" class="inspectorLink" data-node-id="${esc(otherID)}">
+      <span>${esc(label)} / ${esc(relationLabel(edge.kind))}</span>
+      <strong>${esc(shortNodeLabel(other))}</strong>
+    </button>`;
+  }).join('');
+}
+
+function handleItemInspectorClick(event) {
+  const nodeButton = event.target.closest('[data-node-id]');
+  if (nodeButton && dom.itemInspector.contains(nodeButton)) {
+    selectNode(nodeButton.dataset.nodeId || '');
+    return;
+  }
+  const button = event.target.closest('[data-item-action]');
+  if (!button) return;
+  if (button.dataset.itemAction === 'close') {
+    state.selectedNodeID = '';
+    render();
+    return;
+  }
+  const node = nodeByID(state.selectedNodeID);
+  if (!node) return;
+  if (button.dataset.itemAction === 'link-from') {
+    dom.newLinkFrom.value = node.id;
+    setWorkspaceTab('actions');
+    dom.newLinkTo.focus();
+  }
+  if (button.dataset.itemAction === 'link-to') {
+    dom.newLinkTo.value = node.id;
+    setWorkspaceTab('actions');
+    dom.newLinkFrom.focus();
+  }
+}
+
 function handleEdgeInspectorClick(event) {
   const button = event.target.closest('[data-edge-action]');
   if (!button) return;
@@ -2241,9 +2393,35 @@ function dismissSuggestedEdge(edgeID) {
   dom.status.textContent = 'suggested relation hidden for this session';
 }
 
-function promoteSuggestedEdge(edgeID) {
+async function promoteSuggestedEdge(edgeID) {
   const edge = edgeByID(edgeID);
   if (!edge) return;
+  if (state.mode === 'stateful' && state.backendSession.authenticated) {
+    try {
+      const res = await fetch('./api/board-links', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          board_id: state.currentBoardID || 'default',
+          from: edge.from_id,
+          to: edge.to_id,
+          kind: edge.kind || 'relates_to',
+          note: evidenceText(edge),
+        }),
+      });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      state.dismissedSuggestionIDs.delete(edgeID);
+      await loadBackendBoard();
+      await refreshBoards();
+      dom.status.textContent = 'suggested relation saved';
+      return;
+    } catch (err) {
+      dom.error.textContent = err.message;
+      dom.status.textContent = 'promotion failed';
+      return;
+    }
+  }
   try {
     dom.input.value = promoteInputText(dom.input.value, edge);
     state.dismissedSuggestionIDs.delete(edgeID);
@@ -2401,6 +2579,10 @@ function edgeBlockedAndBlockerRaw(edge) {
 
 function edgeByID(edgeID) {
   return (state.data.snapshot.edges || []).find((edge) => edgeSelectionID(edge) === edgeID);
+}
+
+function nodeByID(nodeID) {
+  return (state.data.snapshot.nodes || []).find((node) => node.id === nodeID);
 }
 
 function edgeSelectionID(edge) {
