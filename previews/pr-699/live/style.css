@@ -76,9 +76,16 @@ button:disabled {
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   min-width: 190px;
+}
+
+.brandLogo {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
 }
 
 .brand strong {
