@@ -1323,6 +1323,10 @@ textarea::selection {
   margin-bottom: 6px;
 }
 
+.graphToolbar #graphUnlinkedToggle {
+  margin-right: auto;
+}
+
 .graphToolbar span {
   min-width: 44px;
   color: var(--muted);
@@ -1411,6 +1415,30 @@ textarea::selection {
 
 .graphScale {
   position: relative;
+}
+
+.graphHiddenSummary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 18px);
+  margin: 8px;
+  border: 1px dashed var(--line);
+  border-radius: 7px;
+  background: #f8fafc;
+  color: var(--muted);
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.graphHiddenSummary strong {
+  color: #111827;
+}
+
+.graphHiddenSummary button {
+  min-height: 24px;
+  padding: 2px 7px;
 }
 
 .graphInner {

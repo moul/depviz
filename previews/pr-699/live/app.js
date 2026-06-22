@@ -22,6 +22,7 @@ const dom = {
   graph: document.getElementById('graphView'),
   graphFocus: document.getElementById('graphFocusPanel'),
   graphCanvas: document.getElementById('graphCanvas'),
+  graphUnlinkedToggle: document.getElementById('graphUnlinkedToggle'),
   table: document.getElementById('tableView'),
   itemInspector: document.getElementById('itemInspector'),
   githubToken: document.getElementById('githubTokenInput'),
@@ -81,6 +82,7 @@ const state = {
   selectedNodeID: '',
   graphZoom: 1,
   graphLayout: { width: 900, height: 620 },
+  showGraphUnlinked: false,
   dismissedSuggestionIDs: new Set(),
   data: emptyExport(),
 };
@@ -1808,6 +1810,7 @@ function briefItem(node, extra = {}) {
 function render() {
   const { snapshot, brief } = state.data;
   const nodes = visibleNodes(snapshot.nodes);
+  const graphNodes = graphVisibleNodes(snapshot, nodes);
   dom.boardTitle.textContent = snapshot.board.name || 'Default';
   dom.boardMeta.textContent = `${snapshot.nodes.length} nodes - ${snapshot.edges.length} edges`;
   renderWorkspaceSummary();
@@ -1822,7 +1825,7 @@ function render() {
   dom.graph.classList.toggle('hidden', state.view !== 'graph');
   dom.table.classList.toggle('hidden', state.view !== 'table');
   if (state.view === 'brief') renderBrief(brief);
-  if (state.view === 'graph') renderGraph(snapshot, nodes);
+  if (state.view === 'graph') renderGraph(snapshot, graphNodes, nodes.length - graphNodes.length);
   if (state.view === 'table') renderTable(nodes);
 }
 
@@ -1914,7 +1917,25 @@ function renderItem(item) {
   return `<div class="${klass}" data-node-id="${esc(item.id || item.ID || '')}"><div class="itemHead"><strong>${label} ${title}</strong>${badges}</div><div class="reason">${reason}</div></div>`;
 }
 
-function renderGraph(snapshot, nodes) {
+function graphVisibleNodes(snapshot, nodes) {
+  if (state.showGraphUnlinked) return nodes;
+  const visible = new Set(nodes.map((node) => node.id));
+  const connected = new Set(graphLayoutEdges(snapshot, visible).flatMap((edge) => [edge.from, edge.to]));
+  for (const edge of graphFocusEdges(snapshot)) {
+    connected.add(edge.from_id);
+    connected.add(edge.to_id);
+  }
+  if (state.selectedNodeID) connected.add(state.selectedNodeID);
+  const graphNodes = nodes.filter((node) => connected.has(node.id));
+  if (graphNodes.length > 0) return graphNodes;
+  return nodes.slice(0, Math.min(nodes.length, 24));
+}
+
+function renderGraph(snapshot, nodes, hiddenCount = 0) {
+  if (dom.graphUnlinkedToggle) {
+    dom.graphUnlinkedToggle.textContent = state.showGraphUnlinked ? 'Hide unlinked' : `Show unlinked${hiddenCount ? ` (${hiddenCount})` : ''}`;
+    dom.graphUnlinkedToggle.classList.toggle('active', state.showGraphUnlinked);
+  }
   const visible = new Set(nodes.map((node) => node.id));
   const selectedEdge = edgeByID(state.selectedEdgeID);
   const selectedEndpoints = selectedEdge ? new Set([selectedEdge.from_id, selectedEdge.to_id]) : new Set();
@@ -1924,7 +1945,10 @@ function renderGraph(snapshot, nodes) {
   state.graphLayout = { width: layout.width, height: layout.height };
   const zoom = graphZoom();
   const positions = layout.positions;
-  let html = `<div class="graphScale" style="width:${Math.ceil(layout.width * zoom)}px;min-height:${Math.ceil(layout.height * zoom)}px">
+  const hiddenSummary = hiddenCount > 0 && !state.showGraphUnlinked
+    ? `<div class="graphHiddenSummary"><strong>${hiddenCount}</strong> unlinked items hidden from the graph <button type="button" data-graph-action="toggle-unlinked">Show them</button></div>`
+    : '';
+  let html = `${hiddenSummary}<div class="graphScale" style="width:${Math.ceil(layout.width * zoom)}px;min-height:${Math.ceil(layout.height * zoom)}px">
   <div class="graphInner" style="width:${layout.width}px;min-height:${layout.height}px;transform:scale(${zoom})">
     ${graphColumnHeaders(layout)}
     <svg class="edgeLayer" width="${layout.width}" height="${layout.height}" aria-hidden="true">
@@ -2116,6 +2140,7 @@ function applyGraphAction(action) {
     fitGraphToCanvas();
     return;
   }
+  if (action === 'toggle-unlinked') state.showGraphUnlinked = !state.showGraphUnlinked;
   if (action === 'reset') state.graphZoom = 1;
   if (action === 'in') state.graphZoom = graphZoom(state.graphZoom + 0.15);
   if (action === 'out') state.graphZoom = graphZoom(state.graphZoom - 0.15);
@@ -2350,7 +2375,7 @@ function renderSuggestions(snapshot) {
     dom.suggestions.innerHTML = '';
     return;
   }
-  const limit = state.view === 'graph' ? 3 : 8;
+  const limit = state.view === 'graph' ? 1 : 8;
   const rows = suggestions.slice(0, limit).map((edge) => renderSuggestion(edge, nodes)).join('');
   const more = suggestions.length > limit ? `<div class="suggestionMore">${suggestions.length - limit} more in Links</div>` : '';
   dom.suggestions.innerHTML = `<section class="suggestionBox" aria-label="Suggested relations">
