@@ -1525,28 +1525,44 @@ textarea::selection {
   padding: 8px;
 }
 
-.graphPair {
+.graphPairGroup {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) 132px minmax(240px, 1fr);
-  align-items: stretch;
-  gap: 8px;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(360px, 1.6fr);
+  gap: 10px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   background: #ffffff;
-  padding: 8px;
+  padding: 10px;
   box-shadow: 0 1px 4px rgba(16, 24, 40, 0.05);
 }
 
-.graphPair.selectedPair {
+.graphPairGroup.selectedPair {
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12), 0 8px 22px rgba(16, 24, 40, 0.10);
+}
+
+.graphPairTargets {
+  display: grid;
+  gap: 6px;
+}
+
+.graphPairTarget {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 7px;
+  min-width: 0;
 }
 
 .graphPairNode {
   display: grid;
   align-content: start;
   gap: 4px;
-  min-height: 72px;
+  width: 100%;
+  min-height: 74px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfe;
+  padding: 7px 8px;
   text-align: left;
 }
 
@@ -1560,12 +1576,15 @@ textarea::selection {
 .graphPairNode strong {
   color: #111827;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .graphPairRelation {
-  display: grid;
-  align-content: center;
-  justify-items: center;
+  display: flex;
+  min-height: 74px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   border-radius: 7px;
   background: #fff7ed;
   color: #9a3412;
@@ -1584,6 +1603,65 @@ textarea::selection {
   color: #b45309;
   font-size: 10px;
   font-weight: 700;
+}
+
+.graphPairRelation em {
+  margin-top: 3px;
+  color: #b45309;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.nodeSignals {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.nodePeople {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+}
+
+.nodePeople img {
+  width: 20px;
+  height: 20px;
+  margin-right: -5px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #eef2f7;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12);
+}
+
+.nodeLabels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.nodeLabels span,
+.nodeMilestone {
+  width: max-content;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeMilestone {
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+  color: #6d28d9;
 }
 
 .graphInner {
@@ -2146,7 +2224,8 @@ tr:last-child td {
     grid-template-columns: 1fr;
   }
 
-  .graphPair {
+  .graphPairGroup,
+  .graphPairTarget {
     grid-template-columns: 1fr;
   }
 

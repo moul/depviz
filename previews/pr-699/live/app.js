@@ -1016,6 +1016,10 @@ async function fetchGitHubNode(ref, token) {
       ci,
       metadata_errors: metadataErrors,
       labels: (issue.labels || []).map((label) => label.name || label),
+      assignees: (issue.assignees || []).map(githubPersonData),
+      author: githubPersonData(issue.user),
+      reviewers: review.requested || [],
+      milestone: issue.milestone?.title || '',
       number: issue.number,
       repo: ref.repo,
       source: 'github-browser',
@@ -1121,6 +1125,18 @@ function summarizeGitHubReviews(reviews, pr) {
     comments,
     requested,
     total: reviews?.length || 0,
+  };
+}
+
+function githubPersonData(person) {
+  if (!person) return null;
+  if (typeof person === 'string') return { login: person, avatar_url: githubAvatarURL(person) };
+  const login = person.login || person.name || '';
+  if (!login) return null;
+  return {
+    login,
+    avatar_url: person.avatar_url || githubAvatarURL(login),
+    html_url: person.html_url || `https://github.com/${encodeURIComponent(login)}`,
   };
 }
 
@@ -2077,6 +2093,7 @@ function renderGraph(snapshot, nodes, hidden = {}) {
       <div class="nodeTitle">${esc(node.title)}</div>
       <div class="nodeId">${id}</div>
       ${badgesHTML(nodeBadges(node))}
+      ${nodeSignalsHTML(node)}
     </article>`;
   }
   html += '</div></div>';
@@ -2099,7 +2116,7 @@ function renderGraphPairs(snapshot, nodes, hidden = {}) {
   dom.graphZoomLabel.textContent = 'pairs';
   const visible = new Set(nodes.map((node) => node.id));
   const nodesByID = new Map(snapshot.nodes.map((node) => [node.id, node]));
-  const pairs = graphPairEdges(snapshot, visible);
+  const groups = graphPairGroups(snapshot, visible);
   const hiddenConnected = Number(hidden.connected || 0);
   const hiddenUnlinked = Number(hidden.unlinked || 0);
   const hiddenSummary = hiddenConnected > 0 || hiddenUnlinked > 0
@@ -2108,32 +2125,53 @@ function renderGraphPairs(snapshot, nodes, hidden = {}) {
         ${hiddenUnlinked > 0 ? `<span><strong>${hiddenUnlinked}</strong> unlinked items hidden</span> <button type="button" data-graph-action="toggle-unlinked">Show backlog</button>` : ''}
       </div>`
     : '';
-  if (!pairs.length) {
+  if (!groups.length) {
     dom.graphCanvas.innerHTML = `${hiddenSummary}<div class="graphEmpty">No visible relations for this driver.</div>`;
     return;
   }
   dom.graphCanvas.innerHTML = `${hiddenSummary}<div class="graphPairs">
-    ${pairs.map((edge) => {
-      const from = nodesByID.get(edge.from_id) || placeholderNode(edge.from_id);
-      const to = nodesByID.get(edge.to_id) || placeholderNode(edge.to_id);
-      const selected = edgeSelectionID(edge) === state.selectedEdgeID;
-      return `<article class="graphPair ${selected ? 'selectedPair' : ''}" data-edge-id="${esc(edgeSelectionID(edge))}">
-        ${renderGraphPairNode(from, 'From')}
-        <div class="graphPairRelation">
-          <strong>${esc(relationLabel(edge.kind))}</strong>
-          <span>${esc(confidenceLabel(edge))} · ${esc(edge.authority || 'local')}</span>
+    ${groups.map((group) => {
+      const from = nodesByID.get(group.fromID) || placeholderNode(group.fromID);
+      const selected = group.edges.some((edge) => edgeSelectionID(edge) === state.selectedEdgeID);
+      return `<article class="graphPairGroup ${selected ? 'selectedPair' : ''}">
+        ${renderGraphPairNode(from, 'Source')}
+        <div class="graphPairTargets">
+          ${group.edges.map((edge) => {
+            const to = nodesByID.get(edge.to_id) || placeholderNode(edge.to_id);
+            return `<div class="graphPairTarget" data-edge-id="${esc(edgeSelectionID(edge))}">
+              <span class="graphPairRelation"><strong>${esc(relationLabel(edge.kind))}</strong><em>${esc(confidenceLabel(edge))} · ${esc(edge.authority || 'local')}</em></span>
+              ${renderGraphPairNode(to, 'Target')}
+            </div>`;
+          }).join('')}
         </div>
-        ${renderGraphPairNode(to, 'To')}
       </article>`;
     }).join('')}
   </div>`;
 }
 
+function graphPairGroups(snapshot, visible) {
+  const limit = state.showGraphAllConnected ? 24 : 10;
+  const grouped = new Map();
+  for (const edge of graphPairEdges(snapshot, visible)) {
+    if (!grouped.has(edge.from_id)) grouped.set(edge.from_id, []);
+    grouped.get(edge.from_id).push(edge);
+  }
+  return Array.from(grouped, ([fromID, edges]) => ({ fromID, edges: edges.slice(0, 5) }))
+    .sort((a, b) => graphRawEdgeScore(b.edges[0]) - graphRawEdgeScore(a.edges[0]) || String(a.fromID).localeCompare(String(b.fromID)))
+    .slice(0, limit);
+}
+
 function graphPairEdges(snapshot, visible) {
-  return (snapshot.edges || [])
-    .filter((edge) => visible.has(edge.from_id) && visible.has(edge.to_id))
-    .sort((a, b) => graphRawEdgeScore(b) - graphRawEdgeScore(a) || String(a.from_id).localeCompare(String(b.from_id)))
-    .slice(0, state.showGraphAllConnected ? 50 : 12);
+  const seen = new Set();
+  const edges = [];
+  for (const edge of snapshot.edges || []) {
+    if (!visible.has(edge.from_id) || !visible.has(edge.to_id)) continue;
+    const key = `${edge.from_id}\x00${edge.to_id}\x00${edge.kind || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    edges.push(edge);
+  }
+  return edges.sort((a, b) => graphRawEdgeScore(b) - graphRawEdgeScore(a) || String(a.from_id).localeCompare(String(b.from_id)));
 }
 
 function graphRawEdgeScore(edge) {
@@ -2148,7 +2186,8 @@ function renderGraphPairNode(node, label) {
   return `<button type="button" class="graphPairNode" data-node-id="${esc(node.id)}">
     <span>${esc(label)} · ${esc(nodeKindLabel(node))} ${esc(nodeReferenceLabel(node))}</span>
     <strong>${esc(node.title || node.id)}</strong>
-    <div>${badgesHTML(nodeBadges(node).slice(0, 3))}</div>
+    ${badgesHTML(nodeBadges(node).slice(0, 4))}
+    ${nodeSignalsHTML(node)}
   </button>`;
 }
 
@@ -3041,7 +3080,7 @@ function visibleNodes(nodes) {
     if (!state.showClosed && isClosed(node)) return false;
     if (!state.showLocal && isLocal(node)) return false;
     if (!state.showExternal && !isLocal(node)) return false;
-    const hay = [node.id, node.title, node.state, node.kind, badgeText(nodeBadges(node)), labels(node).join(' ')].join(' ').toLowerCase();
+    const hay = [node.id, node.title, node.state, node.kind, badgeText(nodeBadges(node)), labels(node).join(' '), nodePeople(node).map((person) => person.login).join(' '), nodeData(node).milestone || ''].join(' ').toLowerCase();
     return !state.filter || hay.includes(state.filter);
   });
 }
@@ -3233,6 +3272,39 @@ function badgeClass(value) {
 
 function labels(node) {
   return nodeData(node).labels || [];
+}
+
+function nodeSignalsHTML(node) {
+  const people = nodePeople(node).slice(0, 5);
+  const labelItems = labels(node).slice(0, 5);
+  const milestone = nodeData(node).milestone || '';
+  const peopleHTML = people.length
+    ? `<div class="nodePeople">${people.map((person) => `<img src="${esc(person.avatar_url || githubAvatarURL(person.login))}" alt="@${esc(person.login)}" title="@${esc(person.login)}" loading="lazy">`).join('')}</div>`
+    : '';
+  const labelsHTML = labelItems.length
+    ? `<div class="nodeLabels">${labelItems.map((label) => `<span>${esc(label)}</span>`).join('')}</div>`
+    : '';
+  const milestoneHTML = milestone ? `<div class="nodeMilestone">${esc(milestone)}</div>` : '';
+  return peopleHTML || labelsHTML || milestoneHTML ? `<div class="nodeSignals">${peopleHTML}${labelsHTML}${milestoneHTML}</div>` : '';
+}
+
+function nodePeople(node) {
+  const data = nodeData(node);
+  const people = [];
+  const add = (person) => {
+    const normalized = githubPersonData(person);
+    if (!normalized || people.some((item) => item.login === normalized.login)) return;
+    people.push(normalized);
+  };
+  (Array.isArray(data.assignees) ? data.assignees : []).forEach(add);
+  (Array.isArray(data.reviewers) ? data.reviewers : []).forEach(add);
+  add(data.author);
+  add(node.owner);
+  return people;
+}
+
+function githubAvatarURL(login) {
+  return login ? `https://github.com/${encodeURIComponent(login)}.png?size=40` : '';
 }
 
 function nodeData(node) {
