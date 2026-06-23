@@ -222,11 +222,13 @@ button:disabled {
 .shell.statefulMode .workPane {
   display: grid;
   grid-template-columns: 304px minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
   grid-template-areas:
     "header header"
     "user user"
     "workspace canvas";
   align-items: start;
+  align-content: start;
   gap: 10px;
   padding: 10px;
 }
@@ -247,6 +249,10 @@ button:disabled {
 
 .shell.statefulMode .canvasStack {
   grid-area: canvas;
+}
+
+.shell.emptyBoard .canvasStack {
+  gap: 10px;
 }
 
 .userPanel {
@@ -792,6 +798,14 @@ textarea::selection {
   align-items: start;
 }
 
+.shell.emptyBoard .contentGrid {
+  grid-template-columns: minmax(0, 720px);
+}
+
+.shell.emptyBoard .canvasTools {
+  display: none;
+}
+
 .viewStack {
   min-width: 0;
 }
@@ -871,6 +885,51 @@ textarea::selection {
 .briefGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.emptyBoardPanel {
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+.emptyBoardKicker {
+  display: inline-flex;
+  max-width: 100%;
+  margin-bottom: 8px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 2px 8px;
+  font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyBoardPanel h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.emptyBoardPanel p {
+  max-width: 560px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.emptyBoardActions {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

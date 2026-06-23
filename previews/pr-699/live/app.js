@@ -184,7 +184,7 @@ function wireEvents() {
   dom.workspaceSuggestionList.addEventListener('click', handleSuggestionClick);
   dom.edgeInspector.addEventListener('click', handleEdgeInspectorClick);
   dom.itemInspector.addEventListener('click', handleItemInspectorClick);
-  dom.brief.addEventListener('click', handleNodePickClick);
+  dom.brief.addEventListener('click', handleBriefClick);
   dom.table.addEventListener('click', handleNodePickClick);
   dom.graphCanvas.addEventListener('click', handleGraphClick);
   document.getElementById('graphView').addEventListener('click', handleGraphControlClick);
@@ -1819,6 +1819,7 @@ function render() {
   const { snapshot, brief } = state.data;
   const nodes = visibleNodes(snapshot.nodes);
   const graphSelection = graphVisibleNodeSelection(snapshot, nodes);
+  dom.shell.classList.toggle('emptyBoard', snapshot.nodes.length === 0);
   dom.boardTitle.textContent = snapshot.board.name || 'Default';
   dom.boardMeta.textContent = `${snapshot.nodes.length} nodes - ${snapshot.edges.length} edges`;
   renderWorkspaceSummary();
@@ -1850,6 +1851,10 @@ function renderStats(counts, snapshot) {
 }
 
 function renderBrief(brief) {
+  if ((brief.counts?.nodes || 0) === 0) {
+    renderEmptyBoardBrief();
+    return;
+  }
   const githubRefresh = state.githubRefresh.length
     ? briefSection('GitHub refresh', state.githubRefresh, false)
     : '';
@@ -1863,6 +1868,26 @@ function renderBrief(brief) {
     ${briefSection('Local-only', brief.local_only || [], false)}
     ${briefSection('Stale external state', brief.stale || [], false)}
   </div>`;
+}
+
+function renderEmptyBoardBrief() {
+  const board = state.data.snapshot.board || {};
+  const usefulBoard = state.boards.find((item) => !isDraftBoard(item) && item.id !== state.currentBoardID);
+  const canSync = Boolean(board.scope_query && board.scope_query !== 'local');
+  const scope = board.scope_query || 'local draft';
+  dom.brief.innerHTML = `<section class="emptyBoardPanel">
+    <div>
+      <span class="emptyBoardKicker">${esc(scope)}</span>
+      <h3>${esc(board.name || 'Empty view')}</h3>
+      <p>This view has no items yet. Start from a GitHub source or add a first issue, PR, task, or note.</p>
+    </div>
+    <div class="emptyBoardActions">
+      <button type="button" class="primaryAction" data-empty-action="add-item">Add first item</button>
+      <button type="button" data-empty-action="sources">Choose source</button>
+      ${canSync ? '<button type="button" data-empty-action="sync">Sync source</button>' : ''}
+      ${usefulBoard ? `<button type="button" data-empty-action="useful" data-board-id="${esc(usefulBoard.id)}">Open ${esc(usefulBoard.name || usefulBoard.id)}</button>` : ''}
+    </div>
+  </section>`;
 }
 
 function githubDiagnosticItems(snapshot) {
@@ -2488,6 +2513,38 @@ function handleNodePickClick(event) {
   const target = event.target.closest('[data-node-id]');
   if (!target) return;
   selectNode(target.dataset.nodeId || '');
+}
+
+function handleBriefClick(event) {
+  const emptyAction = event.target.closest('[data-empty-action]');
+  if (emptyAction) {
+    handleEmptyBoardAction(emptyAction);
+    return;
+  }
+  handleNodePickClick(event);
+}
+
+function handleEmptyBoardAction(target) {
+  const action = target.dataset.emptyAction || '';
+  if (action === 'add-item') {
+    setWorkspaceTab('actions');
+    dom.newItemRef.focus();
+    return;
+  }
+  if (action === 'sources') {
+    setWorkspaceTab('presets');
+    loadGitHubPresets();
+    return;
+  }
+  if (action === 'sync') {
+    syncCurrentBoard();
+    return;
+  }
+  if (action === 'useful' && target.dataset.boardId) {
+    state.currentBoardID = target.dataset.boardId;
+    writeURLBoard(state.currentBoardID);
+    loadBackendBoard();
+  }
 }
 
 function selectNode(nodeID) {
