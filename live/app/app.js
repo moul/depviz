@@ -95,6 +95,7 @@ const state = {
   dismissedSuggestionIDs: new Set(),
   activeChipFilters: new Set(),
   data: emptyExport(),
+  inspectorEditMode: false,
 };
 
 function emptyExport() {
@@ -2934,26 +2935,63 @@ function renderItemInspector(snapshot) {
   const data = nodeData(node);
   const github = parseGitHubNodeID(node.id);
   const labelsHTML = labels(node).slice(0, 10).map((label) => `<span>${emojiHTML(label)}</span>`).join('');
-  dom.itemInspector.innerHTML = `<section class="inspectorBox">
-    <div class="inspectorHead">
-      <div>
-        <span>${esc(node.kind || 'item')}</span>
-        <strong>${emojiHTML(node.title || node.id)}</strong>
-      </div>
+  const local = isLocal(node);
+  const kindBadgeHTML = `<span class="badge type-${esc(badgeClass(node.kind || 'task'))}">${esc(nodeKindLabel(node))}</span>`;
+  const stateBadge = lifecycleBadge(node.state);
+  const stateBadgeHTML = stateBadge ? `<span class="badge ${esc(stateBadge.kind)}">${esc(stateBadge.text)}</span>` : '';
+  const editBtn = local ? `<button type="button" data-item-action="edit">Edit</button>` : '';
+  const headSection = `<div class="inspectorHead">
+    <div>
+      <div class="inspectorBadges">${kindBadgeHTML}${stateBadgeHTML}</div>
+      <strong>${emojiHTML(node.title || node.id)}</strong>
+    </div>
+    <div>
+      ${editBtn}
       <button type="button" data-item-action="close">×</button>
     </div>
-    <div class="inspectorMeta">
-      <span>${esc(node.id)}</span>
-      <span>${esc(node.state || 'unknown')}</span>
-      ${node.owner ? `<span>@${esc(node.owner)}</span>` : ''}
-      ${github ? `<span>${esc(github.repo)}</span>` : ''}
+  </div>`;
+  const metaSection = `<div class="inspectorMeta">
+    <span>${esc(node.id)}</span>
+    ${node.owner ? `<span>@${esc(node.owner)}</span>` : ''}
+    ${github ? `<span>${esc(github.repo)}</span>` : ''}
+  </div>`;
+  const labelsSection = labelsHTML ? `<div class="inspectorLabels">${labelsHTML}</div>` : '';
+  const descriptionSection = data.description ? `<div class="inspectorDescription">${emojiHTML(data.description)}</div>` : '';
+  const editFormSection = local && state.inspectorEditMode ? `<form class="inspectorEditForm" id="inspectorEditForm">
+    <label>Title<input type="text" name="title" value="${esc(node.title || '')}"></label>
+    <label>Status
+      <select name="status">
+        <option value="draft"${node.state === 'draft' ? ' selected' : ''}>Draft</option>
+        <option value="active"${node.state === 'active' ? ' selected' : ''}>Active</option>
+        <option value="blocked"${node.state === 'blocked' ? ' selected' : ''}>Blocked</option>
+        <option value="at-risk"${node.state === 'at-risk' ? ' selected' : ''}>At-risk</option>
+        <option value="paused"${node.state === 'paused' ? ' selected' : ''}>Paused</option>
+        <option value="open"${node.state === 'open' ? ' selected' : ''}>Open</option>
+        <option value="done"${node.state === 'done' ? ' selected' : ''}>Done</option>
+        <option value="rejected"${node.state === 'rejected' ? ' selected' : ''}>Rejected</option>
+        <option value="local"${node.state === 'local' ? ' selected' : ''}>Local</option>
+      </select>
+    </label>
+    <label>Owner<input type="text" name="owner" value="${esc(node.owner || '')}"></label>
+    <label>Description<textarea name="description" rows="3">${esc(data.description || '')}</textarea></label>
+    <div class="inspectorFormActions">
+      <button type="submit" class="primaryAction">Save</button>
+      <button type="button" data-item-action="cancel-edit">Cancel</button>
     </div>
-    ${labelsHTML ? `<div class="inspectorLabels">${labelsHTML}</div>` : ''}
-    <div class="inspectorActions">
-      ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
-      <button type="button" data-item-action="link-from">Link from</button>
-      <button type="button" data-item-action="link-to">Link to</button>
-    </div>
+  </form>` : '';
+  const actionsSection = `<div class="inspectorActions">
+    ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
+    <button type="button" data-item-action="link-from">Link from</button>
+    <button type="button" data-item-action="link-to">Link to</button>
+    <button type="button" class="dangerAction" data-item-action="delete-node">Remove</button>
+  </div>`;
+  dom.itemInspector.innerHTML = `<section class="inspectorBox">
+    ${headSection}
+    ${metaSection}
+    ${labelsSection}
+    ${descriptionSection}
+    ${editFormSection}
+    ${actionsSection}
     <div class="inspectorSection">
       <h3>Links</h3>
       ${renderInspectorLinks('Out', outgoing)}
@@ -2964,6 +3002,11 @@ function renderItemInspector(snapshot) {
       <pre>${esc(JSON.stringify(data, null, 2))}</pre>
     </details>
   </section>`;
+  // Wire edit form submit via delegation
+  const editForm = document.getElementById('inspectorEditForm');
+  if (editForm) {
+    editForm.addEventListener('submit', (e) => { e.preventDefault(); saveNodeEdit(); });
+  }
 }
 
 function renderInspectorLinks(label, edges) {
@@ -2988,11 +3031,26 @@ function handleItemInspectorClick(event) {
   if (!button) return;
   if (button.dataset.itemAction === 'close') {
     state.selectedNodeID = '';
+    state.inspectorEditMode = false;
+    render();
+    return;
+  }
+  if (button.dataset.itemAction === 'edit') {
+    state.inspectorEditMode = true;
+    render();
+    return;
+  }
+  if (button.dataset.itemAction === 'cancel-edit') {
+    state.inspectorEditMode = false;
     render();
     return;
   }
   const node = nodeByID(state.selectedNodeID);
   if (!node) return;
+  if (button.dataset.itemAction === 'delete-node') {
+    deleteNodeFromBoard(state.selectedNodeID);
+    return;
+  }
   if (button.dataset.itemAction === 'link-from') {
     dom.newLinkFrom.value = node.id;
     setWorkspaceTab('actions');
@@ -3002,6 +3060,60 @@ function handleItemInspectorClick(event) {
     dom.newLinkTo.value = node.id;
     setWorkspaceTab('actions');
     dom.newLinkFrom.focus();
+  }
+}
+
+async function saveNodeEdit() {
+  const form = document.getElementById('inspectorEditForm');
+  if (!form) return;
+  const nodeID = state.selectedNodeID;
+  if (!nodeID) return;
+  const data = Object.fromEntries(new FormData(form));
+  try {
+    const res = await fetch('./api/board-items', {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        node_id: nodeID,
+        title: data.title || '',
+        status: data.status || '',
+        owner: data.owner || '',
+        description: data.description || '',
+      }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    state.inspectorEditMode = false;
+    await loadBackendBoard();
+    dom.status.textContent = 'node updated';
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'update failed';
+  }
+}
+
+async function deleteNodeFromBoard(nodeID) {
+  if (!nodeID) return;
+  const node = nodeByID(nodeID);
+  const label = node ? (node.title || node.id) : nodeID;
+  if (!confirm(`Remove "${label.slice(0, 60)}" from this board?`)) return;
+  try {
+    const res = await fetch('./api/board-items', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: nodeID }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    state.selectedNodeID = '';
+    state.selectedEdgeID = '';
+    state.inspectorEditMode = false;
+    await loadBackendBoard();
+    await refreshBoards();
+    dom.status.textContent = 'node removed';
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'remove failed';
   }
 }
 

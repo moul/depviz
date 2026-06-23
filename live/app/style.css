@@ -2354,6 +2354,71 @@ tr:last-child td {
   font-size: 11px;
 }
 
+.inspectorBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
+.inspectorDescription {
+  padding: 6px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.inspectorEditForm {
+  display: grid;
+  gap: 7px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.inspectorEditForm label {
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.inspectorEditForm input,
+.inspectorEditForm select,
+.inspectorEditForm textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 5px 7px;
+  font: inherit;
+}
+
+.inspectorEditForm textarea {
+  resize: vertical;
+  min-height: 52px;
+}
+
+.inspectorFormActions {
+  display: flex;
+  gap: 6px;
+}
+
+button.dangerAction {
+  border-color: #fca5a5;
+  color: var(--red, #dc2626);
+  background: #fff5f5;
+}
+
+button.dangerAction:hover {
+  border-color: var(--red, #dc2626);
+  background: #fee2e2;
+}
+
 @media (max-width: 920px) {
   .shell {
     grid-template-columns: 1fr;
