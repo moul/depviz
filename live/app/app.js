@@ -62,6 +62,7 @@ const dom = {
   showExternal: document.getElementById('showExternal'),
   showLocal: document.getElementById('showLocal'),
   showClosed: document.getElementById('showClosed'),
+  filterChips: document.getElementById('filterChips'),
 };
 
 const state = {
@@ -88,6 +89,7 @@ const state = {
   showGraphAllConnected: false,
   showGraphUnlinked: false,
   dismissedSuggestionIDs: new Set(),
+  activeChipFilters: new Set(),
   data: emptyExport(),
 };
 
@@ -193,6 +195,16 @@ function wireEvents() {
     state.graphDriver = dom.graphDriver.value;
     render();
   });
+  if (dom.filterChips) {
+    dom.filterChips.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-chip-type]');
+      if (!btn) return;
+      const key = `${btn.dataset.chipType}:${btn.dataset.chipValue}`;
+      if (state.activeChipFilters.has(key)) state.activeChipFilters.delete(key);
+      else state.activeChipFilters.add(key);
+      render();
+    });
+  }
   document.addEventListener('keydown', handleGraphKeydown);
 }
 
@@ -1831,6 +1843,45 @@ function briefItem(node, extra = {}) {
   };
 }
 
+function collectNodeChips(nodes) {
+  const labelCounts = new Map();
+  const assigneeCounts = new Map();
+  const kindCounts = new Map();
+  for (const node of nodes) {
+    for (const label of labels(node)) {
+      labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
+    }
+    for (const person of nodePeople(node)) {
+      assigneeCounts.set(person.login, (assigneeCounts.get(person.login) || 0) + 1);
+    }
+    if (node.kind) {
+      kindCounts.set(node.kind, (kindCounts.get(node.kind) || 0) + 1);
+    }
+  }
+  const chips = [];
+  for (const [kind, count] of [...kindCounts.entries()].sort((a, b) => b[1] - a[1])) {
+    chips.push({ type: 'kind', value: kind, label: kind, count });
+  }
+  for (const [label, count] of [...labelCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20)) {
+    chips.push({ type: 'label', value: label, label, count });
+  }
+  for (const [login, count] of [...assigneeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)) {
+    chips.push({ type: 'assignee', value: login, label: `@${login}`, count });
+  }
+  return chips;
+}
+
+function renderFilterChips() {
+  if (!dom.filterChips) return;
+  const chips = collectNodeChips(state.data.snapshot.nodes);
+  if (!chips.length) { dom.filterChips.innerHTML = ''; return; }
+  dom.filterChips.innerHTML = chips.map((chip) => {
+    const key = `${chip.type}:${chip.value}`;
+    const active = state.activeChipFilters.has(key);
+    return `<button type="button" class="filterChip ${active ? 'active' : ''}" data-chip-type="${esc(chip.type)}" data-chip-value="${esc(chip.value)}" title="${esc(chip.type)}: ${esc(chip.value)}">${emojiHTML(chip.label)}${chip.count > 1 ? ` <span>${chip.count}</span>` : ''}</button>`;
+  }).join('');
+}
+
 function render() {
   const { snapshot, brief } = state.data;
   const nodes = visibleNodes(snapshot.nodes);
@@ -1838,6 +1889,7 @@ function render() {
   dom.shell.classList.toggle('emptyBoard', snapshot.nodes.length === 0);
   dom.boardTitle.textContent = snapshot.board.name || 'Default';
   dom.boardMeta.textContent = `${snapshot.nodes.length} nodes - ${snapshot.edges.length} edges`;
+  renderFilterChips();
   renderWorkspaceSummary();
   renderStats(brief.counts || {}, snapshot);
   renderSuggestions(snapshot);
@@ -3156,7 +3208,24 @@ function visibleNodes(nodes) {
     if (!state.showLocal && isLocal(node)) return false;
     if (!state.showExternal && !isLocal(node)) return false;
     const hay = [node.id, node.title, node.state, node.kind, badgeText(nodeBadges(node)), labels(node).join(' '), nodePeople(node).map((person) => person.login).join(' '), nodeData(node).milestone || ''].join(' ').toLowerCase();
-    return !state.filter || hay.includes(state.filter);
+    if (state.filter && !hay.includes(state.filter)) return false;
+    if (state.activeChipFilters.size > 0) {
+      const byType = {};
+      for (const key of state.activeChipFilters) {
+        const colonIdx = key.indexOf(':');
+        const type = key.slice(0, colonIdx);
+        const value = key.slice(colonIdx + 1);
+        if (!byType[type]) byType[type] = new Set();
+        byType[type].add(value);
+      }
+      for (const [type, values] of Object.entries(byType)) {
+        if (type === 'kind' && !values.has(node.kind)) return false;
+        if (type === 'label' && !labels(node).some((l) => values.has(l))) return false;
+        if (type === 'assignee' && !nodePeople(node).some((p) => values.has(p.login))) return false;
+        if (type === 'status' && !values.has(node.state)) return false;
+      }
+    }
+    return true;
   });
 }
 
