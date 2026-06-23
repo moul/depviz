@@ -1971,8 +1971,10 @@ function graphVisibleNodeSelection(snapshot, nodes) {
   const connected = new Set(graphLayoutEdges(snapshot, visible).flatMap((edge) => [edge.from, edge.to]));
   const connectedNodes = nodes.filter((node) => connected.has(node.id));
   const unlinkedNodes = nodes.filter((node) => !connected.has(node.id));
-  if (state.showGraphUnlinked || state.graphDriver === 'backlog') return { nodes, hidden: { connected: 0, unlinked: 0 } };
-  if (state.showGraphAllConnected || state.graphDriver === 'connected') return { nodes: connectedNodes.length ? connectedNodes : nodes.slice(0, 24), hidden: { connected: 0, unlinked: unlinkedNodes.length } };
+  if (state.graphDriver === 'backlog') return { nodes: unlinkedNodes, hidden: { connected: connectedNodes.length, unlinked: 0 } };
+  if (state.graphDriver === 'focus') return { nodes, hidden: { connected: 0, unlinked: unlinkedNodes.length } };
+  if (state.showGraphUnlinked) return { nodes, hidden: { connected: 0, unlinked: 0 } };
+  if (state.showGraphAllConnected) return { nodes: connectedNodes.length ? connectedNodes : nodes.slice(0, 24), hidden: { connected: 0, unlinked: unlinkedNodes.length } };
 
   const overviewIDs = new Set();
   for (const edge of graphFocusEdges(snapshot)) {
@@ -2020,6 +2022,14 @@ function renderGraph(snapshot, nodes, hidden = {}) {
   if (dom.graphDriver && dom.graphDriver.value !== state.graphDriver) dom.graphDriver.value = state.graphDriver;
   if (state.graphDriver === 'pairs') {
     renderGraphPairs(snapshot, nodes, hidden);
+    return;
+  }
+  if (state.graphDriver === 'focus') {
+    renderGraphFocusDriver(snapshot, nodes, hidden);
+    return;
+  }
+  if (state.graphDriver === 'backlog') {
+    renderGraphBacklog(snapshot, nodes, hidden);
     return;
   }
   const hiddenConnected = Number(hidden.connected || 0);
@@ -2149,6 +2159,71 @@ function renderGraphPairs(snapshot, nodes, hidden = {}) {
   </div>`;
 }
 
+function renderGraphFocusDriver(snapshot, nodes, hidden = {}) {
+  const node = nodeByID(state.selectedNodeID) || autoFocusGraphNode(snapshot, nodes);
+  if (dom.graphConnectedToggle) {
+    dom.graphConnectedToggle.textContent = node ? 'Focus selected' : 'No focus';
+    dom.graphConnectedToggle.classList.remove('active');
+    dom.graphConnectedToggle.disabled = true;
+  }
+  if (dom.graphUnlinkedToggle) {
+    dom.graphUnlinkedToggle.textContent = hidden.unlinked ? `Backlog (${hidden.unlinked})` : 'Backlog empty';
+    dom.graphUnlinkedToggle.classList.remove('active');
+    dom.graphUnlinkedToggle.disabled = true;
+  }
+  state.graphLayout = { width: 900, height: 620 };
+  dom.graphZoomLabel.textContent = 'focus';
+  if (!node) {
+    dom.graphCanvas.innerHTML = '<div class="graphEmpty">Select an item from Relation pairs to inspect its neighborhood.</div>';
+    return;
+  }
+  const blockers = graphBlockingNeighbors(snapshot, node.id, 'blockers');
+  const unlocks = graphBlockingNeighbors(snapshot, node.id, 'blocked');
+  const related = graphRelatedNeighbors(snapshot, node.id);
+  dom.graphCanvas.innerHTML = `<div class="graphFocusDriver">
+    <section class="graphFocusHero">${renderGraphPairNode(node, 'Selected')}</section>
+    ${renderGraphFocusLane('Blockers', blockers, 'No active blockers')}
+    ${renderGraphFocusLane('Unlocks', unlocks, 'Blocks nothing active')}
+    ${renderGraphFocusLane('Related', related, 'No related items')}
+  </div>`;
+}
+
+function renderGraphFocusLane(title, nodes, emptyText) {
+  return `<section class="graphFocusLane">
+    <h3>${esc(title)} <strong>${nodes.length}</strong></h3>
+    <div>${nodes.length ? nodes.slice(0, 12).map((node) => renderGraphPairNode(node, title.slice(0, -1) || title)).join('') : `<div class="graphEmpty">${esc(emptyText)}</div>`}</div>
+  </section>`;
+}
+
+function autoFocusGraphNode(snapshot, nodes) {
+  const visible = new Set(nodes.map((node) => node.id));
+  const firstEdge = graphPairEdges(snapshot, visible)[0];
+  if (firstEdge) return nodeByID(firstEdge.from_id) || nodeByID(firstEdge.to_id);
+  return nodes.find((node) => !isClosed(node)) || nodes[0] || null;
+}
+
+function renderGraphBacklog(snapshot, nodes, hidden = {}) {
+  if (dom.graphConnectedToggle) {
+    dom.graphConnectedToggle.textContent = hidden.connected ? `${hidden.connected} linked hidden` : 'Linked hidden';
+    dom.graphConnectedToggle.classList.remove('active');
+    dom.graphConnectedToggle.disabled = true;
+  }
+  if (dom.graphUnlinkedToggle) {
+    dom.graphUnlinkedToggle.textContent = `${nodes.length} backlog items`;
+    dom.graphUnlinkedToggle.classList.add('active');
+    dom.graphUnlinkedToggle.disabled = true;
+  }
+  state.graphLayout = { width: 900, height: 620 };
+  dom.graphZoomLabel.textContent = 'backlog';
+  if (!nodes.length) {
+    dom.graphCanvas.innerHTML = '<div class="graphEmpty">No unlinked items match the current filters.</div>';
+    return;
+  }
+  dom.graphCanvas.innerHTML = `<div class="graphBacklog">
+    ${nodes.sort(graphNodeSort).slice(0, 80).map((node) => renderGraphPairNode(node, 'Unlinked')).join('')}
+  </div>`;
+}
+
 function graphPairGroups(snapshot, visible) {
   const limit = state.showGraphAllConnected ? 24 : 10;
   const grouped = new Map();
@@ -2201,8 +2276,8 @@ function graphColumnHeaders(layout) {
 function renderGraphFocusPanel(snapshot) {
   if (!dom.graphFocus) return;
   const node = nodeByID(state.selectedNodeID);
-  dom.graphFocus.classList.toggle('hidden', state.view !== 'graph' || !node);
-  if (state.view !== 'graph' || !node) {
+  dom.graphFocus.classList.toggle('hidden', state.view !== 'graph' || state.graphDriver === 'focus' || !node);
+  if (state.view !== 'graph' || state.graphDriver === 'focus' || !node) {
     dom.graphFocus.innerHTML = '';
     return;
   }
