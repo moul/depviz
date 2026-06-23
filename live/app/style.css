@@ -2518,3 +2518,57 @@ button.dangerAction:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Badge styles (commits A) --- */
+.badge.horizon-now { background: #d1fae5; color: #065f46; }
+.badge.horizon-next { background: #dbeafe; color: #1e40af; }
+.badge.horizon-later { background: #f3f4f6; color: #374151; }
+.badge.horizon-quarter { background: #fef3c7; color: #92400e; }
+.badge.horizon-year { background: #ede9fe; color: #5b21b6; }
+.badge.horizon-someday { background: #f3f4f6; color: #6b7280; }
+.badge.priority-critical { background: #fee2e2; color: #991b1b; }
+.badge.priority-high { background: #fef3c7; color: #92400e; }
+.badge.priority-medium { background: #ede9fe; color: #5b21b6; }
+.badge.priority-low { background: #f3f4f6; color: #374151; }
+
+/* --- Commit C: key hints --- */
+.keyHints { font-size: 10px; color: var(--muted); padding: 2px 8px; }
+
+/* --- Commit E: bulk import --- */
+.bulkImport { margin-top: 8px; }
+.bulkImport summary { cursor: pointer; font-size: 12px; color: var(--muted); padding: 4px 0; }
+.bulkImport .quickAddForm { margin-top: 6px; }
+.bulkImport label { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+
+/* --- Commit F: kanban view --- */
+.kanbanBoard { display: flex; gap: 12px; padding: 12px; overflow-x: auto; min-height: 200px; }
+.kanbanLane { min-width: 200px; max-width: 260px; flex: 0 0 220px; background: var(--surface-alt, #f9f9f9); border-radius: 6px; padding: 8px; }
+.kanbanLaneHead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; font-weight: 600; }
+.kanbanCount { background: var(--line-soft); border-radius: 10px; padding: 1px 6px; font-size: 10px; }
+.kanbanCards { display: flex; flex-direction: column; gap: 6px; }
+.kanbanCard { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 4px; padding: 8px; cursor: pointer; }
+.kanbanCard:hover { border-color: var(--accent); }
+.kanbanCard.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-faint, rgba(0,0,0,.08)); }
+.kanbanCardKind { font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 2px; }
+.kanbanCardTitle { font-size: 12px; line-height: 1.4; }
+.kanbanCardOwner { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+/* --- Commit H: empty state --- */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: var(--muted);
+  text-align: center;
+}
+.emptyState p { font-size: 13px; margin: 0; }
+
+/* --- Commit I: inspector dates --- */
+.inspectorDates { font-size: 10px; color: var(--muted); }
+
+/* --- Commit J: archived nodes --- */
+.archivedNode { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; font-size: 12px; border-bottom: 1px solid var(--line-soft); }
+.archivedNode span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

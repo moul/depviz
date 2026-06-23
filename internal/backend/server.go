@@ -176,13 +176,18 @@ func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		var in struct {
-			BoardID     string `json:"board_id"`
-			Kind        string `json:"kind"`
-			Ref         string `json:"ref"`
-			Title       string `json:"title"`
-			Status      string `json:"status"`
-			Owner       string `json:"owner"`
-			Description string `json:"description"`
+			BoardID     string   `json:"board_id"`
+			Action      string   `json:"action"`
+			NodeID      string   `json:"node_id"`
+			Kind        string   `json:"kind"`
+			Ref         string   `json:"ref"`
+			Title       string   `json:"title"`
+			Status      string   `json:"status"`
+			Owner       string   `json:"owner"`
+			Description string   `json:"description"`
+			TimeHorizon string   `json:"time_horizon"`
+			Priority    string   `json:"priority"`
+			Labels      []string `json:"labels"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -191,6 +196,30 @@ func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
 		boardID := strings.TrimSpace(in.BoardID)
 		if boardID == "" {
 			boardID = core.DefaultBoardID
+		}
+		action := strings.TrimSpace(in.Action)
+		if action == "duplicate" {
+			nodeID := strings.TrimSpace(in.NodeID)
+			if nodeID == "" {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "node_id is required for duplicate"})
+				return
+			}
+			node, err := s.store.DuplicateNode(r.Context(), boardID, nodeID)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"node": node})
+			return
+		}
+		if action == "restore" {
+			nodeID := strings.TrimSpace(in.NodeID)
+			if err := s.store.RestoreNode(r.Context(), nodeID); err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+			return
 		}
 		kind := strings.ToLower(strings.TrimSpace(in.Kind))
 		ref := strings.TrimSpace(in.Ref)
@@ -238,7 +267,7 @@ func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
 			if text == "" {
 				text = ref
 			}
-			node, err := s.store.CreateStrategyNode(r.Context(), boardID, kind, text, in.Status, in.Owner, in.Description)
+			node, err := s.store.CreateStrategyNode(r.Context(), boardID, kind, text, in.Status, in.Owner, in.Description, in.TimeHorizon, in.Priority, in.Labels)
 			if err != nil {
 				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 				return
@@ -249,11 +278,15 @@ func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodPatch:
 		var in struct {
-			NodeID      string `json:"node_id"`
-			Title       string `json:"title"`
-			Status      string `json:"status"`
-			Owner       string `json:"owner"`
-			Description string `json:"description"`
+			NodeID      string   `json:"node_id"`
+			Title       string   `json:"title"`
+			Status      string   `json:"status"`
+			Owner       string   `json:"owner"`
+			Description string   `json:"description"`
+			TimeHorizon string   `json:"time_horizon"`
+			Priority    string   `json:"priority"`
+			Labels      []string `json:"labels"`
+			Kind        string   `json:"kind"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -264,7 +297,16 @@ func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "node_id is required"})
 			return
 		}
-		node, err := s.store.UpdateNodeFields(r.Context(), nodeID, in.Title, in.Status, in.Owner, in.Description)
+		if in.Kind != "" {
+			node, err := s.store.ConvertNodeKind(r.Context(), nodeID, strings.TrimSpace(strings.ToLower(in.Kind)))
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"node": node})
+			return
+		}
+		node, err := s.store.UpdateNodeFields(r.Context(), nodeID, in.Title, in.Status, in.Owner, in.Description, in.TimeHorizon, in.Priority, in.Labels)
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
@@ -274,6 +316,7 @@ func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
 		var in struct {
 			BoardID string `json:"board_id"`
 			NodeID  string `json:"node_id"`
+			Soft    bool   `json:"soft"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -288,13 +331,36 @@ func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "node_id is required"})
 			return
 		}
-		if err := s.store.RemoveNodeFromBoard(r.Context(), boardID, nodeID); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-			return
+		if in.Soft {
+			if err := s.store.ArchiveNode(r.Context(), nodeID); err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+		} else {
+			if err := s.store.RemoveNodeFromBoard(r.Context(), boardID, nodeID); err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	case http.MethodGet:
+		boardID := r.URL.Query().Get("board_id")
+		if boardID == "" {
+			boardID = core.DefaultBoardID
+		}
+		archived := r.URL.Query().Get("archived")
+		if archived == "true" {
+			nodes, err := s.store.ListArchivedNodes(r.Context(), boardID)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"nodes": nodes})
+			return
+		}
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "use archived=true"})
 	default:
-		w.Header().Set("Allow", "POST, PATCH, DELETE")
+		w.Header().Set("Allow", "GET, POST, PATCH, DELETE")
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 	}
 }

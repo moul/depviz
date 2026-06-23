@@ -2,7 +2,7 @@ const assetVersion = 'v4.1.15-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
-const views = new Set(['brief', 'graph', 'table']);
+const views = new Set(['brief', 'graph', 'table', 'kanban']);
 
 const dom = {
   shell: document.getElementById('shell'),
@@ -67,6 +67,13 @@ const dom = {
   showLocal: document.getElementById('showLocal'),
   showClosed: document.getElementById('showClosed'),
   filterChips: document.getElementById('filterChips'),
+  newItemTimeHorizon: document.getElementById('newItemTimeHorizon'),
+  newItemPriority: document.getElementById('newItemPriority'),
+  newItemLabels: document.getElementById('newItemLabels'),
+  newLinkNotes: document.getElementById('newLinkNotes'),
+  bulkImportText: document.getElementById('bulkImportText'),
+  bulkImportKind: document.getElementById('bulkImportKind'),
+  kanban: document.getElementById('kanbanView'),
 };
 
 const state = {
@@ -96,6 +103,7 @@ const state = {
   activeChipFilters: new Set(),
   data: emptyExport(),
   inspectorEditMode: false,
+  undoStack: [],
 };
 
 function emptyExport() {
@@ -217,6 +225,39 @@ function wireEvents() {
     });
   }
   document.addEventListener('keydown', handleGraphKeydown);
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undoLastOp();
+      return;
+    }
+    if (inputFocused()) return;
+    if (e.key === 'n') {
+      e.preventDefault();
+      setWorkspaceTab('actions');
+      setTimeout(() => (dom.newItemTitle || dom.newItemRef).focus(), 50);
+      return;
+    }
+    if (e.key === 'l') {
+      e.preventDefault();
+      setWorkspaceTab('actions');
+      setTimeout(() => dom.newLinkFrom.focus(), 50);
+      return;
+    }
+    if (e.key === '/' || e.key === 's') {
+      e.preventDefault();
+      if (dom.filter) dom.filter.focus();
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (state.selectedNodeID) {
+        state.selectedNodeID = '';
+        state.inspectorEditMode = false;
+        render();
+      }
+    }
+  });
+  document.getElementById('bulkImportForm')?.addEventListener('submit', handleBulkImport);
 }
 
 async function loadSample() {
@@ -396,6 +437,10 @@ async function addBoardItem(event) {
   const status = dom.newItemStatus ? dom.newItemStatus.value.trim() : '';
   const owner = dom.newItemOwner ? dom.newItemOwner.value.trim() : '';
   const description = dom.newItemDescription ? dom.newItemDescription.value.trim() : '';
+  const timeHorizon = dom.newItemTimeHorizon ? dom.newItemTimeHorizon.value : '';
+  const priority = dom.newItemPriority ? dom.newItemPriority.value : '';
+  const labelsRaw = dom.newItemLabels ? dom.newItemLabels.value.trim() : '';
+  const itemLabels = labelsRaw ? labelsRaw.split(',').map((l) => l.trim()).filter(Boolean) : [];
   try {
     const res = await fetch('./api/board-items', {
       method: 'POST',
@@ -409,14 +454,23 @@ async function addBoardItem(event) {
         status,
         owner,
         description,
+        time_horizon: timeHorizon,
+        priority,
+        labels: itemLabels,
       }),
     });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const addPayload = await res.json();
+    const newNodeID = addPayload.node?.id || '';
+    if (newNodeID) pushUndo({ type: 'add-node', nodeID: newNodeID });
     dom.newItemRef.value = '';
     dom.newItemTitle.value = '';
     if (dom.newItemStatus) dom.newItemStatus.value = '';
     if (dom.newItemOwner) dom.newItemOwner.value = '';
     if (dom.newItemDescription) dom.newItemDescription.value = '';
+    if (dom.newItemTimeHorizon) dom.newItemTimeHorizon.value = '';
+    if (dom.newItemPriority) dom.newItemPriority.value = '';
+    if (dom.newItemLabels) dom.newItemLabels.value = '';
     await loadBackendBoard();
     await refreshBoards();
     dom.status.textContent = 'item added';
@@ -445,11 +499,13 @@ async function addBoardLink(event) {
         from,
         to,
         kind: dom.newLinkKind.value,
+        notes: dom.newLinkNotes ? dom.newLinkNotes.value.trim() : '',
       }),
     });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     dom.newLinkFrom.value = '';
     dom.newLinkTo.value = '';
+    if (dom.newLinkNotes) dom.newLinkNotes.value = '';
     await loadBackendBoard();
     await refreshBoards();
     dom.status.textContent = 'link added';
@@ -624,6 +680,9 @@ function renderManagePanel() {
   if (state.githubPresets.loaded) renderGitHubPresets();
   renderDebugPanel();
   renderWorkspaceSuggestions();
+  if (state.mode === 'stateful' && state.backendSession.authenticated) {
+    loadArchivedNodes();
+  }
 }
 
 function renderBoardListButton(board) {
@@ -1960,9 +2019,11 @@ function render() {
   dom.brief.classList.toggle('hidden', state.view !== 'brief');
   dom.graph.classList.toggle('hidden', state.view !== 'graph');
   dom.table.classList.toggle('hidden', state.view !== 'table');
+  if (dom.kanban) dom.kanban.classList.toggle('hidden', state.view !== 'kanban');
   if (state.view === 'brief') renderBrief(brief);
   if (state.view === 'graph') renderGraph(snapshot, graphSelection.nodes, graphSelection.hidden);
   if (state.view === 'table') renderTable(nodes);
+  if (state.view === 'kanban') renderKanbanView();
 }
 
 function renderStats(counts, snapshot) {
@@ -2940,10 +3001,12 @@ function renderItemInspector(snapshot) {
   const kindBadgeHTML = `<span class="badge type-${esc(badgeClass(node.kind || 'task'))}">${esc(nodeKindLabel(node))}</span>`;
   const stateBadge = lifecycleBadge(node.state);
   const stateBadgeHTML = stateBadge ? `<span class="badge ${esc(stateBadge.kind)}">${esc(stateBadge.text)}</span>` : '';
+  const timeHorizonBadgeHTML = data.time_horizon ? `<span class="badge horizon-${esc(data.time_horizon)}">${esc(data.time_horizon)}</span>` : '';
+  const priorityBadgeHTML = data.priority ? `<span class="badge priority-${esc(data.priority)}">${esc(data.priority)}</span>` : '';
   const editBtn = local ? `<button type="button" data-item-action="edit">Edit</button>` : '';
   const headSection = `<div class="inspectorHead">
     <div>
-      <div class="inspectorBadges">${kindBadgeHTML}${stateBadgeHTML}</div>
+      <div class="inspectorBadges">${kindBadgeHTML}${stateBadgeHTML}${timeHorizonBadgeHTML}${priorityBadgeHTML}</div>
       <strong>${emojiHTML(node.title || node.id)}</strong>
     </div>
     <div>
@@ -2951,10 +3014,13 @@ function renderItemInspector(snapshot) {
       <button type="button" data-item-action="close">×</button>
     </div>
   </div>`;
+  const createdAt = data.created_at ? ` · Created ${formatDate(data.created_at)}` : '';
+  const updatedAt = node.updated_at ? ` · Updated ${formatDate(node.updated_at)}` : '';
   const metaSection = `<div class="inspectorMeta">
     <span>${esc(node.id)}</span>
     ${node.owner ? `<span>@${esc(node.owner)}</span>` : ''}
     ${github ? `<span>${esc(github.repo)}</span>` : ''}
+    ${(createdAt || updatedAt) ? `<span class="inspectorDates">${esc((createdAt + updatedAt).trim())}</span>` : ''}
   </div>`;
   const labelsSection = labelsHTML ? `<div class="inspectorLabels">${labelsHTML}</div>` : '';
   const descriptionSection = data.description ? `<div class="inspectorDescription">${emojiHTML(data.description)}</div>` : '';
@@ -2975,16 +3041,57 @@ function renderItemInspector(snapshot) {
     </label>
     <label>Owner<input type="text" name="owner" value="${esc(node.owner || '')}"></label>
     <label>Description<textarea name="description" rows="3">${esc(data.description || '')}</textarea></label>
+    <label>Time horizon
+      <select name="time_horizon">
+        <option value="">No horizon</option>
+        <option value="now"${data.time_horizon === 'now' ? ' selected' : ''}>Now</option>
+        <option value="next"${data.time_horizon === 'next' ? ' selected' : ''}>Next</option>
+        <option value="later"${data.time_horizon === 'later' ? ' selected' : ''}>Later</option>
+        <option value="quarter"${data.time_horizon === 'quarter' ? ' selected' : ''}>This quarter</option>
+        <option value="year"${data.time_horizon === 'year' ? ' selected' : ''}>This year</option>
+        <option value="someday"${data.time_horizon === 'someday' ? ' selected' : ''}>Someday</option>
+      </select>
+    </label>
+    <label>Priority
+      <select name="priority">
+        <option value="">No priority</option>
+        <option value="critical"${data.priority === 'critical' ? ' selected' : ''}>Critical</option>
+        <option value="high"${data.priority === 'high' ? ' selected' : ''}>High</option>
+        <option value="medium"${data.priority === 'medium' ? ' selected' : ''}>Medium</option>
+        <option value="low"${data.priority === 'low' ? ' selected' : ''}>Low</option>
+      </select>
+    </label>
+    <label>Labels<input type="text" name="labels" value="${esc((data.labels || []).join(', '))}"></label>
+    <label>Convert to
+      <select name="convert_kind">
+        <option value="">Keep current (${esc(node.kind)})</option>
+        <option value="strategy">Strategy</option>
+        <option value="initiative">Initiative</option>
+        <option value="bet">Bet</option>
+        <option value="project">Project</option>
+        <option value="workstream">Workstream</option>
+        <option value="risk">Risk</option>
+        <option value="decision">Decision</option>
+        <option value="question">Question</option>
+        <option value="metric">Metric</option>
+        <option value="task">Task</option>
+        <option value="note">Note</option>
+      </select>
+    </label>
     <div class="inspectorFormActions">
       <button type="submit" class="primaryAction">Save</button>
       <button type="button" data-item-action="cancel-edit">Cancel</button>
     </div>
   </form>` : '';
+  const duplicateBtn = local ? `<button type="button" data-item-action="duplicate">Duplicate</button>` : '';
+  const deleteLabel = local ? 'Archive' : 'Remove';
+  const deleteAction = local ? 'archive-node' : 'delete-node';
   const actionsSection = `<div class="inspectorActions">
     ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
     <button type="button" data-item-action="link-from">Link from</button>
     <button type="button" data-item-action="link-to">Link to</button>
-    <button type="button" class="dangerAction" data-item-action="delete-node">Remove</button>
+    ${duplicateBtn}
+    <button type="button" class="dangerAction" data-item-action="${deleteAction}">${esc(deleteLabel)}</button>
   </div>`;
   dom.itemInspector.innerHTML = `<section class="inspectorBox">
     ${headSection}
@@ -3052,6 +3159,14 @@ function handleItemInspectorClick(event) {
     deleteNodeFromBoard(state.selectedNodeID);
     return;
   }
+  if (button.dataset.itemAction === 'archive-node') {
+    archiveNodeFromBoard(state.selectedNodeID);
+    return;
+  }
+  if (button.dataset.itemAction === 'duplicate') {
+    duplicateNode(state.selectedNodeID);
+    return;
+  }
   if (button.dataset.itemAction === 'link-from') {
     dom.newLinkFrom.value = node.id;
     setWorkspaceTab('actions');
@@ -3070,7 +3185,30 @@ async function saveNodeEdit() {
   const nodeID = state.selectedNodeID;
   if (!nodeID) return;
   const data = Object.fromEntries(new FormData(form));
+  const beforeNode = nodeByID(nodeID);
+  const beforeNodeData = nodeData(beforeNode || {});
+  const beforeData = {
+    title: beforeNode?.title || '',
+    status: beforeNode?.state || '',
+    owner: beforeNode?.owner || '',
+    description: beforeNodeData.description || '',
+    time_horizon: beforeNodeData.time_horizon || '',
+    priority: beforeNodeData.priority || '',
+    labels: beforeNodeData.labels || [],
+  };
   try {
+    // If convert_kind is set, do a kind conversion first
+    if (data.convert_kind) {
+      const res2 = await fetch('./api/board-items', {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ node_id: nodeID, kind: data.convert_kind }),
+      });
+      if (!res2.ok) throw new Error(await responseErrorMessage(res2));
+    }
+    const labelsStr = data.labels || '';
+    const labelsList = labelsStr ? labelsStr.split(',').map((l) => l.trim()).filter(Boolean) : [];
     const res = await fetch('./api/board-items', {
       method: 'PATCH',
       credentials: 'same-origin',
@@ -3081,9 +3219,13 @@ async function saveNodeEdit() {
         status: data.status || '',
         owner: data.owner || '',
         description: data.description || '',
+        time_horizon: data.time_horizon || '',
+        priority: data.priority || '',
+        labels: labelsList,
       }),
     });
     if (!res.ok) throw new Error(await responseErrorMessage(res));
+    pushUndo({ type: 'edit-node', nodeID, before: beforeData });
     state.inspectorEditMode = false;
     await loadBackendBoard();
     dom.status.textContent = 'node updated';
@@ -3099,6 +3241,7 @@ async function deleteNodeFromBoard(nodeID) {
   const label = node ? (node.title || node.id) : nodeID;
   if (!confirm(`Remove "${label.slice(0, 60)}" from this board?`)) return;
   try {
+    const nodeSnap = node;
     const res = await fetch('./api/board-items', {
       method: 'DELETE',
       credentials: 'same-origin',
@@ -3106,6 +3249,7 @@ async function deleteNodeFromBoard(nodeID) {
       body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: nodeID }),
     });
     if (!res.ok) throw new Error(await responseErrorMessage(res));
+    if (nodeSnap) pushUndo({ type: 'remove-node', snapshot: nodeSnap });
     state.selectedNodeID = '';
     state.selectedEdgeID = '';
     state.inspectorEditMode = false;
@@ -3115,6 +3259,30 @@ async function deleteNodeFromBoard(nodeID) {
   } catch (err) {
     dom.error.textContent = err.message;
     dom.status.textContent = 'remove failed';
+  }
+}
+
+async function archiveNodeFromBoard(nodeID) {
+  if (!nodeID) return;
+  const node = nodeByID(nodeID);
+  const label = node ? (node.title || node.id) : nodeID;
+  if (!confirm(`Archive "${label.slice(0, 60)}"? You can restore it later.`)) return;
+  try {
+    const res = await fetch('./api/board-items', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: nodeID, soft: true }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    pushUndo({ type: 'restore-node', nodeID });
+    state.selectedNodeID = '';
+    state.inspectorEditMode = false;
+    await loadBackendBoard();
+    dom.status.textContent = 'node archived';
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'archive failed';
   }
 }
 
@@ -3142,6 +3310,7 @@ async function deleteLinkFromBoard(edgeID) {
   const edge = edgeByID(edgeID);
   if (!confirm(`Delete this link (${edge ? relationLabel(edge.kind) : edgeID})?`)) return;
   try {
+    const edgeSnap = edge;
     const res = await fetch('./api/board-links', {
       method: 'DELETE',
       credentials: 'same-origin',
@@ -3149,6 +3318,7 @@ async function deleteLinkFromBoard(edgeID) {
       body: JSON.stringify({ edge_id: edgeID }),
     });
     if (!res.ok) throw new Error(await responseErrorMessage(res));
+    if (edgeSnap) pushUndo({ type: 'delete-link', snapshot: edgeSnap });
     state.selectedEdgeID = '';
     await loadBackendBoard();
     dom.status.textContent = 'link deleted';
@@ -3436,7 +3606,8 @@ function visibleNodes(nodes) {
     if (!state.showClosed && isClosed(node)) return false;
     if (!state.showLocal && isLocal(node)) return false;
     if (!state.showExternal && !isLocal(node)) return false;
-    const hay = [node.id, node.title, node.state, node.kind, badgeText(nodeBadges(node)), labels(node).join(' '), nodePeople(node).map((person) => person.login).join(' '), nodeData(node).milestone || ''].join(' ').toLowerCase();
+    const nd = nodeData(node);
+    const hay = [node.id, node.title, node.state, node.kind, badgeText(nodeBadges(node)), labels(node).join(' '), nodePeople(node).map((person) => person.login).join(' '), nd.milestone || '', nd.description || '', nd.owner || '', nd.time_horizon || '', nd.priority || ''].join(' ').toLowerCase();
     if (state.filter && !hay.includes(state.filter)) return false;
     if (state.activeChipFilters.size > 0) {
       const byType = {};
@@ -3903,6 +4074,244 @@ function esc(value) {
     '"': '&quot;',
     "'": '&#39;',
   })[char]);
+}
+
+// --- Commit B: undo stack ---
+
+function pushUndo(op) {
+  state.undoStack.push(op);
+  if (state.undoStack.length > 20) state.undoStack.shift();
+}
+
+async function undoLastOp() {
+  const op = state.undoStack.pop();
+  if (!op) { dom.status.textContent = 'nothing to undo'; return; }
+  try {
+    if (op.type === 'add-node') {
+      await fetch('./api/board-items', {
+        method: 'DELETE', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: op.nodeID }),
+      });
+    } else if (op.type === 'remove-node') {
+      const nd = nodeData(op.snapshot || {});
+      await fetch('./api/board-items', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          board_id: state.currentBoardID || 'default',
+          kind: op.snapshot.kind || 'task',
+          title: op.snapshot.title || '',
+          status: op.snapshot.state || '',
+          owner: op.snapshot.owner || '',
+          description: nd.description || '',
+        }),
+      });
+    } else if (op.type === 'edit-node') {
+      await fetch('./api/board-items', {
+        method: 'PATCH', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ node_id: op.nodeID, ...op.before }),
+      });
+    } else if (op.type === 'delete-link') {
+      await fetch('./api/board-links', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          board_id: state.currentBoardID || 'default',
+          from: op.snapshot.from_id,
+          to: op.snapshot.to_id,
+          kind: op.snapshot.kind,
+        }),
+      });
+    } else if (op.type === 'restore-node') {
+      await fetch('./api/board-items', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'restore', node_id: op.nodeID }),
+      });
+    }
+    await loadBackendBoard();
+    dom.status.textContent = `undone: ${op.type.replace(/-/g, ' ')}`;
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'undo failed';
+  }
+}
+
+// --- Commit C: keyboard helpers ---
+
+function inputFocused() {
+  const t = document.activeElement?.tagName?.toLowerCase();
+  return t === 'input' || t === 'textarea' || t === 'select' || Boolean(document.activeElement?.isContentEditable);
+}
+
+// --- Commit D: duplicate node ---
+
+async function duplicateNode(nodeID) {
+  try {
+    const res = await fetch('./api/board-items', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'duplicate', board_id: state.currentBoardID || 'default', node_id: nodeID }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    const payload = await res.json();
+    const newID = payload.node?.id || '';
+    if (newID) pushUndo({ type: 'add-node', nodeID: newID });
+    await loadBackendBoard();
+    dom.status.textContent = 'node duplicated';
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'duplicate failed';
+  }
+}
+
+// --- Commit E: bulk import ---
+
+async function handleBulkImport(e) {
+  e.preventDefault();
+  const raw = dom.bulkImportText ? dom.bulkImportText.value.trim() : '';
+  if (!raw) return;
+  const defaultKind = dom.bulkImportKind ? dom.bulkImportKind.value || 'task' : 'task';
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+  const tasks = lines.map((line) => {
+    let kind = defaultKind;
+    let title = line;
+    let done = false;
+    const checkboxMatch = line.match(/^[-*]\s+\[([x ])\]\s+(.+)$/i);
+    if (checkboxMatch) {
+      done = checkboxMatch[1].toLowerCase() === 'x';
+      title = checkboxMatch[2];
+    } else {
+      title = line.replace(/^[-*#•]\s+/, '');
+    }
+    const kindPrefixMatch = title.match(/^(strategy|initiative|bet|project|workstream|risk|decision|question|metric|task|note):\s+(.+)$/i);
+    if (kindPrefixMatch) {
+      kind = kindPrefixMatch[1].toLowerCase();
+      title = kindPrefixMatch[2];
+    }
+    return { kind, title, status: done ? 'done' : '' };
+  });
+  const boardID = state.currentBoardID || 'default';
+  let created = 0;
+  for (const t of tasks) {
+    try {
+      const res = await fetch('./api/board-items', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ board_id: boardID, kind: t.kind, title: t.title, status: t.status }),
+      });
+      if (res.ok) created++;
+    } catch (_) {}
+  }
+  if (dom.bulkImportText) dom.bulkImportText.value = '';
+  await loadBackendBoard();
+  dom.status.textContent = `${created} node${created !== 1 ? 's' : ''} imported`;
+}
+
+// --- Commit F: kanban view ---
+
+function renderKanbanView() {
+  const el = document.getElementById('kanbanView');
+  if (!el) return;
+  const lanes = [
+    { status: 'draft', label: '🚧 Draft' },
+    { status: 'active', label: '🟢 Active' },
+    { status: 'open', label: '🟢 Open' },
+    { status: 'blocked', label: '🔴 Blocked' },
+    { status: 'at-risk', label: '🟡 At-risk' },
+    { status: 'paused', label: '⏸ Paused' },
+    { status: 'local', label: '📝 Local' },
+    { status: 'done', label: '⚫ Done' },
+    { status: 'closed', label: '⚫ Closed' },
+    { status: 'rejected', label: '❌ Rejected' },
+  ];
+  const nodes = visibleNodes(state.data.snapshot.nodes);
+  if (!nodes.length) {
+    el.innerHTML = '<div class="emptyState"><p>No items to show.</p></div>';
+    return;
+  }
+  const byStatus = {};
+  for (const n of nodes) {
+    const s = (n.state || 'local').toLowerCase();
+    if (!byStatus[s]) byStatus[s] = [];
+    byStatus[s].push(n);
+  }
+  const laneStatuses = new Set(lanes.map((l) => l.status));
+  for (const s of Object.keys(byStatus)) {
+    if (!laneStatuses.has(s)) lanes.push({ status: s, label: capitalize(s) });
+  }
+  const activeLanes = lanes.filter((l) => byStatus[l.status]?.length > 0);
+  if (!activeLanes.length) {
+    el.innerHTML = '<div class="emptyState"><p>No items to show.</p></div>';
+    return;
+  }
+  el.innerHTML = `<div class="kanbanBoard">${activeLanes.map((lane) => {
+    const cards = byStatus[lane.status] || [];
+    return `<div class="kanbanLane">
+      <div class="kanbanLaneHead"><strong>${esc(lane.label)}</strong><span class="kanbanCount">${cards.length}</span></div>
+      <div class="kanbanCards">${cards.map((n) => `
+        <div class="kanbanCard${state.selectedNodeID === n.id ? ' selected' : ''}" data-node-id="${esc(n.id)}">
+          <div class="kanbanCardKind">${esc(nodeKindLabel(n))}</div>
+          <div class="kanbanCardTitle">${emojiHTML(n.title || n.id)}</div>
+          ${n.owner ? `<div class="kanbanCardOwner">@${esc(n.owner)}</div>` : ''}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+  el.querySelectorAll('[data-node-id]').forEach((card) => {
+    card.addEventListener('click', () => {
+      state.selectedNodeID = card.dataset.nodeId;
+      render();
+    });
+  });
+}
+
+// --- Commit I: date formatting ---
+
+function formatDate(v) {
+  if (!v) return '';
+  try {
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch { return String(v); }
+}
+
+// --- Commit J: load archived nodes ---
+
+async function loadArchivedNodes() {
+  const container = document.getElementById('archivedNodesList');
+  if (!container) return;
+  try {
+    const board = encodeURIComponent(state.currentBoardID || 'default');
+    const res = await fetch(`./api/board-items?board_id=${board}&archived=true`, { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const payload = await res.json();
+    const nodes = Array.isArray(payload.nodes) ? payload.nodes : [];
+    if (!nodes.length) {
+      container.innerHTML = '<div class="emptyState" style="padding:8px">No archived nodes</div>';
+      return;
+    }
+    container.innerHTML = nodes.map((n) => `<div class="archivedNode">
+      <span>${esc(n.title || n.id)}</span>
+      <button type="button" data-restore-id="${esc(n.id)}">Restore</button>
+    </div>`).join('');
+    container.querySelectorAll('[data-restore-id]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const res2 = await fetch('./api/board-items', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'restore', node_id: btn.dataset.restoreId }),
+        });
+        if (res2.ok) {
+          await loadBackendBoard();
+          dom.status.textContent = 'node restored';
+        }
+      });
+    });
+  } catch (_) {}
 }
 
 boot();

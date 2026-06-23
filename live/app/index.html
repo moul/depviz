@@ -68,6 +68,7 @@
           <button data-view="brief" type="button">Overview</button>
           <button class="active" data-view="graph" type="button">Relations</button>
           <button data-view="table" type="button">Table</button>
+          <button data-view="kanban" type="button">Board</button>
         </div>
       </div>
 
@@ -107,6 +108,10 @@
               <input id="newBoardDescription" type="text" autocomplete="off" placeholder="Description" aria-label="New view description">
               <button type="submit">Create</button>
             </form>
+            <details id="archivedSection">
+              <summary>Archived nodes</summary>
+              <div id="archivedNodesList"></div>
+            </details>
           </section>
 
           <section id="workspaceActions" class="workspaceTab hidden">
@@ -149,6 +154,23 @@
               </select>
               <input id="newItemOwner" type="text" autocomplete="off" placeholder="Owner (optional)" aria-label="New item owner">
               <textarea id="newItemDescription" rows="2" placeholder="Description (optional)" aria-label="New item description"></textarea>
+              <select id="newItemTimeHorizon" aria-label="Time horizon">
+                <option value="">No horizon</option>
+                <option value="now">Now</option>
+                <option value="next">Next</option>
+                <option value="later">Later</option>
+                <option value="quarter">This quarter</option>
+                <option value="year">This year</option>
+                <option value="someday">Someday</option>
+              </select>
+              <select id="newItemPriority" aria-label="Priority">
+                <option value="">No priority</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <input id="newItemLabels" type="text" autocomplete="off" placeholder="Labels (comma-separated)" aria-label="Labels">
               <button class="primaryAction" type="submit">Add item</button>
             </form>
 
@@ -161,8 +183,25 @@
                 <option value="addresses">addresses</option>
               </select>
               <input id="newLinkTo" type="text" autocomplete="off" placeholder="To: #702, title, or node id" aria-label="Link to item">
+              <input id="newLinkNotes" type="text" autocomplete="off" placeholder="Notes (optional)" aria-label="Link notes" style="grid-column: 1 / -1;">
               <button type="submit">Add link</button>
             </form>
+
+            <details class="bulkImport">
+              <summary>Bulk import from text</summary>
+              <form id="bulkImportForm" class="quickAddForm">
+                <label for="bulkImportText">Paste lines — each becomes a node.</label>
+                <textarea id="bulkImportText" rows="5" placeholder="- Strategy: expand market&#10;- Risk: budget&#10;- [ ] Define OKRs" aria-label="Bulk import text"></textarea>
+                <select id="bulkImportKind" aria-label="Default kind">
+                  <option value="task">Task</option>
+                  <option value="note">Note</option>
+                  <option value="initiative">Initiative</option>
+                  <option value="risk">Risk</option>
+                  <option value="decision">Decision</option>
+                </select>
+                <button type="submit" class="primaryAction">Import nodes</button>
+              </form>
+            </details>
           </section>
 
           <section id="workspacePresets" class="workspaceTab hidden">
@@ -217,6 +256,7 @@
             <label><input id="showClosed" type="checkbox" checked> Closed</label>
           </div>
           <div id="filterChips" class="filterChips"></div>
+          <div class="keyHints">n · New&nbsp;&nbsp;l · Link&nbsp;&nbsp;/ · Search&nbsp;&nbsp;⌘Z · Undo</div>
           <div class="stats" id="stats"></div>
         </div>
 
@@ -244,6 +284,7 @@
               <div id="graphCanvas" class="graphCanvas"></div>
             </div>
             <div id="tableView" class="view hidden"></div>
+            <div id="kanbanView" class="view hidden"></div>
           </div>
           <aside id="itemInspector" class="itemInspector statefulOnly hidden" aria-label="Item inspector"></aside>
         </div>
