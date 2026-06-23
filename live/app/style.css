@@ -1583,6 +1583,18 @@ textarea::selection {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.pairTargetActions {
+  display: flex;
+  gap: 4px;
+  padding: 4px 0 0;
+}
+
+.pairTargetActions button {
+  min-height: 24px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
 .graphPairGroup {
   display: grid;
   grid-template-columns: minmax(280px, 0.85fr) minmax(360px, 1.6fr);

@@ -2220,9 +2220,18 @@ function renderGraphPairs(snapshot, nodes, hidden = {}) {
       <div class="graphPairTargets">
         ${group.edges.map((edge) => {
           const to = nodesByID.get(edge.to_id) || placeholderNode(edge.to_id);
-          return `<div class="graphPairTarget" data-edge-id="${esc(edgeSelectionID(edge))}">
+          const edgeID = edgeSelectionID(edge);
+          const isSuggested = isSuggestedEdge(edge) && !hasOfficialEquivalent(state.data.snapshot, edge);
+          const actionsHTML = isSuggested
+            ? `<div class="pairTargetActions">
+                <button type="button" class="primaryAction" data-suggestion-action="promote" data-edge-id="${esc(edgeID)}">Accept</button>
+                <button type="button" data-suggestion-action="dismiss" data-edge-id="${esc(edgeID)}">Hide</button>
+              </div>`
+            : '';
+          return `<div class="graphPairTarget" data-edge-id="${esc(edgeID)}">
             <span class="graphPairRelation"><strong>${esc(relationLabel(edge.kind))}</strong><em>${esc(confidenceLabel(edge))} · ${esc(edge.authority || 'local')}</em></span>
             ${renderGraphPairNode(to, 'Target')}
+            ${actionsHTML}
           </div>`;
         }).join('')}
       </div>
@@ -2506,6 +2515,11 @@ function graphZoom(value = state.graphZoom) {
 }
 
 function handleGraphClick(event) {
+  const suggBtn = event.target.closest('[data-suggestion-action]');
+  if (suggBtn && dom.graphCanvas.contains(suggBtn)) {
+    handleSuggestionClick(event);
+    return;
+  }
   const nodeTarget = event.target.closest?.('[data-node-id]');
   if (nodeTarget && dom.graphCanvas.contains(nodeTarget)) {
     selectNode(nodeTarget.dataset.nodeId || '');
