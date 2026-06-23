@@ -3614,15 +3614,24 @@ function nodeKindLabel(node) {
 function nodeReferenceLabel(node) {
   const ref = parseGitHubNodeID(node.id);
   if (ref) return `${ref.marker}${ref.number}`;
-  if (String(node.id || '').startsWith('note:')) return 'local';
-  return String(node.id || '').replace(/^gh:/, '').slice(0, 28);
+  const id = String(node.id || '');
+  if (id.startsWith('note:') || id.startsWith('task:')) return 'local';
+  const strategyPrefixes = ['strategy:', 'initiative:', 'bet:', 'project:', 'workstream:', 'risk:', 'decision:', 'question:', 'metric:'];
+  if (strategyPrefixes.some((p) => id.startsWith(p))) return 'local';
+  return id.replace(/^gh:/, '').slice(0, 28);
 }
 
 function nodeBadges(node) {
   const data = nodeData(node);
   const badges = [];
+  const strategyKinds = new Set(['strategy', 'initiative', 'bet', 'project', 'workstream', 'risk', 'decision', 'question', 'metric']);
+  if (strategyKinds.has(node.kind)) {
+    badges.push(typeBadge(node));
+    badges.push(lifecycleBadge(node.state));
+    return badges.filter(Boolean);
+  }
   if (isLocal(node)) {
-    badges.push(badge('type-local', 'note'));
+    badges.push(badge('type-local', node.kind === 'task' ? '▣ task' : 'note'));
     return badges;
   }
   badges.push(typeBadge(node));
@@ -3646,6 +3655,8 @@ function typeBadge(node) {
   if (kind === 'pr') return badge('type-pr', 'PR');
   if (kind === 'issue') return badge('type-issue', 'issue');
   if (kind === 'note') return badge('type-local', 'note');
+  const strategyKinds = new Set(['strategy', 'initiative', 'bet', 'project', 'workstream', 'risk', 'decision', 'question', 'metric']);
+  if (strategyKinds.has(kind)) return badge(`type-${kind}`, capitalize(kind));
   return badge('type-task', '▣ task');
 }
 
