@@ -2191,24 +2191,46 @@ function renderGraphPairs(snapshot, nodes, hidden = {}) {
     dom.graphCanvas.innerHTML = `${hiddenSummary}<div class="graphEmpty">No visible relations for this driver.</div>`;
     return;
   }
-  dom.graphCanvas.innerHTML = `${hiddenSummary}<div class="graphPairs">
-    ${groups.map((group) => {
-      const from = nodesByID.get(group.fromID) || placeholderNode(group.fromID);
-      const selected = group.edges.some((edge) => edgeSelectionID(edge) === state.selectedEdgeID);
-      return `<article class="graphPairGroup ${selected ? 'selectedPair' : ''}">
-        ${renderGraphPairNode(from, 'Source')}
-        <div class="graphPairTargets">
-          ${group.edges.map((edge) => {
-            const to = nodesByID.get(edge.to_id) || placeholderNode(edge.to_id);
-            return `<div class="graphPairTarget" data-edge-id="${esc(edgeSelectionID(edge))}">
-              <span class="graphPairRelation"><strong>${esc(relationLabel(edge.kind))}</strong><em>${esc(confidenceLabel(edge))} · ${esc(edge.authority || 'local')}</em></span>
-              ${renderGraphPairNode(to, 'Target')}
-            </div>`;
-          }).join('')}
-        </div>
-      </article>`;
-    }).join('')}
-  </div>`;
+
+  function groupTier(group) {
+    if (group.edges.every((e) => !isSoftEdge(e) && Number(e.confidence || 1) >= 1)) return 'Confirmed';
+    if (group.edges.some((e) => /inferred/i.test(e.authority || ''))) return 'Inferred';
+    return 'Suggested';
+  }
+
+  const tierOrder = ['Confirmed', 'Inferred', 'Suggested'];
+  const sortedGroups = groups.slice().sort((a, b) => {
+    const ta = tierOrder.indexOf(groupTier(a));
+    const tb = tierOrder.indexOf(groupTier(b));
+    return ta - tb;
+  });
+
+  let currentTier = '';
+  const pairHTML = sortedGroups.map((group) => {
+    const from = nodesByID.get(group.fromID) || placeholderNode(group.fromID);
+    const selected = group.edges.some((edge) => edgeSelectionID(edge) === state.selectedEdgeID);
+    const tier = groupTier(group);
+    let tierHeader = '';
+    if (tier !== currentTier) {
+      currentTier = tier;
+      tierHeader = `<h3 class="pairTierLabel">${esc(tier)}</h3>`;
+    }
+    const articleHTML = `<article class="graphPairGroup ${selected ? 'selectedPair' : ''}">
+      ${renderGraphPairNode(from, 'Source')}
+      <div class="graphPairTargets">
+        ${group.edges.map((edge) => {
+          const to = nodesByID.get(edge.to_id) || placeholderNode(edge.to_id);
+          return `<div class="graphPairTarget" data-edge-id="${esc(edgeSelectionID(edge))}">
+            <span class="graphPairRelation"><strong>${esc(relationLabel(edge.kind))}</strong><em>${esc(confidenceLabel(edge))} · ${esc(edge.authority || 'local')}</em></span>
+            ${renderGraphPairNode(to, 'Target')}
+          </div>`;
+        }).join('')}
+      </div>
+    </article>`;
+    return tierHeader + articleHTML;
+  }).join('');
+
+  dom.graphCanvas.innerHTML = `${hiddenSummary}<div class="graphPairs">${pairHTML}</div>`;
 }
 
 function renderGraphFocusDriver(snapshot, nodes, hidden = {}) {

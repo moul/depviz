@@ -1572,6 +1572,17 @@ textarea::selection {
   padding: 8px;
 }
 
+.pairTierLabel {
+  margin: 10px 0 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line-soft);
+}
+
 .graphPairGroup {
   display: grid;
   grid-template-columns: minmax(280px, 0.85fr) minmax(360px, 1.6fr);
