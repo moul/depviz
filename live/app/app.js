@@ -66,7 +66,7 @@ const dom = {
 
 const state = {
   mode: 'stateless',
-  view: 'brief',
+  view: 'graph',
   filter: '',
   showExternal: true,
   showLocal: true,
@@ -3161,7 +3161,7 @@ function visibleNodes(nodes) {
 }
 
 function setView(view, options = {}) {
-  const next = views.has(view) ? view : 'brief';
+  const next = views.has(view) ? view : 'graph';
   state.view = next;
   document.querySelectorAll('[data-view]').forEach((item) => {
     item.classList.toggle('active', item.dataset.view === next);
@@ -3171,13 +3171,13 @@ function setView(view, options = {}) {
 }
 
 function readURLView() {
-  const view = new URLSearchParams(location.search).get('view') || 'brief';
-  return views.has(view) ? view : 'brief';
+  const view = new URLSearchParams(location.search).get('view') || 'graph';
+  return views.has(view) ? view : 'graph';
 }
 
 function writeURLView(view) {
   const url = new URL(location.href);
-  if (view === 'brief') url.searchParams.delete('view');
+  if (view === 'graph') url.searchParams.delete('view');
   else url.searchParams.set('view', view);
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 }
