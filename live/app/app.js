@@ -119,6 +119,9 @@ async function boot() {
   wireEvents();
   setView(readURLView(), { persist: false, renderNow: false });
   state.currentBoardID = readURLBoard() || state.currentBoardID;
+  readURLFilters();
+  state.graphDriver = readURLDriver();
+  if (dom.graphDriver) dom.graphDriver.value = state.graphDriver;
   const hashed = readHash();
   if (hashed) {
     setMode('stateless', { renderNow: false });
@@ -140,6 +143,7 @@ function wireEvents() {
   dom.input.addEventListener('scroll', syncHighlightScroll);
   dom.filter.addEventListener('input', () => {
     state.filter = dom.filter.value.toLowerCase();
+    writeURLFilters();
     render();
   });
   for (const key of ['showExternal', 'showLocal', 'showClosed']) {
@@ -194,6 +198,7 @@ function wireEvents() {
   dom.graphFocus.addEventListener('click', handleGraphFocusClick);
   dom.graphDriver.addEventListener('change', () => {
     state.graphDriver = dom.graphDriver.value;
+    writeURLDriver(state.graphDriver);
     render();
   });
   if (dom.filterChips) {
@@ -203,6 +208,7 @@ function wireEvents() {
       const key = `${btn.dataset.chipType}:${btn.dataset.chipValue}`;
       if (state.activeChipFilters.has(key)) state.activeChipFilters.delete(key);
       else state.activeChipFilters.add(key);
+      writeURLFilters();
       render();
     });
   }
@@ -3328,6 +3334,39 @@ function writeURLBoard(boardID) {
   const url = new URL(location.href);
   if (!boardID || boardID === 'default') url.searchParams.delete('board');
   else url.searchParams.set('board', boardID);
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function readURLFilters() {
+  const params = new URLSearchParams(location.search);
+  const filter = params.get('filter') || '';
+  if (filter) {
+    state.filter = filter;
+    if (dom.filter) dom.filter.value = filter;
+  }
+  const chips = params.get('chips') || '';
+  if (chips) {
+    state.activeChipFilters = new Set(chips.split(',').filter(Boolean));
+  }
+}
+
+function writeURLFilters() {
+  const url = new URL(location.href);
+  if (state.filter) url.searchParams.set('filter', state.filter);
+  else url.searchParams.delete('filter');
+  if (state.activeChipFilters.size > 0) url.searchParams.set('chips', Array.from(state.activeChipFilters).join(','));
+  else url.searchParams.delete('chips');
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function readURLDriver() {
+  return new URLSearchParams(location.search).get('driver') || 'pairs';
+}
+
+function writeURLDriver(driver) {
+  const url = new URL(location.href);
+  if (driver === 'pairs') url.searchParams.delete('driver');
+  else url.searchParams.set('driver', driver);
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
