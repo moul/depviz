@@ -2100,7 +2100,7 @@ function renderGraph(snapshot, nodes, hidden = {}) {
     const kind = nodeKindLabel(node);
     html += `<article class="${klass}" data-node-id="${esc(node.id)}" style="transform:translate(${pos.x}px, ${pos.y}px)">
       <div class="nodeTop"><span class="nodeKind">${esc(kind)}</span><span class="nodeRef">${esc(ref)}</span></div>
-      <div class="nodeTitle">${esc(node.title)}</div>
+      <div class="nodeTitle">${emojiHTML(node.title)}</div>
       <div class="nodeId">${id}</div>
       ${badgesHTML(nodeBadges(node))}
       ${nodeSignalsHTML(node)}
@@ -2260,7 +2260,7 @@ function graphRawEdgeScore(edge) {
 function renderGraphPairNode(node, label) {
   return `<button type="button" class="graphPairNode" data-node-id="${esc(node.id)}">
     <span>${esc(label)} · ${esc(nodeKindLabel(node))} ${esc(nodeReferenceLabel(node))}</span>
-    <strong>${esc(node.title || node.id)}</strong>
+    <strong>${emojiHTML(node.title || node.id)}</strong>
     ${badgesHTML(nodeBadges(node).slice(0, 4))}
     ${nodeSignalsHTML(node)}
   </button>`;
@@ -2291,7 +2291,7 @@ function renderGraphFocusPanel(snapshot) {
     <div class="graphFocusHead">
       <div>
         <span>${esc(nodeKindLabel(node))} ${esc(nodeReferenceLabel(node))}</span>
-        <strong>${esc(node.title || node.id)}</strong>
+        <strong>${emojiHTML(node.title || node.id)}</strong>
       </div>
       <button type="button" data-graph-focus-action="clear">Clear</button>
     </div>
@@ -2307,7 +2307,7 @@ function graphFocusNodeList(nodes, emptyText) {
   if (!nodes.length) return `<div class="graphFocusEmpty">${esc(emptyText)}</div>`;
   return nodes.slice(0, 5).map((node) => `<button type="button" class="graphFocusNode" data-node-id="${esc(node.id)}">
     <span>${esc(nodeReferenceLabel(node))}</span>
-    <strong>${esc(node.title || node.id)}</strong>
+    <strong>${emojiHTML(node.title || node.id)}</strong>
   </button>`).join('');
 }
 
@@ -2610,9 +2610,9 @@ function renderTable(nodes) {
     const klass = nodeCardClasses(node).filter(Boolean).join(' ');
     const labelText = labels(node).join(', ');
     return `<tr class="${klass}" data-node-id="${esc(node.id)}">
-      <td><div class="tableItem"><div class="tableItemID">${id}</div><div class="tableItemTitle">${esc(node.title)}</div></div></td>
+      <td><div class="tableItem"><div class="tableItemID">${id}</div><div class="tableItemTitle">${emojiHTML(node.title)}</div></div></td>
       <td>${badgesHTML(nodeBadges(node))}</td>
-      <td>${esc(labelText)}</td>
+      <td>${emojiHTML(labelText)}</td>
     </tr>`;
   }).join('');
   const empty = '<tr><td colspan="3"><div class="reason">no visible cards</div></td></tr>';
@@ -2787,12 +2787,12 @@ function renderItemInspector(snapshot) {
   const outgoing = (snapshot.edges || []).filter((edge) => edge.from_id === node.id);
   const data = nodeData(node);
   const github = parseGitHubNodeID(node.id);
-  const labelsHTML = labels(node).slice(0, 10).map((label) => `<span>${esc(label)}</span>`).join('');
+  const labelsHTML = labels(node).slice(0, 10).map((label) => `<span>${emojiHTML(label)}</span>`).join('');
   dom.itemInspector.innerHTML = `<section class="inspectorBox">
     <div class="inspectorHead">
       <div>
         <span>${esc(node.kind || 'item')}</span>
-        <strong>${esc(node.title || node.id)}</strong>
+        <strong>${emojiHTML(node.title || node.id)}</strong>
       </div>
       <button type="button" data-item-action="close">×</button>
     </div>
@@ -3357,9 +3357,9 @@ function nodeSignalsHTML(node) {
     ? `<div class="nodePeople">${people.map((person) => `<img src="${esc(person.avatar_url || githubAvatarURL(person.login))}" alt="@${esc(person.login)}" title="@${esc(person.login)}" loading="lazy">`).join('')}</div>`
     : '';
   const labelsHTML = labelItems.length
-    ? `<div class="nodeLabels">${labelItems.map((label) => `<span>${esc(label)}</span>`).join('')}</div>`
+    ? `<div class="nodeLabels">${labelItems.map((label) => `<span>${emojiHTML(label)}</span>`).join('')}</div>`
     : '';
-  const milestoneHTML = milestone ? `<div class="nodeMilestone">${esc(milestone)}</div>` : '';
+  const milestoneHTML = milestone ? `<div class="nodeMilestone">${emojiHTML(milestone)}</div>` : '';
   return peopleHTML || labelsHTML || milestoneHTML ? `<div class="nodeSignals">${peopleHTML}${labelsHTML}${milestoneHTML}</div>` : '';
 }
 
@@ -3480,6 +3480,53 @@ function stableEdgeID(board, from, to, kind) {
 
 function slug(text) {
   return String(text || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) || 'untitled';
+}
+
+const emojiShortcodes = {
+  package: '📦',
+  bug: '🐛',
+  zap: '⚡',
+  sparkles: '✨',
+  fire: '🔥',
+  warning: '⚠️',
+  wrench: '🔧',
+  hammer: '🔨',
+  construction: '🚧',
+  rocket: '🚀',
+  memo: '📝',
+  book: '📖',
+  books: '📚',
+  lock: '🔒',
+  key: '🔑',
+  shield: '🛡️',
+  test_tube: '🧪',
+  white_check_mark: '✅',
+  x: '❌',
+  question: '❓',
+  bulb: '💡',
+  recycle: '♻️',
+  art: '🎨',
+  lipstick: '💄',
+  mag: '🔍',
+  chart_with_upwards_trend: '📈',
+  hourglass: '⌛',
+  tada: '🎉',
+  eyes: '👀',
+  pray: '🙏',
+};
+
+function emojiHTML(value) {
+  const text = String(value || '');
+  const parts = [];
+  let index = 0;
+  for (const match of text.matchAll(/:([a-z0-9_+\-]+):/gi)) {
+    parts.push(esc(text.slice(index, match.index)));
+    const emoji = emojiShortcodes[String(match[1] || '').toLowerCase()];
+    parts.push(emoji ? `<span class="emojiShortcode" title="${esc(match[0])}">${emoji}</span>` : esc(match[0]));
+    index = match.index + match[0].length;
+  }
+  parts.push(esc(text.slice(index)));
+  return parts.join('');
 }
 
 function esc(value) {

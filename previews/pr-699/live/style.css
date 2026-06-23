@@ -1078,6 +1078,13 @@ textarea::selection {
   white-space: nowrap;
 }
 
+.emojiShortcode {
+  display: inline-block;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", emoji;
+  line-height: 1;
+  vertical-align: -0.08em;
+}
+
 .badge.type-pr {
   border-color: #c4b5fd;
   background: #f5f3ff;
