@@ -1886,6 +1886,7 @@ function collectNodeChips(nodes) {
   const labelCounts = new Map();
   const assigneeCounts = new Map();
   const kindCounts = new Map();
+  const statusCounts = new Map();
   for (const node of nodes) {
     for (const label of labels(node)) {
       labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
@@ -1896,10 +1897,16 @@ function collectNodeChips(nodes) {
     if (node.kind) {
       kindCounts.set(node.kind, (kindCounts.get(node.kind) || 0) + 1);
     }
+    if (node.state) {
+      statusCounts.set(node.state, (statusCounts.get(node.state) || 0) + 1);
+    }
   }
   const chips = [];
   for (const [kind, count] of [...kindCounts.entries()].sort((a, b) => b[1] - a[1])) {
     chips.push({ type: 'kind', value: kind, label: kind, count });
+  }
+  for (const [status, count] of [...statusCounts.entries()].sort((a, b) => b[1] - a[1])) {
+    chips.push({ type: 'status', value: status, label: status, count });
   }
   for (const [label, count] of [...labelCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20)) {
     chips.push({ type: 'label', value: label, label, count });
@@ -3346,7 +3353,7 @@ function readURLFilters() {
   }
   const chips = params.get('chips') || '';
   if (chips) {
-    state.activeChipFilters = new Set(chips.split(',').filter(Boolean));
+    state.activeChipFilters = parseChipFilterParam(chips);
   }
 }
 
@@ -3354,13 +3361,14 @@ function writeURLFilters() {
   const url = new URL(location.href);
   if (state.filter) url.searchParams.set('filter', state.filter);
   else url.searchParams.delete('filter');
-  if (state.activeChipFilters.size > 0) url.searchParams.set('chips', Array.from(state.activeChipFilters).join(','));
+  if (state.activeChipFilters.size > 0) url.searchParams.set('chips', formatChipFilterParam(state.activeChipFilters));
   else url.searchParams.delete('chips');
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
 function readURLDriver() {
-  return new URLSearchParams(location.search).get('driver') || 'pairs';
+  const driver = new URLSearchParams(location.search).get('driver') || 'pairs';
+  return ['pairs', 'focus', 'backlog'].includes(driver) ? driver : 'pairs';
 }
 
 function writeURLDriver(driver) {
@@ -3368,6 +3376,20 @@ function writeURLDriver(driver) {
   if (driver === 'pairs') url.searchParams.delete('driver');
   else url.searchParams.set('driver', driver);
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function formatChipFilterParam(filters) {
+  return Array.from(filters).sort().map(encodeURIComponent).join(',');
+}
+
+function parseChipFilterParam(value) {
+  return new Set(String(value || '').split(',').filter(Boolean).map((item) => {
+    try {
+      return decodeURIComponent(item);
+    } catch (_) {
+      return item;
+    }
+  }));
 }
 
 function shareLink() {
