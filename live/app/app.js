@@ -2898,6 +2898,7 @@ function renderEdgeInspector(snapshot) {
       <div class="edgeActions">
         ${suggestionActions}
         <button type="button" data-edge-action="locate">Locate in graph</button>
+        <button type="button" class="dangerAction" data-edge-action="delete-edge">Delete link</button>
         <button type="button" data-edge-action="clear">Clear</button>
       </div>
     </div>
@@ -3133,6 +3134,28 @@ function handleEdgeInspectorClick(event) {
   }
   if (button.dataset.edgeAction === 'promote') promoteSuggestedEdge(edgeID);
   if (button.dataset.edgeAction === 'hide') dismissSuggestedEdge(edgeID);
+  if (button.dataset.edgeAction === 'delete-edge') deleteLinkFromBoard(edgeID);
+}
+
+async function deleteLinkFromBoard(edgeID) {
+  if (!edgeID) return;
+  const edge = edgeByID(edgeID);
+  if (!confirm(`Delete this link (${edge ? relationLabel(edge.kind) : edgeID})?`)) return;
+  try {
+    const res = await fetch('./api/board-links', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ edge_id: edgeID }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    state.selectedEdgeID = '';
+    await loadBackendBoard();
+    dom.status.textContent = 'link deleted';
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'delete failed';
+  }
 }
 
 function handleSuggestionClick(event) {
