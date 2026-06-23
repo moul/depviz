@@ -48,6 +48,9 @@ const dom = {
   newItemKind: document.getElementById('newItemKind'),
   newItemRef: document.getElementById('newItemRef'),
   newItemTitle: document.getElementById('newItemTitle'),
+  newItemStatus: document.getElementById('newItemStatus'),
+  newItemOwner: document.getElementById('newItemOwner'),
+  newItemDescription: document.getElementById('newItemDescription'),
   newLinkFrom: document.getElementById('newLinkFrom'),
   newLinkKind: document.getElementById('newLinkKind'),
   newLinkTo: document.getElementById('newLinkTo'),
@@ -389,6 +392,9 @@ async function addBoardItem(event) {
     dom.newItemRef.focus();
     return;
   }
+  const status = dom.newItemStatus ? dom.newItemStatus.value.trim() : '';
+  const owner = dom.newItemOwner ? dom.newItemOwner.value.trim() : '';
+  const description = dom.newItemDescription ? dom.newItemDescription.value.trim() : '';
   try {
     const res = await fetch('./api/board-items', {
       method: 'POST',
@@ -399,11 +405,17 @@ async function addBoardItem(event) {
         kind: dom.newItemKind.value,
         ref,
         title,
+        status,
+        owner,
+        description,
       }),
     });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     dom.newItemRef.value = '';
     dom.newItemTitle.value = '';
+    if (dom.newItemStatus) dom.newItemStatus.value = '';
+    if (dom.newItemOwner) dom.newItemOwner.value = '';
+    if (dom.newItemDescription) dom.newItemDescription.value = '';
     await loadBackendBoard();
     await refreshBoards();
     dom.status.textContent = 'item added';
@@ -3458,7 +3470,9 @@ function nodeCardClasses(node) {
 function nodeKindLabel(node) {
   if (node.kind === 'pr') return 'PR';
   if (node.kind === 'issue') return 'Issue';
-  if (isLocal(node)) return 'Note';
+  const strategyKinds = new Set(['strategy', 'initiative', 'bet', 'project', 'workstream', 'risk', 'decision', 'question', 'metric']);
+  if (strategyKinds.has(node.kind)) return capitalize(node.kind);
+  if (isLocal(node)) return capitalize(node.kind || 'Note');
   return capitalize(node.kind || 'Task');
 }
 
@@ -3504,7 +3518,12 @@ function lifecycleBadge(value) {
   const lifecycle = String(value || 'unknown').toLowerCase();
   if (lifecycle === 'merged') return badge('life-merged', '🟣 merged');
   if (lifecycle === 'draft') return badge('life-draft', '🚧 draft');
+  if (lifecycle === 'active') return badge('life-active', '🟢 active');
   if (lifecycle === 'open') return badge('life-open', '🟢 open');
+  if (lifecycle === 'blocked') return badge('life-blocked', '🔴 blocked');
+  if (lifecycle === 'at-risk') return badge('life-atrisk', '🟡 at-risk');
+  if (lifecycle === 'paused') return badge('life-paused', '⏸ paused');
+  if (lifecycle === 'rejected') return badge('life-rejected', '❌ rejected');
   if (isClosed({ state: lifecycle })) return badge('life-closed', '⚫ closed');
   if (lifecycle === 'local') return badge('life-local', '📝 local');
   return badge('life-unknown', '◇ unknown');
@@ -3590,11 +3609,13 @@ function nodeData(node) {
 }
 
 function isClosed(node) {
-  return ['closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved'].includes(String(node.state || '').toLowerCase());
+  return ['closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved', 'rejected'].includes(String(node.state || '').toLowerCase());
 }
 
 function isLocal(node) {
-  return node.kind === 'note' || String(node.id || '').startsWith('note:');
+  const localPrefixes = ['note:', 'task:', 'strategy:', 'initiative:', 'bet:', 'project:',
+    'workstream:', 'risk:', 'decision:', 'question:', 'metric:'];
+  return node.kind === 'note' || localPrefixes.some((p) => String(node.id || '').startsWith(p));
 }
 
 function isPlaceholder(node) {

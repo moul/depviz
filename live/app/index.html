@@ -120,11 +120,35 @@
               <select id="newItemKind" aria-label="New item kind">
                 <option value="auto">Auto</option>
                 <option value="github">GitHub issue/PR</option>
-                <option value="task">Task</option>
-                <option value="note">Note</option>
+                <optgroup label="Strategy">
+                  <option value="strategy">Strategy</option>
+                  <option value="initiative">Initiative</option>
+                  <option value="bet">Bet</option>
+                  <option value="project">Project</option>
+                  <option value="workstream">Workstream</option>
+                  <option value="risk">Risk</option>
+                  <option value="decision">Decision</option>
+                  <option value="question">Question</option>
+                  <option value="metric">Metric</option>
+                </optgroup>
+                <optgroup label="Local">
+                  <option value="task">Task</option>
+                  <option value="note">Note</option>
+                </optgroup>
               </select>
               <input id="newItemRef" type="text" autocomplete="off" placeholder="Issue, PR, URL, or task" aria-label="New item reference">
               <input id="newItemTitle" type="text" autocomplete="off" placeholder="Optional title" aria-label="New item title">
+              <select id="newItemStatus" aria-label="New item status">
+                <option value="">Auto</option>
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="blocked">Blocked</option>
+                <option value="at-risk">At-risk</option>
+                <option value="paused">Paused</option>
+                <option value="open">Open</option>
+              </select>
+              <input id="newItemOwner" type="text" autocomplete="off" placeholder="Owner (optional)" aria-label="New item owner">
+              <textarea id="newItemDescription" rows="2" placeholder="Description (optional)" aria-label="New item description"></textarea>
               <button class="primaryAction" type="submit">Add item</button>
             </form>
 
