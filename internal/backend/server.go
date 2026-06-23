@@ -170,129 +170,203 @@ func (s *Server) handleBoards(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
-		return
-	}
 	if _, ok := s.requireAccount(w, r); !ok {
 		return
 	}
-	var in struct {
-		BoardID string `json:"board_id"`
-		Kind    string `json:"kind"`
-		Ref     string `json:"ref"`
-		Title   string `json:"title"`
-	}
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-		return
-	}
-	boardID := strings.TrimSpace(in.BoardID)
-	if boardID == "" {
-		boardID = core.DefaultBoardID
-	}
-	kind := strings.ToLower(strings.TrimSpace(in.Kind))
-	ref := strings.TrimSpace(in.Ref)
-	title := strings.TrimSpace(in.Title)
-	if kind == "" || kind == "auto" {
-		if _, ok := parseGitHubRef(ref); ok {
-			kind = "github"
-		} else if title != "" {
-			kind = "task"
-		} else {
-			kind = "note"
+	switch r.Method {
+	case http.MethodPost:
+		var in struct {
+			BoardID     string `json:"board_id"`
+			Kind        string `json:"kind"`
+			Ref         string `json:"ref"`
+			Title       string `json:"title"`
+			Status      string `json:"status"`
+			Owner       string `json:"owner"`
+			Description string `json:"description"`
 		}
-	}
-	switch kind {
-	case "github":
-		gh, ok := parseGitHubRef(ref)
-		if !ok {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "expected GitHub URL, owner/repo#123, or owner/repo!123"})
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
-		node, err := s.store.AddGitHubRefToBoard(r.Context(), boardID, gh.repo, gh.marker, gh.number, title)
+		boardID := strings.TrimSpace(in.BoardID)
+		if boardID == "" {
+			boardID = core.DefaultBoardID
+		}
+		kind := strings.ToLower(strings.TrimSpace(in.Kind))
+		ref := strings.TrimSpace(in.Ref)
+		title := strings.TrimSpace(in.Title)
+		strategyKinds := map[string]bool{
+			"strategy": true, "initiative": true, "bet": true, "project": true,
+			"workstream": true, "risk": true, "decision": true, "question": true,
+			"metric": true,
+		}
+		if kind == "" || kind == "auto" {
+			if _, ok := parseGitHubRef(ref); ok {
+				kind = "github"
+			} else if title != "" {
+				kind = "task"
+			} else {
+				kind = "note"
+			}
+		}
+		switch {
+		case kind == "github":
+			gh, ok := parseGitHubRef(ref)
+			if !ok {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "expected GitHub URL, owner/repo#123, or owner/repo!123"})
+				return
+			}
+			node, err := s.store.AddGitHubRefToBoard(r.Context(), boardID, gh.repo, gh.marker, gh.number, title)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"node": node})
+		case kind == "note":
+			text := title
+			if text == "" {
+				text = ref
+			}
+			node, err := s.store.CreateNote(r.Context(), boardID, text)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"node": node})
+		case kind == "task" || strategyKinds[kind]:
+			text := title
+			if text == "" {
+				text = ref
+			}
+			node, err := s.store.CreateStrategyNode(r.Context(), boardID, kind, text, in.Status, in.Owner, in.Description)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+			writeJSON(w, http.StatusCreated, map[string]any{"node": node})
+		default:
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "kind must be github, task, note, strategy, initiative, bet, project, workstream, risk, decision, question, metric, or auto"})
+		}
+	case http.MethodPatch:
+		var in struct {
+			NodeID      string `json:"node_id"`
+			Title       string `json:"title"`
+			Status      string `json:"status"`
+			Owner       string `json:"owner"`
+			Description string `json:"description"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		nodeID := strings.TrimSpace(in.NodeID)
+		if nodeID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "node_id is required"})
+			return
+		}
+		node, err := s.store.UpdateNodeFields(r.Context(), nodeID, in.Title, in.Status, in.Owner, in.Description)
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{"node": node})
-	case "note":
-		text := title
-		if text == "" {
-			text = ref
+		writeJSON(w, http.StatusOK, map[string]any{"node": node})
+	case http.MethodDelete:
+		var in struct {
+			BoardID string `json:"board_id"`
+			NodeID  string `json:"node_id"`
 		}
-		node, err := s.store.CreateNote(r.Context(), boardID, text)
-		if err != nil {
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{"node": node})
-	case "task":
-		text := title
-		if text == "" {
-			text = ref
+		boardID := strings.TrimSpace(in.BoardID)
+		if boardID == "" {
+			boardID = core.DefaultBoardID
 		}
-		node, err := s.store.AddTaskToBoard(r.Context(), boardID, text)
-		if err != nil {
+		nodeID := strings.TrimSpace(in.NodeID)
+		if nodeID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "node_id is required"})
+			return
+		}
+		if err := s.store.RemoveNodeFromBoard(r.Context(), boardID, nodeID); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{"node": node})
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	default:
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "kind must be github, task, note, or auto"})
+		w.Header().Set("Allow", "POST, PATCH, DELETE")
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 	}
 }
 
 func (s *Server) handleBoardLinks(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
-		return
-	}
 	if _, ok := s.requireAccount(w, r); !ok {
 		return
 	}
-	var in struct {
-		BoardID string `json:"board_id"`
-		From    string `json:"from"`
-		To      string `json:"to"`
-		Kind    string `json:"kind"`
-		Note    string `json:"note"`
+	switch r.Method {
+	case http.MethodPost:
+		var in struct {
+			BoardID string `json:"board_id"`
+			From    string `json:"from"`
+			To      string `json:"to"`
+			Kind    string `json:"kind"`
+			Note    string `json:"note"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		boardID := strings.TrimSpace(in.BoardID)
+		if boardID == "" {
+			boardID = core.DefaultBoardID
+		}
+		snap, err := s.store.Snapshot(r.Context(), boardID)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		from, err := resolveBoardNodeRef(snap, in.From)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "from: " + err.Error()})
+			return
+		}
+		to, err := resolveBoardNodeRef(snap, in.To)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "to: " + err.Error()})
+			return
+		}
+		kind := strings.TrimSpace(in.Kind)
+		if kind == "" {
+			kind = "blocked_by"
+		}
+		edge, err := s.store.AddEdge(r.Context(), boardID, from, to, kind, "user", map[string]any{"note": strings.TrimSpace(in.Note), "source": "manual"})
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"edge": edge})
+	case http.MethodDelete:
+		var in struct {
+			EdgeID string `json:"edge_id"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		edgeID := strings.TrimSpace(in.EdgeID)
+		if edgeID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "edge_id is required"})
+			return
+		}
+		if err := s.store.DeleteEdge(r.Context(), edgeID); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	default:
+		w.Header().Set("Allow", "POST, DELETE")
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 	}
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-		return
-	}
-	boardID := strings.TrimSpace(in.BoardID)
-	if boardID == "" {
-		boardID = core.DefaultBoardID
-	}
-	snap, err := s.store.Snapshot(r.Context(), boardID)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-		return
-	}
-	from, err := resolveBoardNodeRef(snap, in.From)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "from: " + err.Error()})
-		return
-	}
-	to, err := resolveBoardNodeRef(snap, in.To)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "to: " + err.Error()})
-		return
-	}
-	kind := strings.TrimSpace(in.Kind)
-	if kind == "" {
-		kind = "blocked_by"
-	}
-	edge, err := s.store.AddEdge(r.Context(), boardID, from, to, kind, "user", map[string]any{"note": strings.TrimSpace(in.Note), "source": "manual"})
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-		return
-	}
-	writeJSON(w, http.StatusCreated, map[string]any{"edge": edge})
 }
 
 func (s *Server) handleBoardSync(w http.ResponseWriter, r *http.Request) {

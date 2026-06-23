@@ -723,6 +723,161 @@ func (s *Store) AddTaskToBoard(ctx context.Context, boardID, title string) (Node
 	return n, nil
 }
 
+// CreateStrategyNode creates a local non-GitHub planning node with an extended type.
+// kind must be one of: strategy, initiative, bet, project, workstream, risk, decision, question, metric, task, note
+// status must be one of: draft, active, blocked, at-risk, paused, done, rejected, open, closed
+func (s *Store) CreateStrategyNode(ctx context.Context, boardID, kind, title, status, owner, description string) (Node, error) {
+	kind = strings.TrimSpace(strings.ToLower(kind))
+	title = strings.TrimSpace(title)
+	status = strings.TrimSpace(strings.ToLower(status))
+	owner = strings.TrimSpace(owner)
+	description = strings.TrimSpace(description)
+	if title == "" {
+		return Node{}, errors.New("title is required")
+	}
+	validKinds := map[string]bool{
+		"strategy": true, "initiative": true, "bet": true, "project": true,
+		"workstream": true, "risk": true, "decision": true, "question": true,
+		"metric": true, "task": true, "note": true,
+	}
+	if !validKinds[kind] {
+		kind = "task"
+	}
+	if status == "" {
+		if kind == "note" {
+			status = "local"
+		} else {
+			status = "draft"
+		}
+	}
+	prefix := kind + ":"
+	id, err := s.availableNodeID(ctx, prefix+slug(title))
+	if err != nil {
+		return Node{}, err
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"source":      "local",
+		"kind":        kind,
+		"text":        title,
+		"description": description,
+		"owner":       owner,
+	})
+	n := Node{
+		ID:        id,
+		Kind:      kind,
+		Title:     title,
+		State:     status,
+		Owner:     owner,
+		DataJSON:  string(payload),
+		UpdatedAt: nowUTC(),
+	}
+	if err := s.UpsertNode(ctx, n); err != nil {
+		return Node{}, err
+	}
+	if err := s.UpsertSourceRef(ctx, n.ID, LocalSourceID, n.ID, ""); err != nil {
+		return Node{}, err
+	}
+	role := "card"
+	if kind == "note" {
+		role = "note"
+	}
+	if err := s.AddNodeToBoard(ctx, boardID, n.ID, role, "local"); err != nil {
+		return Node{}, err
+	}
+	evPayload, _ := json.Marshal(n)
+	return n, s.RecordEvent(ctx, "depviz.strategy_node.v1", n.ID, evPayload)
+}
+
+// UpdateNodeFields updates editable fields of a local node.
+// Only non-empty values are applied (pass "" to skip a field).
+func (s *Store) UpdateNodeFields(ctx context.Context, nodeID, title, status, owner, description string) (Node, error) {
+	n, err := s.nodeByID(ctx, nodeID)
+	if err != nil {
+		return Node{}, fmt.Errorf("node not found: %w", err)
+	}
+	if title != "" {
+		n.Title = strings.TrimSpace(title)
+	}
+	if status != "" {
+		n.State = strings.TrimSpace(strings.ToLower(status))
+	}
+	if owner != "" {
+		n.Owner = strings.TrimSpace(owner)
+	}
+	// Merge description into data_json
+	var data map[string]any
+	if n.DataJSON != "" {
+		_ = json.Unmarshal([]byte(n.DataJSON), &data)
+	}
+	if data == nil {
+		data = map[string]any{}
+	}
+	if description != "" {
+		data["description"] = description
+	}
+	if owner != "" {
+		data["owner"] = n.Owner
+	}
+	n.UpdatedAt = nowUTC()
+	merged, _ := json.Marshal(data)
+	n.DataJSON = string(merged)
+	if err := s.UpsertNode(ctx, n); err != nil {
+		return Node{}, err
+	}
+	evPayload, _ := json.Marshal(n)
+	return n, s.RecordEvent(ctx, "depviz.node_update.v1", n.ID, evPayload)
+}
+
+// RemoveNodeFromBoard removes a node from a board. If the node is local-only and has no
+// other board references, it is also deleted from the nodes table.
+func (s *Store) RemoveNodeFromBoard(ctx context.Context, boardID, nodeID string) error {
+	if boardID == "" {
+		boardID = DefaultBoardID
+	}
+	_, err := s.db.ExecContext(ctx, `DELETE FROM board_items WHERE board_id = ? AND node_id = ?`, boardID, nodeID)
+	if err != nil {
+		return err
+	}
+	// Also delete edges scoped to this board that reference the node
+	_, err = s.db.ExecContext(ctx, `DELETE FROM edges WHERE scope_board_id = ? AND (from_id = ? OR to_id = ?)`, boardID, nodeID, nodeID)
+	if err != nil {
+		return err
+	}
+	// If local node and no other board references, delete from nodes too
+	isLocal := strings.HasPrefix(nodeID, "note:") || strings.HasPrefix(nodeID, "task:") ||
+		strings.HasPrefix(nodeID, "strategy:") || strings.HasPrefix(nodeID, "initiative:") ||
+		strings.HasPrefix(nodeID, "bet:") || strings.HasPrefix(nodeID, "project:") ||
+		strings.HasPrefix(nodeID, "workstream:") || strings.HasPrefix(nodeID, "risk:") ||
+		strings.HasPrefix(nodeID, "decision:") || strings.HasPrefix(nodeID, "question:") ||
+		strings.HasPrefix(nodeID, "metric:")
+	if isLocal {
+		var count int
+		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM board_items WHERE node_id = ?`, nodeID).Scan(&count); err == nil && count == 0 {
+			_, _ = s.db.ExecContext(ctx, `DELETE FROM source_refs WHERE node_id = ?`, nodeID)
+			_, _ = s.db.ExecContext(ctx, `DELETE FROM nodes WHERE id = ?`, nodeID)
+		}
+	}
+	payload, _ := json.Marshal(map[string]any{"board_id": boardID, "node_id": nodeID})
+	return s.RecordEvent(ctx, "depviz.node_remove.v1", nodeID, payload)
+}
+
+// DeleteEdge removes an edge by ID.
+func (s *Store) DeleteEdge(ctx context.Context, edgeID string) error {
+	if edgeID == "" {
+		return errors.New("edge id is required")
+	}
+	res, err := s.db.ExecContext(ctx, `DELETE FROM edges WHERE id = ?`, edgeID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return errors.New("edge not found")
+	}
+	payload, _ := json.Marshal(map[string]any{"edge_id": edgeID})
+	return s.RecordEvent(ctx, "depviz.edge_delete.v1", edgeID, payload)
+}
+
 func (s *Store) AddGitHubRefToBoard(ctx context.Context, boardID, repo, marker, number, title string) (Node, error) {
 	repo = strings.TrimSpace(repo)
 	marker = strings.TrimSpace(marker)
