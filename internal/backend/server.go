@@ -1,0 +1,1344 @@
+package backend
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strings"
+	"time"
+
+	"moul.io/depviz/v4/internal/core"
+	"moul.io/depviz/v4/live"
+)
+
+const sessionCookieName = "depviz_session"
+
+type Config struct {
+	Addr                    string
+	BaseURL                 string
+	GitHubClientID          string
+	GitHubClientSecret      string
+	GitHubAppID             string
+	GitHubAppPrivateKeyFile string
+	GitHubWebhookSecret     string
+	SessionTTL              time.Duration
+}
+
+type Server struct {
+	cfg    Config
+	store  *core.Store
+	client *http.Client
+}
+
+func NewServer(store *core.Store, cfg Config) *Server {
+	if cfg.SessionTTL <= 0 {
+		cfg.SessionTTL = 30 * 24 * time.Hour
+	}
+	return &Server{
+		cfg:    cfg,
+		store:  store,
+		client: http.DefaultClient,
+	}
+}
+
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/health", s.handleHealth)
+	mux.HandleFunc("/api/session", s.handleSession)
+	mux.HandleFunc("/api/export", s.handleExport)
+	mux.HandleFunc("/api/boards", s.handleBoards)
+	mux.HandleFunc("/api/board-items", s.handleBoardItems)
+	mux.HandleFunc("/api/board-links", s.handleBoardLinks)
+	mux.HandleFunc("/api/board-sync", s.handleBoardSync)
+	mux.HandleFunc("/api/github/orgs", s.handleGitHubOrgs)
+	mux.HandleFunc("/api/github/projects", s.handleGitHubProjects)
+	mux.HandleFunc("/api/github/repos", s.handleGitHubRepos)
+	mux.HandleFunc("/api/github/webhook", s.handleGitHubWebhook)
+	mux.HandleFunc("/api/overrides", s.handleOverrides)
+	mux.HandleFunc("/api/auth/github/start", s.handleGitHubStart)
+	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
+	mux.HandleFunc("/api/auth/logout", s.handleLogout)
+	mux.Handle("/", http.FileServer(http.FS(live.AppFS())))
+	return mux
+}
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":                        true,
+		"github_oauth_configured":   s.githubOAuthConfigured(),
+		"github_app_configured":     s.githubAppConfigured(),
+		"github_webhook_configured": s.githubWebhookConfigured(),
+	})
+}
+
+func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	if _, ok := s.requireAccount(w, r); !ok {
+		return
+	}
+	board := r.URL.Query().Get("board")
+	if board == "" {
+		board = core.DefaultBoardID
+	}
+	payload, err := s.store.BuildExport(r.Context(), board)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, payload)
+}
+
+func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
+	account, ok, err := s.accountForRequest(r)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	out := map[string]any{
+		"authenticated":             ok,
+		"github_oauth_configured":   s.githubOAuthConfigured(),
+		"github_app_configured":     s.githubAppConfigured(),
+		"github_webhook_configured": s.githubWebhookConfigured(),
+	}
+	if ok {
+		out["account"] = account
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) handleBoards(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAccount(w, r); !ok {
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		boards, err := s.store.BoardList(r.Context())
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"boards": boards})
+	case http.MethodPost:
+		var in struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Preset      string `json:"preset"`
+			Provider    string `json:"provider"`
+			Owner       string `json:"owner"`
+			Repo        string `json:"repo"`
+			SourceID    string `json:"source_id"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		configJSON, _ := json.Marshal(map[string]any{
+			"preset":    strings.TrimSpace(in.Preset),
+			"provider":  strings.TrimSpace(in.Provider),
+			"owner":     strings.TrimSpace(in.Owner),
+			"repo":      strings.TrimSpace(in.Repo),
+			"source_id": strings.TrimSpace(in.SourceID),
+		})
+		scope := strings.TrimSpace(in.Preset)
+		if in.Repo != "" {
+			scope = "repo:" + strings.TrimSpace(in.Repo)
+		} else if in.Owner != "" {
+			scope = "org:" + strings.TrimSpace(in.Owner)
+		} else if strings.TrimSpace(in.Preset) == "my-work" {
+			scope = "my-work"
+		}
+		board, err := s.store.CreateBoardWithConfig(r.Context(), in.Name, in.Description, scope, string(configJSON))
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"board": board})
+	default:
+		w.Header().Set("Allow", "GET, POST")
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+	}
+}
+
+func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	if _, ok := s.requireAccount(w, r); !ok {
+		return
+	}
+	var in struct {
+		BoardID string `json:"board_id"`
+		Kind    string `json:"kind"`
+		Ref     string `json:"ref"`
+		Title   string `json:"title"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	boardID := strings.TrimSpace(in.BoardID)
+	if boardID == "" {
+		boardID = core.DefaultBoardID
+	}
+	kind := strings.ToLower(strings.TrimSpace(in.Kind))
+	ref := strings.TrimSpace(in.Ref)
+	title := strings.TrimSpace(in.Title)
+	if kind == "" || kind == "auto" {
+		if _, ok := parseGitHubRef(ref); ok {
+			kind = "github"
+		} else if title != "" {
+			kind = "task"
+		} else {
+			kind = "note"
+		}
+	}
+	switch kind {
+	case "github":
+		gh, ok := parseGitHubRef(ref)
+		if !ok {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "expected GitHub URL, owner/repo#123, or owner/repo!123"})
+			return
+		}
+		node, err := s.store.AddGitHubRefToBoard(r.Context(), boardID, gh.repo, gh.marker, gh.number, title)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"node": node})
+	case "note":
+		text := title
+		if text == "" {
+			text = ref
+		}
+		node, err := s.store.CreateNote(r.Context(), boardID, text)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"node": node})
+	case "task":
+		text := title
+		if text == "" {
+			text = ref
+		}
+		node, err := s.store.AddTaskToBoard(r.Context(), boardID, text)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"node": node})
+	default:
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "kind must be github, task, note, or auto"})
+	}
+}
+
+func (s *Server) handleBoardLinks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	if _, ok := s.requireAccount(w, r); !ok {
+		return
+	}
+	var in struct {
+		BoardID string `json:"board_id"`
+		From    string `json:"from"`
+		To      string `json:"to"`
+		Kind    string `json:"kind"`
+		Note    string `json:"note"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	boardID := strings.TrimSpace(in.BoardID)
+	if boardID == "" {
+		boardID = core.DefaultBoardID
+	}
+	snap, err := s.store.Snapshot(r.Context(), boardID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	from, err := resolveBoardNodeRef(snap, in.From)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "from: " + err.Error()})
+		return
+	}
+	to, err := resolveBoardNodeRef(snap, in.To)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "to: " + err.Error()})
+		return
+	}
+	kind := strings.TrimSpace(in.Kind)
+	if kind == "" {
+		kind = "blocked_by"
+	}
+	edge, err := s.store.AddEdge(r.Context(), boardID, from, to, kind, "user", map[string]any{"note": strings.TrimSpace(in.Note), "source": "manual"})
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"edge": edge})
+}
+
+func (s *Server) handleBoardSync(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	var in struct {
+		BoardID string `json:"board_id"`
+		Limit   int    `json:"limit"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	boardID := strings.TrimSpace(in.BoardID)
+	if boardID == "" {
+		boardID = core.DefaultBoardID
+	}
+	snap, err := s.store.Snapshot(r.Context(), boardID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	limit := in.Limit
+	if limit <= 0 || limit > 100 {
+		limit = 100
+	}
+	_ = s.store.RecordBoardSync(r.Context(), boardID, "running", map[string]any{"scope": snap.Board.ScopeQuery, "limit": limit})
+	token, tokenMode, err := s.githubTokenForBoardSync(r.Context(), account.ID, snap.Board)
+	if err != nil {
+		_ = s.store.RecordBoardSync(r.Context(), boardID, "failed", map[string]any{"scope": snap.Board.ScopeQuery, "limit": limit, "error": err.Error()})
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	count, edges, err := s.syncGitHubBoardScope(r.Context(), token, account.Login, boardID, snap.Board, limit)
+	if err != nil && canRetryGitHubPublicSync(err, tokenMode, snap.Board) {
+		count, edges, err = s.syncGitHubBoardScope(r.Context(), "", account.Login, boardID, snap.Board, limit)
+		tokenMode = "github-public-rest"
+	}
+	if err != nil {
+		err = friendlyGitHubSyncError(err, tokenMode, snap.Board.ScopeQuery)
+		_ = s.store.RecordBoardSync(r.Context(), boardID, "failed", map[string]any{"scope": snap.Board.ScopeQuery, "limit": limit, "mode": tokenMode, "error": err.Error()})
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	_ = s.store.RecordBoardSync(r.Context(), boardID, "ok", map[string]any{"scope": snap.Board.ScopeQuery, "limit": limit, "mode": tokenMode, "items": count, "links": edges})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "scope": snap.Board.ScopeQuery, "mode": tokenMode, "items": count, "links": edges})
+}
+
+func (s *Server) handleGitHubStart(w http.ResponseWriter, r *http.Request) {
+	if !s.githubOAuthConfigured() {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "github auth is not configured"})
+		return
+	}
+	returnTo := safeReturnPath(r.URL.Query().Get("return_to"))
+	state, err := s.store.CreateOAuthState(r.Context(), "github", returnTo, 10*time.Minute)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	params := url.Values{
+		"client_id":    {s.cfg.GitHubClientID},
+		"redirect_uri": {s.callbackURL()},
+		"state":        {state},
+	}
+	if !s.githubAppConfigured() {
+		params.Set("scope", "repo read:user user:email read:org read:project")
+	}
+	http.Redirect(w, r, "https://github.com/login/oauth/authorize?"+params.Encode(), http.StatusFound)
+}
+
+func (s *Server) handleGitHubCallback(w http.ResponseWriter, r *http.Request) {
+	if !s.githubOAuthConfigured() {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "github auth is not configured"})
+		return
+	}
+	code := strings.TrimSpace(r.URL.Query().Get("code"))
+	state := strings.TrimSpace(r.URL.Query().Get("state"))
+	installationID := parseInstallationID(r.URL.Query().Get("installation_id"))
+	if code == "" || state == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing code or state"})
+		return
+	}
+	returnTo, err := s.store.ConsumeOAuthState(r.Context(), "github", state)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	token, err := s.exchangeGitHubCode(r.Context(), code)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	user, err := s.fetchGitHubUser(r.Context(), token.AccessToken)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	tokenJSON, _ := json.Marshal(token)
+	account, err := s.store.UpsertOAuthAccount(r.Context(), core.OAuthAccountInput{
+		Provider:   "github",
+		ExternalID: fmt.Sprint(user.ID),
+		Login:      user.Login,
+		Name:       user.Name,
+		AvatarURL:  user.AvatarURL,
+		HTMLURL:    user.HTMLURL,
+		Scopes:     token.Scopes(),
+		TokenJSON:  string(tokenJSON),
+	})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	workspace, err := s.store.UpsertWorkspace(r.Context(), core.Workspace{
+		Provider:   "github",
+		ExternalID: fmt.Sprint(user.ID),
+		Kind:       "user",
+		Name:       user.Login,
+		URL:        user.HTMLURL,
+	})
+	if err == nil {
+		_ = s.store.UpsertWorkspaceMembership(r.Context(), workspace.ID, account.ID, "owner", "github")
+	}
+	if installationID != 0 && s.githubAppConfigured() {
+		_ = s.syncGitHubInstallation(r.Context(), installationID)
+	}
+	session, expires, err := s.store.CreateWebSession(r.Context(), account.ID, s.cfg.SessionTTL)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    session,
+		Path:     "/",
+		Expires:  expires,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   strings.HasPrefix(s.cfg.BaseURL, "https://"),
+	})
+	http.Redirect(w, r, returnTo, http.StatusFound)
+}
+
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	cookie, err := r.Cookie(sessionCookieName)
+	if err == nil {
+		_ = s.store.DeleteWebSession(r.Context(), cookie.Value)
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   strings.HasPrefix(s.cfg.BaseURL, "https://"),
+	})
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (s *Server) handleGitHubRepos(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	token, ok := s.githubAccessTokenForAccount(w, r, account.ID)
+	if !ok {
+		return
+	}
+	var repos []githubRepo
+	path := "/user/repos?affiliation=owner,collaborator,organization_member&sort=updated&per_page=100"
+	if err := s.doGitHubREST(r.Context(), token, path, &repos); err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	for _, repo := range repos {
+		raw, _ := json.Marshal(repo)
+		workspace, err := s.store.UpsertWorkspace(r.Context(), core.Workspace{
+			Provider:   "github",
+			ExternalID: fmt.Sprint(repo.ID),
+			Kind:       "repo",
+			Name:       repo.FullName,
+			URL:        repo.HTMLURL,
+			DataJSON:   string(raw),
+		})
+		if err == nil {
+			_ = s.store.UpsertWorkspaceMembership(r.Context(), workspace.ID, account.ID, "member", "github")
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"repos": repos})
+}
+
+func (s *Server) handleGitHubOrgs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	token, ok := s.githubAccessTokenForAccount(w, r, account.ID)
+	if !ok {
+		return
+	}
+	var orgs []githubOrg
+	if err := s.doGitHubREST(r.Context(), token, "/user/orgs?per_page=100", &orgs); err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	for _, org := range orgs {
+		raw, _ := json.Marshal(org)
+		workspace, err := s.store.UpsertWorkspace(r.Context(), core.Workspace{
+			Provider:   "github",
+			ExternalID: fmt.Sprint(org.ID),
+			Kind:       "org",
+			Name:       org.Login,
+			URL:        org.HTMLURL,
+			DataJSON:   string(raw),
+		})
+		if err == nil {
+			_ = s.store.UpsertWorkspaceMembership(r.Context(), workspace.ID, account.ID, "member", "github")
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"orgs": orgs})
+}
+
+func (s *Server) handleGitHubProjects(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	token, ok := s.githubAccessTokenForAccount(w, r, account.ID)
+	if !ok {
+		return
+	}
+	query := `query DepVizProjects {
+		viewer {
+			projectsV2(first: 50, orderBy: {field: UPDATED_AT, direction: DESC}) {
+				nodes { id title url updatedAt }
+			}
+			organizations(first: 50) {
+				nodes {
+					login
+					projectsV2(first: 50, orderBy: {field: UPDATED_AT, direction: DESC}) {
+						nodes { id title url updatedAt }
+					}
+				}
+			}
+		}
+	}`
+	var gql githubProjectsGraphQL
+	if err := s.doGitHubGraphQL(r.Context(), token, query, &gql); err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	projects := make([]githubProject, 0, len(gql.Viewer.ProjectsV2.Nodes))
+	for _, project := range gql.Viewer.ProjectsV2.Nodes {
+		project.Owner = account.Login
+		projects = append(projects, project)
+	}
+	for _, org := range gql.Viewer.Organizations.Nodes {
+		for _, project := range org.ProjectsV2.Nodes {
+			project.Owner = org.Login
+			projects = append(projects, project)
+		}
+	}
+	for _, project := range projects {
+		raw, _ := json.Marshal(project)
+		workspace, err := s.store.UpsertWorkspace(r.Context(), core.Workspace{
+			Provider:   "github",
+			ExternalID: project.ID,
+			Kind:       "project",
+			Name:       project.Title,
+			URL:        project.URL,
+			DataJSON:   string(raw),
+		})
+		if err == nil {
+			_ = s.store.UpsertWorkspaceMembership(r.Context(), workspace.ID, account.ID, "member", "github")
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"projects": projects})
+}
+
+func (s *Server) handleOverrides(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	var in struct {
+		OwnerType string          `json:"owner_type"`
+		OwnerID   string          `json:"owner_id"`
+		Data      json.RawMessage `json:"data"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	if len(in.Data) == 0 {
+		in.Data = json.RawMessage(`{}`)
+	}
+	override, err := s.store.UpsertPersonalOverride(r.Context(), core.PersonalOverride{
+		AccountID: account.ID,
+		OwnerType: in.OwnerType,
+		OwnerID:   in.OwnerID,
+		DataJSON:  string(in.Data),
+	})
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"override": override})
+}
+
+func (s *Server) accountForRequest(r *http.Request) (core.Account, bool, error) {
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		return core.Account{}, false, nil
+	}
+	return s.store.AccountForWebSession(r.Context(), cookie.Value)
+}
+
+func (s *Server) requireAccount(w http.ResponseWriter, r *http.Request) (core.Account, bool) {
+	account, ok, err := s.accountForRequest(r)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return core.Account{}, false
+	}
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
+		return core.Account{}, false
+	}
+	return account, true
+}
+
+func (s *Server) githubAccessTokenForAccount(w http.ResponseWriter, r *http.Request, accountID string) (string, bool) {
+	conn, ok, err := s.store.OAuthConnectionForAccount(r.Context(), accountID, "github")
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return "", false
+	}
+	if !ok {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "github account is not connected"})
+		return "", false
+	}
+	var token githubToken
+	if err := json.Unmarshal([]byte(conn.TokenJSON), &token); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "stored github token is unreadable"})
+		return "", false
+	}
+	if token.AccessToken == "" {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "github account is not connected"})
+		return "", false
+	}
+	return token.AccessToken, true
+}
+
+func (s *Server) githubTokenForBoardSync(ctx context.Context, accountID string, board core.Board) (string, string, error) {
+	if owner := githubOwnerForBoard(board); owner != "" && s.githubAppConfigured() {
+		token, ok, err := s.githubInstallationTokenForOwner(ctx, owner)
+		if err != nil {
+			return "", "", err
+		}
+		if ok {
+			return token, "github-app-installation", nil
+		}
+	}
+	conn, ok, err := s.store.OAuthConnectionForAccount(ctx, accountID, "github")
+	if err != nil {
+		return "", "", err
+	}
+	if !ok {
+		return "", "", errors.New("github account is not connected; sign in with GitHub before syncing this view")
+	}
+	var token githubToken
+	if err := json.Unmarshal([]byte(conn.TokenJSON), &token); err != nil {
+		return "", "", errors.New("stored github token is unreadable; reconnect GitHub")
+	}
+	if token.AccessToken == "" {
+		return "", "", errors.New("github account is not connected; reconnect GitHub")
+	}
+	return token.AccessToken, "github-oauth-user", nil
+}
+
+func (s *Server) githubInstallationTokenForOwner(ctx context.Context, owner string) (string, bool, error) {
+	installations, err := s.store.GitHubInstallations(ctx)
+	if err != nil {
+		return "", false, err
+	}
+	for _, installation := range installations {
+		if !strings.EqualFold(installation.AccountLogin, owner) || installation.InstallationID == 0 {
+			continue
+		}
+		token, err := s.githubInstallationAccessToken(ctx, installation.InstallationID)
+		if err != nil {
+			return "", false, fmt.Errorf("github app installation token for %s failed: %w", owner, err)
+		}
+		return token.Token, true, nil
+	}
+	return "", false, nil
+}
+
+func githubOwnerForBoard(board core.Board) string {
+	if repo := repoForBoard(board); repo != "" {
+		return strings.Split(repo, "/")[0]
+	}
+	return orgForBoard(board)
+}
+
+func friendlyGitHubSyncError(err error, tokenMode, scope string) error {
+	msg := strings.TrimSpace(err.Error())
+	switch {
+	case strings.Contains(msg, "401 Unauthorized"):
+		if tokenMode == "github-oauth-user" {
+			return fmt.Errorf("github OAuth token is no longer valid for %s; sign out and sign in again, or install the DepViz GitHub App on this owner: %s", scope, msg)
+		}
+		return fmt.Errorf("github app token was rejected for %s: %s", scope, msg)
+	case strings.Contains(msg, "403 Forbidden"):
+		return fmt.Errorf("github denied access for %s; check GitHub App permissions/installation or OAuth scopes: %s", scope, msg)
+	case strings.Contains(msg, "404 Not Found"):
+		return fmt.Errorf("github could not read %s; the repo may be private, missing, or the DepViz GitHub App is not installed on that owner: %s", scope, msg)
+	default:
+		return err
+	}
+}
+
+func canRetryGitHubPublicSync(err error, tokenMode string, board core.Board) bool {
+	if tokenMode != "github-oauth-user" || githubOwnerForBoard(board) == "" {
+		return false
+	}
+	return strings.Contains(err.Error(), "401 Unauthorized")
+}
+
+func (s *Server) exchangeGitHubCode(ctx context.Context, code string) (githubToken, error) {
+	body, _ := json.Marshal(map[string]string{
+		"client_id":     s.cfg.GitHubClientID,
+		"client_secret": s.cfg.GitHubClientSecret,
+		"code":          code,
+		"redirect_uri":  s.callbackURL(),
+	})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://github.com/login/oauth/access_token", bytes.NewReader(body))
+	if err != nil {
+		return githubToken{}, err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	var token githubToken
+	if err := s.doJSON(req, &token); err != nil {
+		return githubToken{}, err
+	}
+	if token.Error != "" {
+		return githubToken{}, errors.New(token.ErrorDescription)
+	}
+	if token.AccessToken == "" {
+		return githubToken{}, errors.New("github did not return an access token")
+	}
+	return token, nil
+}
+
+func (s *Server) fetchGitHubUser(ctx context.Context, accessToken string) (githubUser, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/user", nil)
+	if err != nil {
+		return githubUser{}, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	var user githubUser
+	if err := s.doJSON(req, &user); err != nil {
+		return githubUser{}, err
+	}
+	if user.ID == 0 || user.Login == "" {
+		return githubUser{}, errors.New("github user response is missing id or login")
+	}
+	return user, nil
+}
+
+func (s *Server) doGitHubREST(ctx context.Context, accessToken, path string, out any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com"+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	if accessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+	}
+	return s.doJSON(req, out)
+}
+
+func (s *Server) doGitHubGraphQL(ctx context.Context, accessToken, query string, out any) error {
+	body, _ := json.Marshal(map[string]string{"query": query})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.github.com/graphql", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	var envelope struct {
+		Data   json.RawMessage `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := s.doJSON(req, &envelope); err != nil {
+		return err
+	}
+	if len(envelope.Errors) > 0 {
+		return errors.New(envelope.Errors[0].Message)
+	}
+	return json.Unmarshal(envelope.Data, out)
+}
+
+func (s *Server) syncGitHubRepoBoard(ctx context.Context, accessToken, boardID, repo string, limit int) (int, int, error) {
+	sourceID := "github:" + repo
+	if err := s.store.UpsertSource(ctx, core.Source{
+		ID:           sourceID,
+		Kind:         "github",
+		Name:         repo,
+		URL:          "https://github.com/" + repo,
+		Capabilities: `{"read":true,"write":"github-app"}`,
+		Sync:         `{"mode":"oauth-rest"}`,
+		UpdatedAt:    time.Now().UTC(),
+	}); err != nil {
+		return 0, 0, err
+	}
+	var issues []githubIssueREST
+	path := fmt.Sprintf("/repos/%s/issues?state=all&sort=updated&direction=desc&per_page=%d", repo, limit)
+	if err := s.doGitHubREST(ctx, accessToken, path, &issues); err != nil {
+		return 0, 0, err
+	}
+	count := 0
+	edgeCount := 0
+	for _, issue := range issues {
+		node, err := s.upsertGitHubIssueREST(ctx, boardID, repo, issue)
+		if err != nil {
+			return count, edgeCount, err
+		}
+		count++
+		for _, edge := range core.ExtractDependencyEdges(repo, node.ID, issue.Body) {
+			if _, err := s.store.AddEdgeWithConfidence(ctx, boardID, edge.From, edge.To, edge.Kind, "github-inferred", edge.Confidence, edge); err != nil {
+				return count, edgeCount, err
+			}
+			edgeCount++
+		}
+	}
+	return count, edgeCount, nil
+}
+
+func (s *Server) upsertGitHubIssueREST(ctx context.Context, boardID, repo string, issue githubIssueREST) (core.Node, error) {
+	sourceID := "github:" + repo
+	if err := s.store.UpsertSource(ctx, core.Source{
+		ID:           sourceID,
+		Kind:         "github",
+		Name:         repo,
+		URL:          "https://github.com/" + repo,
+		Capabilities: `{"read":true,"write":"github-app"}`,
+		Sync:         `{"mode":"oauth-rest"}`,
+		UpdatedAt:    time.Now().UTC(),
+	}); err != nil {
+		return core.Node{}, err
+	}
+	marker := "#"
+	kind := "issue"
+	if issue.PullRequest.URL != "" {
+		marker = "!"
+		kind = "pr"
+	}
+	id := fmt.Sprintf("gh:%s%s%d", repo, marker, issue.Number)
+	payload, _ := json.Marshal(map[string]any{
+		"source":     "github",
+		"kind":       kind,
+		"repo":       repo,
+		"number":     issue.Number,
+		"labels":     issue.LabelNames(),
+		"assignees":  issue.AssigneePeople(),
+		"author":     issue.AuthorPerson(),
+		"milestone":  issue.Milestone.Title,
+		"body":       issue.Body,
+		"synced_at":  time.Now().UTC().Format(time.RFC3339),
+		"html_url":   issue.HTMLURL,
+		"api_url":    issue.URL,
+		"repository": repo,
+	})
+	node := core.Node{
+		ID:        id,
+		Kind:      kind,
+		Title:     issue.Title,
+		State:     strings.ToLower(issue.State),
+		Owner:     firstString(issue.AssigneeNames()),
+		DataJSON:  string(payload),
+		UpdatedAt: parseGitHubRESTTime(issue.UpdatedAt),
+	}
+	if err := s.store.UpsertNode(ctx, node); err != nil {
+		return core.Node{}, err
+	}
+	if err := s.store.UpsertSourceRef(ctx, id, sourceID, fmt.Sprintf("%s%d", marker, issue.Number), issue.HTMLURL); err != nil {
+		return core.Node{}, err
+	}
+	if err := s.store.AddNodeToBoard(ctx, boardID, id, kind, ""); err != nil {
+		return core.Node{}, err
+	}
+	return node, nil
+}
+
+func (s *Server) syncGitHubBoardScope(ctx context.Context, accessToken, login, boardID string, board core.Board, limit int) (int, int, error) {
+	if repo := repoForBoard(board); repo != "" {
+		return s.syncGitHubRepoBoard(ctx, accessToken, boardID, repo, limit)
+	}
+	if owner := orgForBoard(board); owner != "" {
+		return s.syncGitHubOrgBoard(ctx, accessToken, boardID, owner, limit)
+	}
+	if board.ScopeQuery == "my-work" || boardPreset(board) == "my-work" {
+		return s.syncGitHubMyWorkBoard(ctx, accessToken, login, boardID, limit)
+	}
+	return 0, 0, errors.New("sync currently supports repo, org, and my-work views")
+}
+
+func (s *Server) syncGitHubOrgBoard(ctx context.Context, accessToken, boardID, owner string, limit int) (int, int, error) {
+	var repos []githubRepo
+	if err := s.doGitHubREST(ctx, accessToken, fmt.Sprintf("/orgs/%s/repos?sort=updated&direction=desc&per_page=20", owner), &repos); err != nil {
+		return 0, 0, err
+	}
+	totalItems := 0
+	totalLinks := 0
+	perRepo := limit / maxInt(1, len(repos))
+	if perRepo < 5 {
+		perRepo = 5
+	}
+	if perRepo > 30 {
+		perRepo = 30
+	}
+	for _, repo := range repos {
+		if repo.FullName == "" {
+			continue
+		}
+		items, links, err := s.syncGitHubRepoBoard(ctx, accessToken, boardID, repo.FullName, perRepo)
+		if err != nil {
+			return totalItems, totalLinks, err
+		}
+		totalItems += items
+		totalLinks += links
+	}
+	return totalItems, totalLinks, nil
+}
+
+func (s *Server) syncGitHubMyWorkBoard(ctx context.Context, accessToken, login, boardID string, limit int) (int, int, error) {
+	if login == "" {
+		return 0, 0, errors.New("github login is required for my-work sync")
+	}
+	query := url.QueryEscape(fmt.Sprintf("involves:%s archived:false sort:updated-desc", login))
+	var payload struct {
+		Items []githubSearchIssue `json:"items"`
+	}
+	if err := s.doGitHubREST(ctx, accessToken, fmt.Sprintf("/search/issues?q=%s&per_page=%d", query, limit), &payload); err != nil {
+		return 0, 0, err
+	}
+	count := 0
+	edges := 0
+	for _, item := range payload.Items {
+		repo := item.RepoFullName()
+		if repo == "" {
+			continue
+		}
+		node, err := s.upsertGitHubIssueREST(ctx, boardID, repo, githubIssueREST{
+			Number:      item.Number,
+			Title:       item.Title,
+			State:       item.State,
+			URL:         item.URL,
+			HTMLURL:     item.HTMLURL,
+			Body:        item.Body,
+			UpdatedAt:   item.UpdatedAt,
+			PullRequest: item.PullRequest,
+		})
+		if err != nil {
+			return count, edges, err
+		}
+		count++
+		for _, edge := range core.ExtractDependencyEdges(repo, node.ID, item.Body) {
+			if _, err := s.store.AddEdgeWithConfidence(ctx, boardID, edge.From, edge.To, edge.Kind, "github-inferred", edge.Confidence, edge); err != nil {
+				return count, edges, err
+			}
+			edges++
+		}
+	}
+	return count, edges, nil
+}
+
+func (s *Server) doJSON(req *http.Request, out any) error {
+	res, err := s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(res.Body, 20<<20))
+	if err != nil {
+		return err
+	}
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return fmt.Errorf("%s: %s", res.Status, strings.TrimSpace(string(data)))
+	}
+	return json.Unmarshal(data, out)
+}
+
+func (s *Server) callbackURL() string {
+	base := strings.TrimRight(s.cfg.BaseURL, "/")
+	if base == "" {
+		base = "http://" + s.cfg.Addr
+	}
+	return base + "/api/auth/github/callback"
+}
+
+func (s *Server) githubOAuthConfigured() bool {
+	return s.cfg.GitHubClientID != "" && s.cfg.GitHubClientSecret != ""
+}
+
+func (s *Server) githubAppConfigured() bool {
+	return s.cfg.GitHubAppID != "" && s.cfg.GitHubClientID != "" && s.cfg.GitHubClientSecret != "" && s.cfg.GitHubAppPrivateKeyFile != ""
+}
+
+func (s *Server) githubWebhookConfigured() bool {
+	return s.githubAppConfigured() && s.cfg.GitHubWebhookSecret != ""
+}
+
+type githubToken struct {
+	AccessToken      string `json:"access_token"`
+	TokenType        string `json:"token_type"`
+	Scope            string `json:"scope"`
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+}
+
+func (g githubToken) Scopes() []string {
+	if g.Scope == "" {
+		return nil
+	}
+	parts := strings.Split(g.Scope, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
+}
+
+type githubUser struct {
+	ID        int64  `json:"id"`
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
+	HTMLURL   string `json:"html_url"`
+}
+
+type githubRepo struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	FullName  string `json:"full_name"`
+	Private   bool   `json:"private"`
+	HTMLURL   string `json:"html_url"`
+	UpdatedAt string `json:"updated_at"`
+	Owner     struct {
+		ID    int64  `json:"id"`
+		Login string `json:"login"`
+		Type  string `json:"type"`
+	} `json:"owner"`
+}
+
+type githubIssueREST struct {
+	ID        int64  `json:"id"`
+	Number    int    `json:"number"`
+	Title     string `json:"title"`
+	State     string `json:"state"`
+	URL       string `json:"url"`
+	HTMLURL   string `json:"html_url"`
+	Body      string `json:"body"`
+	UpdatedAt string `json:"updated_at"`
+	Labels    []struct {
+		Name string `json:"name"`
+	} `json:"labels"`
+	Assignees []struct {
+		Login     string `json:"login"`
+		AvatarURL string `json:"avatar_url"`
+		HTMLURL   string `json:"html_url"`
+	} `json:"assignees"`
+	User struct {
+		Login     string `json:"login"`
+		AvatarURL string `json:"avatar_url"`
+		HTMLURL   string `json:"html_url"`
+	} `json:"user"`
+	Milestone struct {
+		Title string `json:"title"`
+	} `json:"milestone"`
+	PullRequest githubPullRequestRef `json:"pull_request"`
+}
+
+type githubPullRequestRef struct {
+	URL     string `json:"url"`
+	HTMLURL string `json:"html_url"`
+}
+
+type githubSearchIssue struct {
+	Number        int                  `json:"number"`
+	Title         string               `json:"title"`
+	State         string               `json:"state"`
+	URL           string               `json:"url"`
+	HTMLURL       string               `json:"html_url"`
+	Body          string               `json:"body"`
+	UpdatedAt     string               `json:"updated_at"`
+	RepositoryURL string               `json:"repository_url"`
+	PullRequest   githubPullRequestRef `json:"pull_request"`
+}
+
+func (g githubSearchIssue) RepoFullName() string {
+	return strings.TrimPrefix(g.RepositoryURL, "https://api.github.com/repos/")
+}
+
+func (g githubIssueREST) LabelNames() []string {
+	out := make([]string, 0, len(g.Labels))
+	for _, label := range g.Labels {
+		if label.Name != "" {
+			out = append(out, label.Name)
+		}
+	}
+	return out
+}
+
+func (g githubIssueREST) AssigneeNames() []string {
+	out := make([]string, 0, len(g.Assignees))
+	for _, assignee := range g.Assignees {
+		if assignee.Login != "" {
+			out = append(out, assignee.Login)
+		}
+	}
+	return out
+}
+
+func (g githubIssueREST) AssigneePeople() []map[string]string {
+	out := make([]map[string]string, 0, len(g.Assignees))
+	for _, assignee := range g.Assignees {
+		if assignee.Login != "" {
+			out = append(out, map[string]string{
+				"login":      assignee.Login,
+				"avatar_url": assignee.AvatarURL,
+				"html_url":   assignee.HTMLURL,
+			})
+		}
+	}
+	return out
+}
+
+func (g githubIssueREST) AuthorPerson() map[string]string {
+	if g.User.Login == "" {
+		return nil
+	}
+	return map[string]string{
+		"login":      g.User.Login,
+		"avatar_url": g.User.AvatarURL,
+		"html_url":   g.User.HTMLURL,
+	}
+}
+
+type githubOrg struct {
+	ID        int64  `json:"id"`
+	Login     string `json:"login"`
+	HTMLURL   string `json:"html_url"`
+	AvatarURL string `json:"avatar_url"`
+}
+
+type githubProject struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	URL       string `json:"url"`
+	UpdatedAt string `json:"updated_at"`
+	Owner     string `json:"owner"`
+}
+
+type githubProjectsGraphQL struct {
+	Viewer struct {
+		ProjectsV2 struct {
+			Nodes []githubProject `json:"nodes"`
+		} `json:"projectsV2"`
+		Organizations struct {
+			Nodes []struct {
+				Login      string `json:"login"`
+				ProjectsV2 struct {
+					Nodes []githubProject `json:"nodes"`
+				} `json:"projectsV2"`
+			} `json:"nodes"`
+		} `json:"organizations"`
+	} `json:"viewer"`
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func safeReturnPath(value string) string {
+	if value == "" {
+		return "/"
+	}
+	u, err := url.Parse(value)
+	if err != nil || u.IsAbs() || !strings.HasPrefix(value, "/") {
+		return "/"
+	}
+	return value
+}
+
+type parsedGitHubRef struct {
+	repo   string
+	marker string
+	number string
+}
+
+var (
+	githubShortRefRE = regexp.MustCompile(`^(?:gh:)?([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)([#!])([0-9]+)$`)
+	githubURLRefRE   = regexp.MustCompile(`^https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/(issues|pull)/([0-9]+)(?:[/?#].*)?$`)
+	githubBareRefRE  = regexp.MustCompile(`^([#!])([0-9]+)$`)
+)
+
+func parseGitHubRef(value string) (parsedGitHubRef, bool) {
+	value = strings.TrimSpace(value)
+	if m := githubShortRefRE.FindStringSubmatch(value); m != nil {
+		return parsedGitHubRef{repo: m[1], marker: m[2], number: m[3]}, true
+	}
+	if m := githubURLRefRE.FindStringSubmatch(value); m != nil {
+		marker := "#"
+		if m[2] == "pull" {
+			marker = "!"
+		}
+		return parsedGitHubRef{repo: m[1], marker: marker, number: m[3]}, true
+	}
+	return parsedGitHubRef{}, false
+}
+
+func resolveBoardNodeRef(snap core.Snapshot, value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", errors.New("node reference is required")
+	}
+	if gh, ok := parseGitHubRef(value); ok {
+		return "gh:" + gh.repo + gh.marker + gh.number, nil
+	}
+	if m := githubBareRefRE.FindStringSubmatch(value); m != nil {
+		repo := repoForBoard(snap.Board)
+		if repo == "" {
+			return "", errors.New("short GitHub refs require a repo-scoped view")
+		}
+		return "gh:" + repo + m[1] + m[2], nil
+	}
+	lower := strings.ToLower(value)
+	for _, node := range snap.Nodes {
+		if node.ID == value || strings.ToLower(node.Title) == lower {
+			return node.ID, nil
+		}
+	}
+	return value, nil
+}
+
+func repoForBoard(board core.Board) string {
+	if strings.HasPrefix(board.ScopeQuery, "repo:") {
+		return strings.TrimSpace(strings.TrimPrefix(board.ScopeQuery, "repo:"))
+	}
+	var cfg struct {
+		Repo string `json:"repo"`
+	}
+	if board.ConfigJSON != "" && json.Unmarshal([]byte(board.ConfigJSON), &cfg) == nil {
+		return strings.TrimSpace(cfg.Repo)
+	}
+	return ""
+}
+
+func orgForBoard(board core.Board) string {
+	if strings.HasPrefix(board.ScopeQuery, "org:") {
+		return strings.TrimSpace(strings.TrimPrefix(board.ScopeQuery, "org:"))
+	}
+	var cfg struct {
+		Owner string `json:"owner"`
+	}
+	if board.ConfigJSON != "" && json.Unmarshal([]byte(board.ConfigJSON), &cfg) == nil {
+		if repoForBoard(board) == "" {
+			return strings.TrimSpace(cfg.Owner)
+		}
+	}
+	return ""
+}
+
+func boardPreset(board core.Board) string {
+	var cfg struct {
+		Preset string `json:"preset"`
+	}
+	if board.ConfigJSON != "" && json.Unmarshal([]byte(board.ConfigJSON), &cfg) == nil {
+		return strings.TrimSpace(cfg.Preset)
+	}
+	return ""
+}
+
+func parseGitHubRESTTime(value string) time.Time {
+	t, err := time.Parse(time.RFC3339, strings.TrimSpace(value))
+	if err != nil {
+		return time.Now().UTC().Truncate(time.Second)
+	}
+	return t.UTC().Truncate(time.Second)
+}
+
+func firstString(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}

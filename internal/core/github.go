@@ -212,7 +212,7 @@ func githubPayload(kind, repo string, number int, labels, assignees []string, bo
 	return string(payload)
 }
 
-type extractedEdge struct {
+type ExtractedEdge struct {
 	From       string  `json:"from"`
 	To         string  `json:"to"`
 	Kind       string  `json:"kind"`
@@ -228,8 +228,8 @@ var (
 	relationVerbRE       = regexp.MustCompile(`(?i)\b(blocked by|depends on|depend on|depends|after|blocks|unblocks|addresses|mentions|relates to|relates|closes|closed|close|fixes|fixed|fix|resolves|resolved|resolve)\b`)
 )
 
-func extractDependencyEdges(repo, currentID, body string) []extractedEdge {
-	var edges []extractedEdge
+func extractDependencyEdges(repo, currentID, body string) []ExtractedEdge {
+	var edges []ExtractedEdge
 	seen := map[string]bool{}
 	for _, line := range strings.Split(body, "\n") {
 		lower := strings.ToLower(line)
@@ -254,11 +254,15 @@ func extractDependencyEdges(repo, currentID, body string) []extractedEdge {
 					continue
 				}
 				seen[key] = true
-				edges = append(edges, extractedEdge{From: currentID, To: target, Kind: kind, Line: strings.TrimSpace(line), Confidence: confidence})
+				edges = append(edges, ExtractedEdge{From: currentID, To: target, Kind: kind, Line: strings.TrimSpace(line), Confidence: confidence})
 			}
 		}
 	}
 	return edges
+}
+
+func ExtractDependencyEdges(repo, currentID, body string) []ExtractedEdge {
+	return extractDependencyEdges(repo, currentID, body)
 }
 
 func relationChunkTargetsCurrent(repo string, chunk relationChunk) bool {

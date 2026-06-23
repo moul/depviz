@@ -1,10 +1,11 @@
-const assetVersion = 'v4.1.13-dev';
+const assetVersion = 'v4.1.15-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
 const views = new Set(['brief', 'graph', 'table']);
 
 const dom = {
+  shell: document.getElementById('shell'),
   input: document.getElementById('sourceInput'),
   syntax: document.getElementById('syntaxLayer'),
   status: document.getElementById('status'),
@@ -19,9 +20,41 @@ const dom = {
   graphZoomLabel: document.getElementById('graphZoomLabel'),
   brief: document.getElementById('briefView'),
   graph: document.getElementById('graphView'),
+  graphFocus: document.getElementById('graphFocusPanel'),
   graphCanvas: document.getElementById('graphCanvas'),
+  graphDriver: document.getElementById('graphDriverSelect'),
+  graphConnectedToggle: document.getElementById('graphConnectedToggle'),
+  graphUnlinkedToggle: document.getElementById('graphUnlinkedToggle'),
   table: document.getElementById('tableView'),
+  itemInspector: document.getElementById('itemInspector'),
   githubToken: document.getElementById('githubTokenInput'),
+  backendGithubLogin: document.getElementById('backendGithubLoginBtn'),
+  backendLogout: document.getElementById('backendLogoutBtn'),
+  backendAuthState: document.getElementById('backendAuthState'),
+  settings: document.getElementById('settingsBtn'),
+  userPanel: document.getElementById('userPanel'),
+  userPanelTitle: document.getElementById('userPanelTitle'),
+  userPanelMeta: document.getElementById('userPanelMeta'),
+  workspacePanel: document.getElementById('workspacePanel'),
+  workspaceSummary: document.getElementById('workspaceSummary'),
+  boardList: document.getElementById('boardList'),
+  loadGitHubPresets: document.getElementById('loadGitHubPresetsBtn'),
+  githubPresetList: document.getElementById('githubPresetList'),
+  createBoardForm: document.getElementById('createBoardForm'),
+  newBoardName: document.getElementById('newBoardName'),
+  newBoardDescription: document.getElementById('newBoardDescription'),
+  addBoardItemForm: document.getElementById('addBoardItemForm'),
+  addBoardLinkForm: document.getElementById('addBoardLinkForm'),
+  newItemKind: document.getElementById('newItemKind'),
+  newItemRef: document.getElementById('newItemRef'),
+  newItemTitle: document.getElementById('newItemTitle'),
+  newLinkFrom: document.getElementById('newLinkFrom'),
+  newLinkKind: document.getElementById('newLinkKind'),
+  newLinkTo: document.getElementById('newLinkTo'),
+  syncBoard: document.getElementById('syncBoardBtn'),
+  workspaceSuggestionList: document.getElementById('workspaceSuggestionList'),
+  debugPanel: document.getElementById('debugPanel'),
+  syncPanel: document.getElementById('syncPanel'),
   connectGithub: document.getElementById('connectGithubBtn'),
   pasteGithubToken: document.getElementById('pasteGithubTokenBtn'),
   forgetGithubToken: document.getElementById('forgetGithubTokenBtn'),
@@ -30,20 +63,34 @@ const dom = {
   showExternal: document.getElementById('showExternal'),
   showLocal: document.getElementById('showLocal'),
   showClosed: document.getElementById('showClosed'),
+  filterChips: document.getElementById('filterChips'),
 };
 
 const state = {
-  view: 'brief',
+  mode: 'stateless',
+  view: 'graph',
   filter: '',
   showExternal: true,
   showLocal: true,
   showClosed: true,
   githubRefresh: [],
   githubFailures: [],
+  backendSession: { available: false, authenticated: false, github_oauth_configured: false, github_app_configured: false },
+  userPanelOpen: false,
+  workspaceTab: 'views',
+  currentBoardID: 'default',
+  boards: [],
+  githubPresets: { repos: [], orgs: [], projects: [], loaded: false },
+  lastSync: null,
   selectedEdgeID: '',
+  selectedNodeID: '',
+  graphDriver: 'pairs',
   graphZoom: 1,
   graphLayout: { width: 900, height: 620 },
+  showGraphAllConnected: false,
+  showGraphUnlinked: false,
   dismissedSuggestionIDs: new Set(),
+  activeChipFilters: new Set(),
   data: emptyExport(),
 };
 
@@ -66,17 +113,28 @@ function emptyExport() {
   };
 }
 
-function boot() {
+async function boot() {
   dom.githubToken.value = sessionStorage.getItem(githubTokenStorageKey) || '';
   refreshGitHubAuthUI();
   wireEvents();
   setView(readURLView(), { persist: false, renderNow: false });
+  state.currentBoardID = readURLBoard() || state.currentBoardID;
+  readURLFilters();
+  state.graphDriver = readURLDriver();
+  if (dom.graphDriver) dom.graphDriver.value = state.graphDriver;
   const hashed = readHash();
   if (hashed) {
+    setMode('stateless', { renderNow: false });
     dom.input.value = hashed;
     update();
     return;
   }
+  await refreshBackendSession();
+  if (state.backendSession.available) {
+    await setMode('stateful', { renderNow: true });
+    return;
+  }
+  setMode('stateless', { renderNow: false });
   loadSample();
 }
 
@@ -85,6 +143,7 @@ function wireEvents() {
   dom.input.addEventListener('scroll', syncHighlightScroll);
   dom.filter.addEventListener('input', () => {
     state.filter = dom.filter.value.toLowerCase();
+    writeURLFilters();
     render();
   });
   for (const key of ['showExternal', 'showLocal', 'showClosed']) {
@@ -98,11 +157,29 @@ function wireEvents() {
       setView(btn.dataset.view, { persist: true, renderNow: true });
     });
   }
+  for (const btn of document.querySelectorAll('[data-mode]')) {
+    btn.addEventListener('click', () => {
+      setMode(btn.dataset.mode, { renderNow: true });
+    });
+  }
   document.getElementById('sampleBtn').addEventListener('click', loadSample);
   document.getElementById('shareBtn').addEventListener('click', shareLink);
   document.getElementById('exportBtn').addEventListener('click', exportJSON);
   document.getElementById('fileInput').addEventListener('change', readFile);
   dom.connectGithub.addEventListener('click', connectGitHub);
+  dom.backendGithubLogin.addEventListener('click', signInWithBackendGitHub);
+  dom.backendLogout.addEventListener('click', signOutBackend);
+  dom.settings.addEventListener('click', toggleUserPanel);
+  document.querySelectorAll('[data-workspace-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => setWorkspaceTab(btn.dataset.workspaceTab));
+  });
+  dom.loadGitHubPresets.addEventListener('click', loadGitHubPresets);
+  dom.createBoardForm.addEventListener('submit', createBoard);
+  dom.addBoardItemForm.addEventListener('submit', addBoardItem);
+  dom.addBoardLinkForm.addEventListener('submit', addBoardLink);
+  dom.syncBoard.addEventListener('click', syncCurrentBoard);
+  dom.boardList.addEventListener('click', handleBoardListClick);
+  dom.githubPresetList.addEventListener('click', handlePresetClick);
   dom.pasteGithubToken.addEventListener('click', pasteGitHubToken);
   dom.forgetGithubToken.addEventListener('click', forgetGitHubToken);
   dom.githubToken.addEventListener('input', () => {
@@ -111,9 +188,30 @@ function wireEvents() {
   });
   dom.hydrateGithub.addEventListener('click', hydrateGitHub);
   dom.suggestions.addEventListener('click', handleSuggestionClick);
+  dom.workspaceSuggestionList.addEventListener('click', handleSuggestionClick);
   dom.edgeInspector.addEventListener('click', handleEdgeInspectorClick);
+  dom.itemInspector.addEventListener('click', handleItemInspectorClick);
+  dom.brief.addEventListener('click', handleBriefClick);
+  dom.table.addEventListener('click', handleNodePickClick);
   dom.graphCanvas.addEventListener('click', handleGraphClick);
   document.getElementById('graphView').addEventListener('click', handleGraphControlClick);
+  dom.graphFocus.addEventListener('click', handleGraphFocusClick);
+  dom.graphDriver.addEventListener('change', () => {
+    state.graphDriver = dom.graphDriver.value;
+    writeURLDriver(state.graphDriver);
+    render();
+  });
+  if (dom.filterChips) {
+    dom.filterChips.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-chip-type]');
+      if (!btn) return;
+      const key = `${btn.dataset.chipType}:${btn.dataset.chipValue}`;
+      if (state.activeChipFilters.has(key)) state.activeChipFilters.delete(key);
+      else state.activeChipFilters.add(key);
+      writeURLFilters();
+      render();
+    });
+  }
   document.addEventListener('keydown', handleGraphKeydown);
 }
 
@@ -135,6 +233,7 @@ function readFile(event) {
 }
 
 function update() {
+  if (state.mode !== 'stateless') return;
   const text = dom.input.value;
   state.githubRefresh = [];
   state.githubFailures = [];
@@ -150,6 +249,562 @@ function update() {
     dom.status.textContent = 'input error';
   }
   render();
+}
+
+async function setMode(mode, options = {}) {
+  const next = mode === 'stateful' && state.backendSession.available ? 'stateful' : 'stateless';
+  state.mode = next;
+  document.querySelectorAll('[data-mode]').forEach((item) => {
+    item.classList.toggle('active', item.dataset.mode === next);
+    if (item.dataset.mode === 'stateful') item.disabled = !state.backendSession.available;
+  });
+  dom.shell.classList.toggle('statefulMode', next === 'stateful');
+  syncModeVisibility();
+  refreshBackendAuthUI();
+  if (next === 'stateful') {
+    await loadBackendBoard();
+    return;
+  }
+  if (options.renderNow !== false) update();
+}
+
+function syncModeVisibility() {
+  document.querySelectorAll('.statelessOnly').forEach((item) => {
+    item.classList.toggle('hidden', state.mode !== 'stateless');
+  });
+  document.querySelectorAll('.statefulOnly').forEach((item) => {
+    const show = state.mode === 'stateful' && state.backendSession.authenticated;
+    item.classList.toggle('hidden', !show || (item === dom.userPanel && !state.userPanelOpen));
+  });
+  dom.settings.classList.toggle('active', state.userPanelOpen && state.mode === 'stateful' && state.backendSession.authenticated);
+  renderWorkspaceTabs();
+}
+
+async function loadBackendBoard() {
+  if (!state.backendSession.authenticated) {
+    state.data = emptyExport();
+    dom.status.textContent = state.backendSession.github_oauth_configured ? 'sign in for stateful graph' : 'stateful backend needs oauth config';
+    dom.error.textContent = '';
+    state.userPanelOpen = false;
+    render();
+    return;
+  }
+  dom.status.textContent = 'loading stateful graph';
+  dom.error.textContent = '';
+  state.githubRefresh = [];
+  state.githubFailures = [];
+  try {
+    if (state.boards.length === 0) await refreshBoards();
+    const board = encodeURIComponent(state.currentBoardID || 'default');
+    const res = await fetch(`./api/export?board=${board}`, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    state.data = normalizeExport(await res.json());
+    dom.status.textContent = 'stateful backend graph';
+  } catch (err) {
+    state.data = emptyExport();
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'stateful load failed';
+  }
+  render();
+}
+
+async function refreshBoards() {
+  if (!state.backendSession.authenticated) return;
+  const res = await fetch('./api/boards', { credentials: 'same-origin' });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  const payload = await res.json();
+  state.boards = sortBoards(Array.isArray(payload.boards) ? payload.boards.map(normalizeBoard) : []);
+  if (!state.boards.some((board) => board.id === state.currentBoardID)) {
+    state.currentBoardID = preferredBoardID(state.boards);
+    writeURLBoard(state.currentBoardID);
+  }
+  renderManagePanel();
+}
+
+function toggleUserPanel() {
+  state.userPanelOpen = !state.userPanelOpen;
+  syncModeVisibility();
+  renderUserPanel();
+}
+
+function setWorkspaceTab(tab) {
+  state.workspaceTab = ['views', 'actions', 'presets', 'suggestions', 'debug', 'sync'].includes(tab) ? tab : 'views';
+  renderWorkspaceTabs();
+  if (state.workspaceTab === 'presets') renderGitHubPresets();
+  if (state.workspaceTab === 'suggestions') renderWorkspaceSuggestions();
+  if (state.workspaceTab === 'debug') renderDebugPanel();
+  if (state.workspaceTab === 'sync') renderSyncPanel();
+}
+
+async function createBoard(event) {
+  event.preventDefault();
+  const name = dom.newBoardName.value.trim();
+  const description = dom.newBoardDescription.value.trim();
+  if (!name) {
+    dom.status.textContent = 'view name required';
+    dom.newBoardName.focus();
+    return;
+  }
+  try {
+    await createBoardFromPreset({ name, description, preset: 'empty' });
+    dom.newBoardName.value = '';
+    dom.newBoardDescription.value = '';
+  } catch (err) {
+    dom.status.textContent = 'view create failed';
+    dom.error.textContent = err.message;
+  }
+}
+
+async function createBoardFromPreset(input) {
+  const res = await fetch('./api/boards', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  const payload = await res.json();
+  const board = normalizeBoard(payload.board || {});
+  state.currentBoardID = board.id || state.currentBoardID;
+  writeURLBoard(state.currentBoardID);
+  await refreshBoards();
+  if (['repo', 'org', 'my-work'].includes(input.preset)) {
+    try {
+      await syncBoard(board.id || state.currentBoardID, { quiet: true });
+    } catch (err) {
+      dom.error.textContent = `initial sync failed: ${err.message}`;
+    }
+  }
+  await loadBackendBoard();
+  dom.status.textContent = 'view created';
+  return board;
+}
+
+async function addBoardItem(event) {
+  event.preventDefault();
+  const ref = dom.newItemRef.value.trim();
+  const title = dom.newItemTitle.value.trim();
+  if (!ref && !title) {
+    dom.status.textContent = 'item text required';
+    dom.newItemRef.focus();
+    return;
+  }
+  try {
+    const res = await fetch('./api/board-items', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        board_id: state.currentBoardID || 'default',
+        kind: dom.newItemKind.value,
+        ref,
+        title,
+      }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    dom.newItemRef.value = '';
+    dom.newItemTitle.value = '';
+    await loadBackendBoard();
+    await refreshBoards();
+    dom.status.textContent = 'item added';
+  } catch (err) {
+    dom.status.textContent = 'item add failed';
+    dom.error.textContent = err.message;
+  }
+}
+
+async function addBoardLink(event) {
+  event.preventDefault();
+  const from = dom.newLinkFrom.value.trim();
+  const to = dom.newLinkTo.value.trim();
+  if (!from || !to) {
+    dom.status.textContent = 'two item refs required';
+    (from ? dom.newLinkTo : dom.newLinkFrom).focus();
+    return;
+  }
+  try {
+    const res = await fetch('./api/board-links', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        board_id: state.currentBoardID || 'default',
+        from,
+        to,
+        kind: dom.newLinkKind.value,
+      }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    dom.newLinkFrom.value = '';
+    dom.newLinkTo.value = '';
+    await loadBackendBoard();
+    await refreshBoards();
+    dom.status.textContent = 'link added';
+  } catch (err) {
+    dom.status.textContent = 'link add failed';
+    dom.error.textContent = err.message;
+  }
+}
+
+function handleBoardListClick(event) {
+  const btn = event.target.closest('[data-board-id]');
+  if (!btn) return;
+  state.currentBoardID = btn.dataset.boardId || 'default';
+  writeURLBoard(state.currentBoardID);
+  renderManagePanel();
+  loadBackendBoard();
+}
+
+async function loadGitHubPresets() {
+  dom.status.textContent = 'loading github presets';
+  dom.githubPresetList.innerHTML = '<div class="emptyState">Loading GitHub repositories, orgs, and projects...</div>';
+  try {
+    const [reposRes, orgsRes, projectsRes] = await Promise.all([
+      fetch('./api/github/repos', { credentials: 'same-origin' }),
+      fetch('./api/github/orgs', { credentials: 'same-origin' }),
+      fetch('./api/github/projects', { credentials: 'same-origin' }),
+    ]);
+    if (!reposRes.ok) throw new Error(`repos ${reposRes.status}`);
+    if (!orgsRes.ok) throw new Error(`orgs ${orgsRes.status}`);
+    if (!projectsRes.ok) throw new Error(`projects ${projectsRes.status}`);
+    const reposPayload = await reposRes.json();
+    const orgsPayload = await orgsRes.json();
+    const projectsPayload = await projectsRes.json();
+    state.githubPresets = {
+      repos: Array.isArray(reposPayload.repos) ? reposPayload.repos : [],
+      orgs: Array.isArray(orgsPayload.orgs) ? orgsPayload.orgs : [],
+      projects: Array.isArray(projectsPayload.projects) ? projectsPayload.projects : [],
+      loaded: true,
+    };
+    renderGitHubPresets();
+    dom.status.textContent = 'github presets loaded';
+  } catch (err) {
+    dom.githubPresetList.innerHTML = `<div class="emptyState">Could not load GitHub presets: ${esc(err.message)}</div>`;
+    dom.status.textContent = 'github presets failed';
+  }
+}
+
+function renderGitHubPresets() {
+  const builtinItems = presetButton({
+    type: 'my-work',
+    id: 'my-work',
+    label: 'My Work',
+    meta: 'assigned, authored, mentioned',
+  });
+  const repos = state.githubPresets.repos.slice(0, 24);
+  const orgs = state.githubPresets.orgs.slice(0, 24);
+  const projects = state.githubPresets.projects.slice(0, 24);
+  if (!repos.length && !orgs.length && !projects.length) {
+    dom.githubPresetList.innerHTML = `${builtinItems}<div class="emptyState">No repos, orgs, or projects loaded yet</div>`;
+    return;
+  }
+  const repoItems = repos.map((repo) => presetButton({
+    type: 'repo',
+    id: repo.full_name || repo.FullName || '',
+    label: repo.full_name || repo.FullName || repo.name || repo.Name || 'repo',
+    meta: repo.private ? 'private repo' : 'repo',
+  })).join('');
+  const orgItems = orgs.map((org) => presetButton({
+    type: 'org',
+    id: org.login || org.Login || '',
+    label: org.login || org.Login || 'org',
+    meta: 'org',
+  })).join('');
+  const projectItems = projects.map((project) => presetButton({
+    type: 'project',
+    id: project.id || project.ID || '',
+    label: project.title || project.Title || 'project',
+    meta: `project${project.owner || project.Owner ? ` - ${project.owner || project.Owner}` : ''}`,
+  })).join('');
+  dom.githubPresetList.innerHTML = `${builtinItems}${repoItems}${orgItems}${projectItems}`;
+}
+
+function presetButton(item) {
+  return `<button type="button" data-preset-type="${esc(item.type)}" data-preset-id="${esc(item.id)}">
+    <strong>${esc(item.label)}</strong>
+    <span>${esc(item.meta)}</span>
+  </button>`;
+}
+
+function handlePresetClick(event) {
+  const btn = event.target.closest('[data-preset-type]');
+  if (!btn) return;
+  const type = btn.dataset.presetType;
+  const id = btn.dataset.presetId;
+  if (!id) return;
+  const name = type === 'repo' ? id : type === 'my-work' ? 'My Work' : `${id} org`;
+  const owner = type === 'org' ? id : type === 'repo' ? id.split('/')[0] : '';
+  createBoardFromPreset({
+    name: type === 'project' ? btn.querySelector('strong')?.textContent || 'GitHub project' : name,
+    description: type === 'repo' ? `GitHub repo ${id}` : type === 'project' ? `GitHub project ${id}` : type === 'my-work' ? 'GitHub work involving me' : `GitHub org ${id}`,
+    preset: type,
+    provider: 'github',
+    owner,
+    repo: type === 'repo' ? id : '',
+    source_id: type === 'project' ? id : '',
+  }).catch((err) => {
+    dom.status.textContent = 'preset view failed';
+    dom.error.textContent = err.message;
+  });
+}
+
+async function syncCurrentBoard() {
+  await syncBoard(state.currentBoardID || 'default');
+}
+
+async function syncBoard(boardID, options = {}) {
+  if (!options.quiet) {
+    dom.status.textContent = 'syncing github view';
+    dom.syncBoard.disabled = true;
+  }
+  try {
+    const res = await fetch('./api/board-sync', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board_id: boardID, limit: 100 }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    state.lastSync = await res.json();
+    if (!options.quiet) {
+      await loadBackendBoard();
+      await refreshBoards();
+      dom.status.textContent = `synced ${state.lastSync.items || 0} GitHub items`;
+    }
+    return state.lastSync;
+  } catch (err) {
+    if (!options.quiet) {
+      dom.status.textContent = 'github sync failed';
+      dom.error.textContent = err.message;
+    }
+    throw err;
+  } finally {
+    dom.syncBoard.disabled = false;
+  }
+}
+
+async function responseErrorMessage(res) {
+  let detail = '';
+  try {
+    const data = await res.clone().json();
+    detail = data.error || data.message || '';
+  } catch (_) {
+    detail = (await res.text()).trim();
+  }
+  return detail || `${res.status} ${res.statusText}`;
+}
+
+function renderManagePanel() {
+  if (!dom.boardList) return;
+  renderWorkspaceSummary();
+  if (!state.boards.length) {
+    dom.boardList.innerHTML = '<div class="emptyState">No saved views yet</div>';
+  } else {
+    const usefulBoards = state.boards.filter((board) => !isDraftBoard(board) || board.id === state.currentBoardID);
+    const draftBoards = state.boards.filter((board) => isDraftBoard(board) && board.id !== state.currentBoardID);
+    const boardButtons = usefulBoards.map(renderBoardListButton).join('');
+    const draftList = draftBoards.length
+      ? `<details class="draftGroup"><summary>Draft views <strong>${draftBoards.length}</strong></summary>${draftBoards.map(renderBoardListButton).join('')}</details>`
+      : '';
+    dom.boardList.innerHTML = boardButtons + draftList;
+  }
+  if (state.githubPresets.loaded) renderGitHubPresets();
+  renderDebugPanel();
+  renderWorkspaceSuggestions();
+}
+
+function renderBoardListButton(board) {
+      const active = board.id === state.currentBoardID;
+      const metrics = board.metrics || {};
+      const draft = isDraftBoard(board);
+      const scope = board.scope_query || 'local view';
+      const description = board.description || scope;
+      return `<button class="${[active ? 'active' : '', draft ? 'draftBoard' : ''].filter(Boolean).join(' ')}" type="button" data-board-id="${esc(board.id)}">
+        <span class="boardListTitle">
+          <strong>${esc(board.name || board.id)}</strong>
+          <span class="freshnessBadge ${syncClass(metrics)}">${esc(syncLabel(metrics))}</span>
+        </span>
+        <span class="boardScope">${esc(scope)}</span>
+        <span class="boardDescription">${esc(description)}</span>
+        <span class="boardMetrics">
+          <span><strong>${esc(metrics.items || 0)}</strong> items</span>
+          <span><strong>${esc(metrics.links || 0)}</strong> links</span>
+          <span><strong>${esc(metrics.open || 0)}</strong> open</span>
+        </span>
+      </button>`;
+}
+
+function renderWorkspaceTabs() {
+  document.querySelectorAll('[data-workspace-tab]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.workspaceTab === state.workspaceTab);
+  });
+  document.querySelectorAll('.workspaceTab').forEach((panel) => {
+    panel.classList.toggle('hidden', panel.id !== `workspace${capitalize(state.workspaceTab)}`);
+  });
+}
+
+function renderWorkspaceSummary() {
+  if (!dom.workspaceSummary) return;
+  const board = state.data.snapshot.board || {};
+  const scope = board.scope_query || 'local view';
+  const counts = state.data.brief.counts || {};
+  dom.workspaceSummary.textContent = `${board.name || state.currentBoardID || 'Default'} - ${scope} - ${counts.nodes || 0} items`;
+}
+
+function renderUserPanel() {
+  const session = state.backendSession || {};
+  const account = session.account || {};
+  const provider = session.github_app_configured ? 'GitHub App' : 'DepViz';
+  dom.userPanelTitle.textContent = account.login ? `${provider}: @${account.login}` : provider;
+  dom.userPanelMeta.textContent = [
+    session.github_app_configured ? 'App auth configured' : 'OAuth mode',
+    session.github_webhook_configured ? 'webhook active' : 'webhook pending',
+  ].join(' - ');
+}
+
+function renderDebugPanel() {
+  if (!dom.debugPanel) return;
+  const board = state.data.snapshot.board || {};
+  const counts = state.data.brief.counts || {};
+  dom.debugPanel.innerHTML = `<dl>
+    <div><dt>Current view</dt><dd>${esc(board.name || state.currentBoardID)}</dd></div>
+    <div><dt>View id</dt><dd>${esc(state.currentBoardID)}</dd></div>
+    <div><dt>Scope</dt><dd>${esc(board.scope_query || 'none')}</dd></div>
+    <div><dt>Nodes</dt><dd>${esc(counts.nodes || 0)}</dd></div>
+    <div><dt>Last sync</dt><dd>${esc(currentBoardSyncLabel())}</dd></div>
+    <div><dt>GitHub App</dt><dd>${state.backendSession.github_app_configured ? 'configured' : 'not configured'}</dd></div>
+    <div><dt>Webhook</dt><dd>${state.backendSession.github_webhook_configured ? 'configured' : 'not configured'}</dd></div>
+  </dl>`;
+}
+
+function renderSyncPanel() {
+  if (!dom.syncPanel) return;
+  const board = currentBoard();
+  const metrics = board.metrics || {};
+  const session = state.backendSession || {};
+  const lastSync = state.lastSync || {};
+  const syncStatus = metrics.sync_status || 'unknown';
+  const syncError = metrics.sync_error || '';
+  const statusClass = syncStatus === 'ok' ? 'syncOk' : syncStatus === 'running' ? 'syncRunning' : syncStatus === 'failed' ? 'syncFailed' : 'syncUnknown';
+  const provider = session.github_app_configured ? 'GitHub App' : 'OAuth user';
+  const webhookState = session.github_webhook_configured ? 'configured' : 'not configured';
+  const items = Number(metrics.items || 0);
+  const links = Number(metrics.links || 0);
+  const open = Number(metrics.open || 0);
+  dom.syncPanel.innerHTML = `<dl class="syncList">
+    <div><dt>View</dt><dd>${esc(board.name || state.currentBoardID)}</dd></div>
+    <div><dt>Scope</dt><dd>${esc(board.scope_query || 'local')}</dd></div>
+    <div><dt>Status</dt><dd><span class="syncStatus ${statusClass}">${esc(syncStatus)}</span>${syncError ? ` — <em>${esc(syncError)}</em>` : ''}</dd></div>
+    <div><dt>Last sync</dt><dd>${esc(currentBoardSyncLabel())}</dd></div>
+    ${metrics.last_sync_at ? `<div><dt>Synced at</dt><dd>${esc(metrics.last_sync_at)}</dd></div>` : ''}
+    <div><dt>Items</dt><dd>${esc(String(items))} total · ${esc(String(open))} open · ${esc(String(links))} links</dd></div>
+    <div><dt>Token mode</dt><dd>${esc(lastSync.mode || provider)}</dd></div>
+    <div><dt>Webhook</dt><dd>${esc(webhookState)}</dd></div>
+    <div><dt>GitHub App</dt><dd>${session.github_app_configured ? 'configured' : 'not configured'}</dd></div>
+  </dl>
+  <div class="syncActions">
+    <button type="button" id="syncFromPanelBtn">Sync now</button>
+  </div>`;
+  document.getElementById('syncFromPanelBtn')?.addEventListener('click', syncCurrentBoard);
+}
+
+function currentBoard() {
+  return state.boards.find((board) => board.id === state.currentBoardID) || normalizeBoard(state.data.snapshot.board || {});
+}
+
+function currentBoardSyncLabel() {
+  const metrics = currentBoard().metrics || {};
+  return `${syncLabel(metrics)}${metrics.sync_error ? ` - ${metrics.sync_error}` : ''}`;
+}
+
+function renderWorkspaceSuggestions() {
+  if (!dom.workspaceSuggestionList) return;
+  const suggestions = suggestedEdges(state.data.snapshot).slice(0, 12);
+  if (!suggestions.length) {
+    dom.workspaceSuggestionList.innerHTML = '<div class="emptyState">No suggestions for the current view</div>';
+    return;
+  }
+  dom.workspaceSuggestionList.innerHTML = suggestions.map((edge) => `<div>
+    <strong>${esc(edge.from_id || edge.from)} -> ${esc(edge.to_id || edge.to)}</strong>
+    <span>${esc(relationLabel(edge.kind || 'related'))}</span>
+    <button type="button" class="primaryAction" data-suggestion-action="promote" data-edge-id="${esc(edgeSelectionID(edge))}">Accept</button>
+  </div>`).join('');
+}
+
+function capitalize(value) {
+  value = String(value || '');
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function freshnessLabel(value) {
+  const age = ageMs(value);
+  if (!Number.isFinite(age)) return 'unknown';
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (age < hour) return 'fresh';
+  if (age < day) return `${Math.max(1, Math.floor(age / hour))}h`;
+  if (age < 14 * day) return `${Math.max(1, Math.floor(age / day))}d`;
+  return 'stale';
+}
+
+function freshnessClass(value) {
+  const age = ageMs(value);
+  if (!Number.isFinite(age)) return 'freshnessUnknown';
+  const day = 24 * 60 * 60 * 1000;
+  if (age < day) return 'freshnessFresh';
+  if (age < 7 * day) return 'freshnessRecent';
+  return 'freshnessStale';
+}
+
+function syncLabel(metrics = {}) {
+  if (Number(metrics.items || 0) === 0) return 'draft';
+  const status = String(metrics.sync_status || '').toLowerCase();
+  if (status === 'running') return 'syncing';
+  if (status === 'failed') return 'sync failed';
+  if (status === 'never') return 'never synced';
+  if (metrics.last_sync_at) return freshnessLabel(metrics.last_sync_at);
+  return freshnessLabel(metrics.last_activity_at);
+}
+
+function syncClass(metrics = {}) {
+  if (Number(metrics.items || 0) === 0) return 'freshnessDraft';
+  const status = String(metrics.sync_status || '').toLowerCase();
+  if (status === 'running') return 'freshnessRecent';
+  if (status === 'failed') return 'freshnessStale';
+  if (metrics.last_sync_at) return freshnessClass(metrics.last_sync_at);
+  return freshnessClass(metrics.last_activity_at);
+}
+
+function sortBoards(boards) {
+  return boards.slice().sort((a, b) => boardRank(a) - boardRank(b) || boardActivityScore(b) - boardActivityScore(a) || String(a.name).localeCompare(String(b.name)));
+}
+
+function boardRank(board) {
+  const metrics = board.metrics || {};
+  if ((metrics.items || 0) > 0 && (metrics.open || 0) > 0) return 0;
+  if ((metrics.items || 0) > 0) return 1;
+  if (String(metrics.sync_status || '') === 'failed') return 2;
+  return 3;
+}
+
+function boardActivityScore(board) {
+  return Date.parse(board.metrics?.last_activity_at || board.updated_at || '') || 0;
+}
+
+function preferredBoardID(boards) {
+  const active = boards.find((board) => !isDraftBoard(board));
+  return active?.id || boards[0]?.id || 'default';
+}
+
+function isDraftBoard(board) {
+  return Number(board.metrics?.items || 0) === 0;
+}
+
+function ageMs(value) {
+  const parsed = Date.parse(value || '');
+  if (!Number.isFinite(parsed)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, Date.now() - parsed);
 }
 
 function persistGitHubToken() {
@@ -172,6 +827,56 @@ function refreshGitHubAuthUI() {
   const connected = Boolean(githubToken());
   dom.githubAuthState.textContent = connected ? 'GitHub: token' : 'GitHub: public';
   dom.forgetGithubToken.disabled = !connected;
+  refreshBackendAuthUI();
+}
+
+async function refreshBackendSession() {
+  try {
+    const res = await fetch('./api/session', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(String(res.status));
+    state.backendSession = { available: true, ...await res.json() };
+  } catch {
+    state.backendSession = { available: false, authenticated: false, github_oauth_configured: false, github_app_configured: false };
+  }
+  refreshBackendAuthUI();
+  document.querySelector('[data-mode="stateful"]').disabled = !state.backendSession.available;
+}
+
+function refreshBackendAuthUI() {
+  const session = state.backendSession || {};
+  dom.backendGithubLogin.classList.toggle('hidden', !session.available || session.authenticated || !session.github_oauth_configured);
+  dom.backendLogout.classList.toggle('hidden', !session.available || !session.authenticated);
+  dom.backendAuthState.classList.toggle('hidden', !session.available);
+  syncModeVisibility();
+  const provider = session.github_app_configured ? 'GitHub App' : 'DepViz';
+  if (!session.available) {
+    dom.backendAuthState.textContent = '';
+    renderUserPanel();
+    return;
+  }
+  if (session.authenticated && session.account) {
+    dom.backendAuthState.textContent = `${provider}: @${session.account.login || 'account'}`;
+    renderUserPanel();
+    return;
+  }
+  dom.backendAuthState.textContent = session.github_oauth_configured ? `${provider}: signed out` : 'DepViz: local';
+  renderUserPanel();
+}
+
+function signInWithBackendGitHub() {
+  const returnTo = `${location.pathname}${location.search}${location.hash}`;
+  location.href = `./api/auth/github/start?return_to=${encodeURIComponent(returnTo)}`;
+}
+
+async function signOutBackend() {
+  try {
+    await fetch('./api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    await refreshBackendSession();
+    dom.status.textContent = 'signed out';
+    if (state.mode === 'stateful') await loadBackendBoard();
+  } catch {
+    dom.status.textContent = 'sign out failed';
+  }
 }
 
 function connectGitHub() {
@@ -362,6 +1067,10 @@ async function fetchGitHubNode(ref, token) {
       ci,
       metadata_errors: metadataErrors,
       labels: (issue.labels || []).map((label) => label.name || label),
+      assignees: (issue.assignees || []).map(githubPersonData),
+      author: githubPersonData(issue.user),
+      reviewers: review.requested || [],
+      milestone: issue.milestone?.title || '',
       number: issue.number,
       repo: ref.repo,
       source: 'github-browser',
@@ -467,6 +1176,18 @@ function summarizeGitHubReviews(reviews, pr) {
     comments,
     requested,
     total: reviews?.length || 0,
+  };
+}
+
+function githubPersonData(person) {
+  if (!person) return null;
+  if (typeof person === 'string') return { login: person, avatar_url: githubAvatarURL(person) };
+  const login = person.login || person.name || '';
+  if (!login) return null;
+  return {
+    login,
+    avatar_url: person.avatar_url || githubAvatarURL(login),
+    html_url: person.html_url || `https://github.com/${encodeURIComponent(login)}`,
   };
 }
 
@@ -986,6 +1707,22 @@ function normalizeBoard(board) {
     parent_board_id: board.parent_board_id || board.ParentBoardID || '',
     config_json: board.config_json || board.ConfigJSON || '{}',
     updated_at: board.updated_at || board.UpdatedAt || '',
+    metrics: normalizeBoardMetrics(board.metrics || board.Metrics || {}),
+  };
+}
+
+function normalizeBoardMetrics(metrics) {
+  return {
+    items: Number(metrics.items || metrics.Items || 0),
+    links: Number(metrics.links || metrics.Links || 0),
+    open: Number(metrics.open || metrics.Open || 0),
+    closed: Number(metrics.closed || metrics.Closed || 0),
+    local: Number(metrics.local || metrics.Local || 0),
+    external: Number(metrics.external || metrics.External || 0),
+    last_activity_at: metrics.last_activity_at || metrics.LastActivityAt || '',
+    last_sync_at: metrics.last_sync_at || metrics.LastSyncAt || '',
+    sync_status: metrics.sync_status || metrics.SyncStatus || '',
+    sync_error: metrics.sync_error || metrics.SyncError || '',
   };
 }
 
@@ -1145,19 +1882,73 @@ function briefItem(node, extra = {}) {
   };
 }
 
+function collectNodeChips(nodes) {
+  const labelCounts = new Map();
+  const assigneeCounts = new Map();
+  const kindCounts = new Map();
+  const statusCounts = new Map();
+  for (const node of nodes) {
+    for (const label of labels(node)) {
+      labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
+    }
+    for (const person of nodePeople(node)) {
+      assigneeCounts.set(person.login, (assigneeCounts.get(person.login) || 0) + 1);
+    }
+    if (node.kind) {
+      kindCounts.set(node.kind, (kindCounts.get(node.kind) || 0) + 1);
+    }
+    if (node.state) {
+      statusCounts.set(node.state, (statusCounts.get(node.state) || 0) + 1);
+    }
+  }
+  const chips = [];
+  for (const [kind, count] of [...kindCounts.entries()].sort((a, b) => b[1] - a[1])) {
+    chips.push({ type: 'kind', value: kind, label: kind, count });
+  }
+  for (const [status, count] of [...statusCounts.entries()].sort((a, b) => b[1] - a[1])) {
+    chips.push({ type: 'status', value: status, label: status, count });
+  }
+  for (const [label, count] of [...labelCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20)) {
+    chips.push({ type: 'label', value: label, label, count });
+  }
+  for (const [login, count] of [...assigneeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)) {
+    chips.push({ type: 'assignee', value: login, label: `@${login}`, count });
+  }
+  return chips;
+}
+
+function renderFilterChips() {
+  if (!dom.filterChips) return;
+  const chips = collectNodeChips(state.data.snapshot.nodes);
+  if (!chips.length) { dom.filterChips.innerHTML = ''; return; }
+  dom.filterChips.innerHTML = chips.map((chip) => {
+    const key = `${chip.type}:${chip.value}`;
+    const active = state.activeChipFilters.has(key);
+    return `<button type="button" class="filterChip ${active ? 'active' : ''}" data-chip-type="${esc(chip.type)}" data-chip-value="${esc(chip.value)}" title="${esc(chip.type)}: ${esc(chip.value)}">${emojiHTML(chip.label)}${chip.count > 1 ? ` <span>${chip.count}</span>` : ''}</button>`;
+  }).join('');
+}
+
 function render() {
   const { snapshot, brief } = state.data;
   const nodes = visibleNodes(snapshot.nodes);
+  const graphSelection = graphVisibleNodeSelection(snapshot, nodes);
+  dom.shell.classList.toggle('emptyBoard', snapshot.nodes.length === 0);
   dom.boardTitle.textContent = snapshot.board.name || 'Default';
   dom.boardMeta.textContent = `${snapshot.nodes.length} nodes - ${snapshot.edges.length} edges`;
+  renderFilterChips();
+  renderWorkspaceSummary();
   renderStats(brief.counts || {}, snapshot);
   renderSuggestions(snapshot);
+  renderGraphFocusPanel(snapshot);
   renderEdgeInspector(snapshot);
+  renderItemInspector(snapshot);
+  renderWorkspaceSuggestions();
+  renderDebugPanel();
   dom.brief.classList.toggle('hidden', state.view !== 'brief');
   dom.graph.classList.toggle('hidden', state.view !== 'graph');
   dom.table.classList.toggle('hidden', state.view !== 'table');
   if (state.view === 'brief') renderBrief(brief);
-  if (state.view === 'graph') renderGraph(snapshot, nodes);
+  if (state.view === 'graph') renderGraph(snapshot, graphSelection.nodes, graphSelection.hidden);
   if (state.view === 'table') renderTable(nodes);
 }
 
@@ -1170,10 +1961,14 @@ function renderStats(counts, snapshot) {
     ['Local', counts.local_only || 0],
     ['Stale', counts.stale || 0],
   ];
-  dom.stats.innerHTML = values.map(([label, value]) => `<div class="stat"><strong>${value}</strong>${label}</div>`).join('');
+  dom.stats.innerHTML = values.map(([label, value]) => `<div class="stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
 }
 
 function renderBrief(brief) {
+  if ((brief.counts?.nodes || 0) === 0) {
+    renderEmptyBoardBrief();
+    return;
+  }
   const githubRefresh = state.githubRefresh.length
     ? briefSection('GitHub refresh', state.githubRefresh, false)
     : '';
@@ -1187,6 +1982,26 @@ function renderBrief(brief) {
     ${briefSection('Local-only', brief.local_only || [], false)}
     ${briefSection('Stale external state', brief.stale || [], false)}
   </div>`;
+}
+
+function renderEmptyBoardBrief() {
+  const board = state.data.snapshot.board || {};
+  const usefulBoard = state.boards.find((item) => !isDraftBoard(item) && item.id !== state.currentBoardID);
+  const canSync = Boolean(board.scope_query && board.scope_query !== 'local');
+  const scope = board.scope_query || 'local draft';
+  dom.brief.innerHTML = `<section class="emptyBoardPanel">
+    <div>
+      <span class="emptyBoardKicker">${esc(scope)}</span>
+      <h3>${esc(board.name || 'Empty view')}</h3>
+      <p>This view has no items yet. Start from a GitHub source or add a first issue, PR, task, or note.</p>
+    </div>
+    <div class="emptyBoardActions">
+      <button type="button" class="primaryAction" data-empty-action="add-item">Add first item</button>
+      <button type="button" data-empty-action="sources">Choose source</button>
+      ${canSync ? '<button type="button" data-empty-action="sync">Sync source</button>' : ''}
+      ${usefulBoard ? `<button type="button" data-empty-action="useful" data-board-id="${esc(usefulBoard.id)}">Open ${esc(usefulBoard.name || usefulBoard.id)}</button>` : ''}
+    </div>
+  </section>`;
 }
 
 function githubDiagnosticItems(snapshot) {
@@ -1235,7 +2050,7 @@ function dedupeBriefItems(items) {
 
 function briefSection(title, items, wide) {
   const body = items.length ? items.map(renderItem).join('') : '<div class="reason">none</div>';
-  return `<section class="briefSection ${wide ? 'wide' : ''}"><h3>${esc(title)}</h3>${body}</section>`;
+  return `<section class="briefSection ${wide ? 'wide' : ''}"><h3><span>${esc(title)}</span><strong>${items.length}</strong></h3>${body}</section>`;
 }
 
 function renderItem(item) {
@@ -1246,19 +2061,105 @@ function renderItem(item) {
   const label = url ? `<a href="${esc(url)}">${id}</a>` : id;
   const badges = badgesHTML(item.badges || plainBadges(item));
   const klass = ['item', isClosed({ state: item.state || item.State }) ? 'closedItem' : ''].filter(Boolean).join(' ');
-  return `<div class="${klass}"><div class="itemHead"><strong>${label} ${title}</strong>${badges}</div><div class="reason">${reason}</div></div>`;
+  return `<div class="${klass}" data-node-id="${esc(item.id || item.ID || '')}"><div class="itemHead"><strong>${label} ${title}</strong>${badges}</div><div class="reason">${reason}</div></div>`;
 }
 
-function renderGraph(snapshot, nodes) {
+function graphVisibleNodeSelection(snapshot, nodes) {
+  const visible = new Set(nodes.map((node) => node.id));
+  const connected = new Set(graphLayoutEdges(snapshot, visible).flatMap((edge) => [edge.from, edge.to]));
+  const connectedNodes = nodes.filter((node) => connected.has(node.id));
+  const unlinkedNodes = nodes.filter((node) => !connected.has(node.id));
+  if (state.graphDriver === 'backlog') return { nodes: unlinkedNodes, hidden: { connected: connectedNodes.length, unlinked: 0 } };
+  if (state.graphDriver === 'focus') return { nodes, hidden: { connected: 0, unlinked: unlinkedNodes.length } };
+  if (state.showGraphUnlinked) return { nodes, hidden: { connected: 0, unlinked: 0 } };
+  if (state.showGraphAllConnected) return { nodes: connectedNodes.length ? connectedNodes : nodes.slice(0, 24), hidden: { connected: 0, unlinked: unlinkedNodes.length } };
+
+  const overviewIDs = new Set();
+  for (const edge of graphFocusEdges(snapshot)) {
+    overviewIDs.add(edge.from_id);
+    overviewIDs.add(edge.to_id);
+  }
+  if (state.selectedNodeID) overviewIDs.add(state.selectedNodeID);
+  const edgeLimit = state.graphDriver === 'focus' ? 4 : state.graphDriver === 'pairs' ? 12 : 8;
+  for (const edge of graphOverviewEdges(snapshot, visible).slice(0, edgeLimit)) {
+    if (overviewIDs.size >= 14 && !overviewIDs.has(edge.from) && !overviewIDs.has(edge.to)) break;
+    overviewIDs.add(edge.from);
+    overviewIDs.add(edge.to);
+  }
+  if (overviewIDs.size === 0) {
+    for (const node of connectedNodes.slice(0, 12)) overviewIDs.add(node.id);
+  }
+  const graphNodes = nodes.filter((node) => overviewIDs.has(node.id));
+  return {
+    nodes: graphNodes.length ? graphNodes : nodes.slice(0, Math.min(nodes.length, 12)),
+    hidden: {
+      connected: Math.max(0, connectedNodes.length - graphNodes.length),
+      unlinked: unlinkedNodes.length,
+    },
+  };
+}
+
+function graphOverviewEdges(snapshot, visible) {
+  return graphLayoutEdges(snapshot, visible)
+    .sort((a, b) => graphRelationScore(b, snapshot) - graphRelationScore(a, snapshot) || String(a.to).localeCompare(String(b.to)))
+    .slice(0, 8);
+}
+
+function graphRelationScore(edge, snapshot) {
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const to = nodes.get(edge.to);
+  const from = nodes.get(edge.from);
+  let score = graphDegree(graphLayoutEdges(snapshot, new Set(snapshot.nodes.map((node) => node.id))), edge.from) + graphDegree(graphLayoutEdges(snapshot, new Set(snapshot.nodes.map((node) => node.id))), edge.to);
+  if (to && !isClosed(to)) score += 8;
+  if (from && !isClosed(from)) score += 4;
+  if (state.selectedNodeID && (edge.from === state.selectedNodeID || edge.to === state.selectedNodeID)) score += 20;
+  return score;
+}
+
+function renderGraph(snapshot, nodes, hidden = {}) {
+  if (dom.graphDriver && dom.graphDriver.value !== state.graphDriver) dom.graphDriver.value = state.graphDriver;
+  if (state.graphDriver === 'pairs') {
+    renderGraphPairs(snapshot, nodes, hidden);
+    return;
+  }
+  if (state.graphDriver === 'focus') {
+    renderGraphFocusDriver(snapshot, nodes, hidden);
+    return;
+  }
+  if (state.graphDriver === 'backlog') {
+    renderGraphBacklog(snapshot, nodes, hidden);
+    return;
+  }
+  const hiddenConnected = Number(hidden.connected || 0);
+  const hiddenUnlinked = Number(hidden.unlinked || 0);
+  if (dom.graphConnectedToggle) {
+    dom.graphConnectedToggle.textContent = state.showGraphAllConnected ? 'Overview only' : `Show more connected${hiddenConnected ? ` (${hiddenConnected})` : ''}`;
+    dom.graphConnectedToggle.classList.toggle('active', state.showGraphAllConnected);
+    dom.graphConnectedToggle.disabled = hiddenConnected === 0 && !state.showGraphAllConnected;
+  }
+  if (dom.graphUnlinkedToggle) {
+    dom.graphUnlinkedToggle.textContent = state.showGraphUnlinked ? 'Hide unlinked' : `Show unlinked${hiddenUnlinked ? ` (${hiddenUnlinked})` : ''}`;
+    dom.graphUnlinkedToggle.classList.toggle('active', state.showGraphUnlinked);
+    dom.graphUnlinkedToggle.disabled = hiddenUnlinked === 0 && !state.showGraphUnlinked;
+  }
   const visible = new Set(nodes.map((node) => node.id));
   const selectedEdge = edgeByID(state.selectedEdgeID);
   const selectedEndpoints = selectedEdge ? new Set([selectedEdge.from_id, selectedEdge.to_id]) : new Set();
+  const focusEdges = graphFocusEdges(snapshot);
+  const focusNodeIDs = new Set(focusEdges.flatMap((edge) => [edge.from_id, edge.to_id]));
   const layout = graphLayout(snapshot, nodes);
   state.graphLayout = { width: layout.width, height: layout.height };
   const zoom = graphZoom();
   const positions = layout.positions;
-  let html = `<div class="graphScale" style="width:${Math.ceil(layout.width * zoom)}px;min-height:${Math.ceil(layout.height * zoom)}px">
+  const hiddenSummary = hiddenConnected > 0 || hiddenUnlinked > 0
+    ? `<div class="graphHiddenSummary">
+        ${hiddenConnected > 0 ? `<span><strong>${hiddenConnected}</strong> connected items hidden</span> <button type="button" data-graph-action="toggle-connected">Show connected</button>` : ''}
+        ${hiddenUnlinked > 0 ? `<span><strong>${hiddenUnlinked}</strong> unlinked items hidden</span> <button type="button" data-graph-action="toggle-unlinked">Show backlog</button>` : ''}
+      </div>`
+    : '';
+  let html = `${hiddenSummary}<div class="graphScale" style="width:${Math.ceil(layout.width * zoom)}px;min-height:${Math.ceil(layout.height * zoom)}px">
   <div class="graphInner" style="width:${layout.width}px;min-height:${layout.height}px;transform:scale(${zoom})">
+    ${graphColumnHeaders(layout)}
     <svg class="edgeLayer" width="${layout.width}" height="${layout.height}" aria-hidden="true">
       <defs>
         <marker id="arrowHard" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#667085"></path></marker>
@@ -1273,26 +2174,323 @@ function renderGraph(snapshot, nodes) {
     const soft = isSoftEdge(edge);
     const edgeID = edgeSelectionID(edge);
     const selected = edgeID === state.selectedEdgeID;
+    const inFocus = focusEdges.some((focusEdge) => edgeSelectionID(focusEdge) === edgeID);
     const kind = esc(edge.kind || 'edge');
     const authority = esc(edge.authority || '');
     const line = graphEdgeLine(from, to);
     html += `<line class="graphEdgeHit" data-edge-id="${esc(edgeID)}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}"></line>`;
-    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}" data-edge-id="${esc(edgeID)}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
+    html += `<line class="${edgeClasses(edge)}${selected ? ' selectedEdge' : ''}${inFocus ? ' focusEdge' : ''}" data-edge-id="${esc(edgeID)}" x1="${line.x1}" y1="${line.y1}" x2="${line.x2}" y2="${line.y2}" marker-end="url(#${selected ? 'arrowSelected' : (soft ? 'arrowSoft' : 'arrowHard')})"><title>${kind}${authority ? ` - ${authority}` : ''}</title></line>`;
   }
   html += '</svg>';
   for (const node of nodes) {
     const pos = positions.get(node.id);
-    const klass = ['nodeCard', ...nodeCardClasses(node), selectedEndpoints.has(node.id) ? 'selectedEndpoint' : '', isBlocked(node.id, snapshot) ? 'blocked' : 'ready'].filter(Boolean).join(' ');
+    const klass = [
+      'nodeCard',
+      ...nodeCardClasses(node),
+      selectedEndpoints.has(node.id) ? 'selectedEndpoint' : '',
+      node.id === state.selectedNodeID ? 'selectedNode' : '',
+      focusNodeIDs.has(node.id) && node.id !== state.selectedNodeID ? 'focusNode' : '',
+      state.selectedNodeID && !focusNodeIDs.has(node.id) && node.id !== state.selectedNodeID ? 'dimNode' : '',
+      isBlocked(node.id, snapshot) ? 'blocked' : 'ready',
+    ].filter(Boolean).join(' ');
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
+    const ref = nodeReferenceLabel(node);
+    const kind = nodeKindLabel(node);
     html += `<article class="${klass}" data-node-id="${esc(node.id)}" style="transform:translate(${pos.x}px, ${pos.y}px)">
+      <div class="nodeTop"><span class="nodeKind">${esc(kind)}</span><span class="nodeRef">${esc(ref)}</span></div>
+      <div class="nodeTitle">${emojiHTML(node.title)}</div>
       <div class="nodeId">${id}</div>
-      <div class="nodeTitle">${esc(node.title)}</div>
       ${badgesHTML(nodeBadges(node))}
+      ${nodeSignalsHTML(node)}
     </article>`;
   }
   html += '</div></div>';
   dom.graphCanvas.innerHTML = html;
   dom.graphZoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+}
+
+function renderGraphPairs(snapshot, nodes, hidden = {}) {
+  if (dom.graphConnectedToggle) {
+    dom.graphConnectedToggle.textContent = hidden.connected ? `Show more connected (${hidden.connected})` : 'Connected shown';
+    dom.graphConnectedToggle.classList.remove('active');
+    dom.graphConnectedToggle.disabled = !hidden.connected;
+  }
+  if (dom.graphUnlinkedToggle) {
+    dom.graphUnlinkedToggle.textContent = hidden.unlinked ? `Show unlinked (${hidden.unlinked})` : 'Backlog hidden';
+    dom.graphUnlinkedToggle.classList.toggle('active', state.showGraphUnlinked);
+    dom.graphUnlinkedToggle.disabled = !hidden.unlinked && !state.showGraphUnlinked;
+  }
+  state.graphLayout = { width: 900, height: 620 };
+  dom.graphZoomLabel.textContent = 'pairs';
+  const visible = new Set(nodes.map((node) => node.id));
+  const nodesByID = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const groups = graphPairGroups(snapshot, visible);
+  const hiddenConnected = Number(hidden.connected || 0);
+  const hiddenUnlinked = Number(hidden.unlinked || 0);
+  const hiddenSummary = hiddenConnected > 0 || hiddenUnlinked > 0
+    ? `<div class="graphHiddenSummary">
+        ${hiddenConnected > 0 ? `<span><strong>${hiddenConnected}</strong> connected items hidden</span> <button type="button" data-graph-action="toggle-connected">Show connected</button>` : ''}
+        ${hiddenUnlinked > 0 ? `<span><strong>${hiddenUnlinked}</strong> unlinked items hidden</span> <button type="button" data-graph-action="toggle-unlinked">Show backlog</button>` : ''}
+      </div>`
+    : '';
+  if (!groups.length) {
+    dom.graphCanvas.innerHTML = `${hiddenSummary}<div class="graphEmpty">No visible relations for this driver.</div>`;
+    return;
+  }
+
+  function groupTier(group) {
+    if (group.edges.every((e) => !isSoftEdge(e) && Number(e.confidence || 1) >= 1)) return 'Confirmed';
+    if (group.edges.some((e) => /inferred/i.test(e.authority || ''))) return 'Inferred';
+    return 'Suggested';
+  }
+
+  const tierOrder = ['Confirmed', 'Inferred', 'Suggested'];
+  const sortedGroups = groups.slice().sort((a, b) => {
+    const ta = tierOrder.indexOf(groupTier(a));
+    const tb = tierOrder.indexOf(groupTier(b));
+    return ta - tb;
+  });
+
+  let currentTier = '';
+  const pairHTML = sortedGroups.map((group) => {
+    const from = nodesByID.get(group.fromID) || placeholderNode(group.fromID);
+    const selected = group.edges.some((edge) => edgeSelectionID(edge) === state.selectedEdgeID);
+    const tier = groupTier(group);
+    let tierHeader = '';
+    if (tier !== currentTier) {
+      currentTier = tier;
+      tierHeader = `<h3 class="pairTierLabel">${esc(tier)}</h3>`;
+    }
+    const articleHTML = `<article class="graphPairGroup ${selected ? 'selectedPair' : ''}">
+      ${renderGraphPairNode(from, 'Source')}
+      <div class="graphPairTargets">
+        ${group.edges.map((edge) => {
+          const to = nodesByID.get(edge.to_id) || placeholderNode(edge.to_id);
+          const edgeID = edgeSelectionID(edge);
+          const isSuggested = isSuggestedEdge(edge) && !hasOfficialEquivalent(state.data.snapshot, edge);
+          const actionsHTML = isSuggested
+            ? `<div class="pairTargetActions">
+                <button type="button" class="primaryAction" data-suggestion-action="promote" data-edge-id="${esc(edgeID)}">Accept</button>
+                <button type="button" data-suggestion-action="dismiss" data-edge-id="${esc(edgeID)}">Hide</button>
+              </div>`
+            : '';
+          return `<div class="graphPairTarget" data-edge-id="${esc(edgeID)}">
+            <span class="graphPairRelation"><strong>${esc(relationLabel(edge.kind))}</strong><em>${esc(confidenceLabel(edge))} · ${esc(edge.authority || 'local')}</em></span>
+            ${renderGraphPairNode(to, 'Target')}
+            ${actionsHTML}
+          </div>`;
+        }).join('')}
+      </div>
+    </article>`;
+    return tierHeader + articleHTML;
+  }).join('');
+
+  dom.graphCanvas.innerHTML = `${hiddenSummary}<div class="graphPairs">${pairHTML}</div>`;
+}
+
+function renderGraphFocusDriver(snapshot, nodes, hidden = {}) {
+  const node = nodeByID(state.selectedNodeID) || autoFocusGraphNode(snapshot, nodes);
+  if (dom.graphConnectedToggle) {
+    dom.graphConnectedToggle.textContent = node ? 'Focus selected' : 'No focus';
+    dom.graphConnectedToggle.classList.remove('active');
+    dom.graphConnectedToggle.disabled = true;
+  }
+  if (dom.graphUnlinkedToggle) {
+    dom.graphUnlinkedToggle.textContent = hidden.unlinked ? `Backlog (${hidden.unlinked})` : 'Backlog empty';
+    dom.graphUnlinkedToggle.classList.remove('active');
+    dom.graphUnlinkedToggle.disabled = true;
+  }
+  state.graphLayout = { width: 900, height: 620 };
+  dom.graphZoomLabel.textContent = 'focus';
+  if (!node) {
+    dom.graphCanvas.innerHTML = '<div class="graphEmpty">Select an item from Relation pairs to inspect its neighborhood.</div>';
+    return;
+  }
+  const blockers = graphBlockingNeighbors(snapshot, node.id, 'blockers');
+  const unlocks = graphBlockingNeighbors(snapshot, node.id, 'blocked');
+  const related = graphRelatedNeighbors(snapshot, node.id);
+  dom.graphCanvas.innerHTML = `<div class="graphFocusDriver">
+    <section class="graphFocusHero">${renderGraphPairNode(node, 'Selected')}</section>
+    ${renderGraphFocusLane('Blockers', blockers, 'No active blockers')}
+    ${renderGraphFocusLane('Unlocks', unlocks, 'Blocks nothing active')}
+    ${renderGraphFocusLane('Related', related, 'No related items')}
+  </div>`;
+}
+
+function renderGraphFocusLane(title, nodes, emptyText) {
+  return `<section class="graphFocusLane">
+    <h3>${esc(title)} <strong>${nodes.length}</strong></h3>
+    <div>${nodes.length ? nodes.slice(0, 12).map((node) => renderGraphPairNode(node, title.slice(0, -1) || title)).join('') : `<div class="graphEmpty">${esc(emptyText)}</div>`}</div>
+  </section>`;
+}
+
+function autoFocusGraphNode(snapshot, nodes) {
+  const visible = new Set(nodes.map((node) => node.id));
+  const firstEdge = graphPairEdges(snapshot, visible)[0];
+  if (firstEdge) return nodeByID(firstEdge.from_id) || nodeByID(firstEdge.to_id);
+  return nodes.find((node) => !isClosed(node)) || nodes[0] || null;
+}
+
+function renderGraphBacklog(snapshot, nodes, hidden = {}) {
+  if (dom.graphConnectedToggle) {
+    dom.graphConnectedToggle.textContent = hidden.connected ? `${hidden.connected} linked hidden` : 'Linked hidden';
+    dom.graphConnectedToggle.classList.remove('active');
+    dom.graphConnectedToggle.disabled = true;
+  }
+  if (dom.graphUnlinkedToggle) {
+    dom.graphUnlinkedToggle.textContent = `${nodes.length} backlog items`;
+    dom.graphUnlinkedToggle.classList.add('active');
+    dom.graphUnlinkedToggle.disabled = true;
+  }
+  state.graphLayout = { width: 900, height: 620 };
+  dom.graphZoomLabel.textContent = 'backlog';
+  if (!nodes.length) {
+    dom.graphCanvas.innerHTML = '<div class="graphEmpty">No unlinked items match the current filters.</div>';
+    return;
+  }
+  dom.graphCanvas.innerHTML = `<div class="graphBacklog">
+    ${nodes.sort(graphNodeSort).slice(0, 80).map((node) => renderGraphPairNode(node, 'Unlinked')).join('')}
+  </div>`;
+}
+
+function graphPairGroups(snapshot, visible) {
+  const limit = state.showGraphAllConnected ? 24 : 10;
+  const grouped = new Map();
+  for (const edge of graphPairEdges(snapshot, visible)) {
+    if (!grouped.has(edge.from_id)) grouped.set(edge.from_id, []);
+    grouped.get(edge.from_id).push(edge);
+  }
+  return Array.from(grouped, ([fromID, edges]) => ({ fromID, edges: edges.slice(0, 5) }))
+    .sort((a, b) => graphRawEdgeScore(b.edges[0]) - graphRawEdgeScore(a.edges[0]) || String(a.fromID).localeCompare(String(b.fromID)))
+    .slice(0, limit);
+}
+
+function graphPairEdges(snapshot, visible) {
+  const seen = new Set();
+  const edges = [];
+  for (const edge of snapshot.edges || []) {
+    if (!visible.has(edge.from_id) || !visible.has(edge.to_id)) continue;
+    const key = `${edge.from_id}\x00${edge.to_id}\x00${edge.kind || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    edges.push(edge);
+  }
+  return edges.sort((a, b) => graphRawEdgeScore(b) - graphRawEdgeScore(a) || String(a.from_id).localeCompare(String(b.from_id)));
+}
+
+function graphRawEdgeScore(edge) {
+  let score = Number(edge.confidence || 1) * 10;
+  if (!isSoftEdge(edge)) score += 10;
+  if (!isNonBlockingEdgeKind(String(edge.kind || '').toLowerCase())) score += 6;
+  if (state.selectedNodeID && (edge.from_id === state.selectedNodeID || edge.to_id === state.selectedNodeID)) score += 20;
+  return score;
+}
+
+function renderGraphPairNode(node, label) {
+  return `<button type="button" class="graphPairNode" data-node-id="${esc(node.id)}">
+    <span>${esc(label)} · ${esc(nodeKindLabel(node))} ${esc(nodeReferenceLabel(node))}</span>
+    <strong>${emojiHTML(node.title || node.id)}</strong>
+    ${badgesHTML(nodeBadges(node).slice(0, 4))}
+    ${nodeSignalsHTML(node)}
+  </button>`;
+}
+
+function graphColumnHeaders(layout) {
+  return (layout.columns || []).map((column) => `<div class="graphColumnHeader" style="transform:translate(${column.x}px, ${column.y}px)">
+    <strong>${esc(column.title)}</strong>
+    <span>${esc(column.count)} item${column.count === 1 ? '' : 's'}</span>
+  </div>`).join('');
+}
+
+function renderGraphFocusPanel(snapshot) {
+  if (!dom.graphFocus) return;
+  const node = nodeByID(state.selectedNodeID);
+  dom.graphFocus.classList.toggle('hidden', state.view !== 'graph' || state.graphDriver === 'focus' || !node);
+  if (state.view !== 'graph' || state.graphDriver === 'focus' || !node) {
+    dom.graphFocus.innerHTML = '';
+    return;
+  }
+  const blockers = graphBlockingNeighbors(snapshot, node.id, 'blockers');
+  const blocked = graphBlockingNeighbors(snapshot, node.id, 'blocked');
+  const related = graphRelatedNeighbors(snapshot, node.id).slice(0, 4);
+  const blockerHTML = graphFocusNodeList(blockers, 'No active blockers');
+  const blockedHTML = graphFocusNodeList(blocked, 'Blocks nothing active');
+  const relatedHTML = graphFocusNodeList(related, 'No extra links');
+  dom.graphFocus.innerHTML = `<section class="graphFocusBox">
+    <div class="graphFocusHead">
+      <div>
+        <span>${esc(nodeKindLabel(node))} ${esc(nodeReferenceLabel(node))}</span>
+        <strong>${emojiHTML(node.title || node.id)}</strong>
+      </div>
+      <button type="button" data-graph-focus-action="clear">Clear</button>
+    </div>
+    <div class="graphFocusColumns">
+      <div><h3>Blockers</h3>${blockerHTML}</div>
+      <div><h3>Unlocks</h3>${blockedHTML}</div>
+      <div><h3>Related</h3>${relatedHTML}</div>
+    </div>
+  </section>`;
+}
+
+function graphFocusNodeList(nodes, emptyText) {
+  if (!nodes.length) return `<div class="graphFocusEmpty">${esc(emptyText)}</div>`;
+  return nodes.slice(0, 5).map((node) => `<button type="button" class="graphFocusNode" data-node-id="${esc(node.id)}">
+    <span>${esc(nodeReferenceLabel(node))}</span>
+    <strong>${emojiHTML(node.title || node.id)}</strong>
+  </button>`).join('');
+}
+
+function graphFocusEdges(snapshot) {
+  const id = state.selectedNodeID;
+  if (!id) return [];
+  return (snapshot.edges || []).filter((edge) => edge.from_id === id || edge.to_id === id);
+}
+
+function graphBlockingNeighbors(snapshot, nodeID, direction) {
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const out = [];
+  for (const edge of snapshot.edges || []) {
+    const [blocked, blocker] = edgeBlockedAndBlocker(edge);
+    if (!blocked || !blocker) continue;
+    const candidateID = direction === 'blockers' && blocked === nodeID ? blocker : direction === 'blocked' && blocker === nodeID ? blocked : '';
+    if (!candidateID) continue;
+    const node = nodes.get(candidateID);
+    if (node && !isClosed(node)) out.push(node);
+  }
+  return out.sort(graphNodeSort);
+}
+
+function graphRelatedNeighbors(snapshot, nodeID) {
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const seen = new Set();
+  const out = [];
+  for (const edge of snapshot.edges || []) {
+    if (!isNonBlockingEdgeKind(String(edge.kind || '').toLowerCase())) continue;
+    const otherID = edge.from_id === nodeID ? edge.to_id : edge.to_id === nodeID ? edge.from_id : '';
+    if (!otherID || seen.has(otherID)) continue;
+    const node = nodes.get(otherID);
+    if (node) {
+      seen.add(otherID);
+      out.push(node);
+    }
+  }
+  return out.sort(graphNodeSort);
+}
+
+function handleGraphFocusClick(event) {
+  const nodeButton = event.target.closest('[data-node-id]');
+  if (nodeButton && dom.graphFocus.contains(nodeButton)) {
+    selectNode(nodeButton.dataset.nodeId || '');
+    requestAnimationFrame(scrollSelectedNodeIntoView);
+    return;
+  }
+  const button = event.target.closest('[data-graph-focus-action]');
+  if (!button) return;
+  if (button.dataset.graphFocusAction === 'clear') {
+    state.selectedNodeID = '';
+    state.selectedEdgeID = '';
+    render();
+  }
 }
 
 function handleGraphControlClick(event) {
@@ -1338,6 +2536,8 @@ function applyGraphAction(action) {
     fitGraphToCanvas();
     return;
   }
+  if (action === 'toggle-connected') state.showGraphAllConnected = !state.showGraphAllConnected;
+  if (action === 'toggle-unlinked') state.showGraphUnlinked = !state.showGraphUnlinked;
   if (action === 'reset') state.graphZoom = 1;
   if (action === 'in') state.graphZoom = graphZoom(state.graphZoom + 0.15);
   if (action === 'out') state.graphZoom = graphZoom(state.graphZoom - 0.15);
@@ -1361,22 +2561,36 @@ function graphZoom(value = state.graphZoom) {
 }
 
 function handleGraphClick(event) {
-  const target = event.target.closest?.('[data-edge-id]');
-  if (!target || !dom.graphCanvas.contains(target)) return;
-  const edgeID = target.dataset.edgeId || '';
-  if (!edgeByID(edgeID)) return;
-  state.selectedEdgeID = edgeID;
-  render();
-  dom.status.textContent = 'edge selected';
+  const suggBtn = event.target.closest('[data-suggestion-action]');
+  if (suggBtn && dom.graphCanvas.contains(suggBtn)) {
+    handleSuggestionClick(event);
+    return;
+  }
+  const nodeTarget = event.target.closest?.('[data-node-id]');
+  if (nodeTarget && dom.graphCanvas.contains(nodeTarget)) {
+    selectNode(nodeTarget.dataset.nodeId || '');
+    requestAnimationFrame(scrollSelectedNodeIntoView);
+    return;
+  }
+  const edgeTarget = event.target.closest?.('[data-edge-id]');
+  if (edgeTarget && dom.graphCanvas.contains(edgeTarget)) {
+    const edgeID = edgeTarget.dataset.edgeId || '';
+    if (!edgeByID(edgeID)) return;
+    state.selectedEdgeID = edgeID;
+    state.selectedNodeID = '';
+    render();
+    dom.status.textContent = 'edge selected';
+    return;
+  }
 }
 
 function graphLayout(snapshot, nodes) {
-  const cardWidth = 218;
-  const cardHeight = 88;
-  const xGap = 282;
-  const yGap = 126;
+  const cardWidth = 204;
+  const cardHeight = 104;
+  const xGap = 246;
+  const yGap = 104;
   const padX = 26;
-  const padY = 30;
+  const padY = 72;
   const visible = new Set(nodes.map((node) => node.id));
   const layoutEdges = graphLayoutEdges(snapshot, visible);
   const connected = new Set(layoutEdges.flatMap((edge) => [edge.from, edge.to]));
@@ -1386,7 +2600,9 @@ function graphLayout(snapshot, nodes) {
 
   if (connectedNodes.length === 0) {
     placeNodeGrid(isolatedNodes, positions, { x: padX, y: padY, cols: graphGridColumns(isolatedNodes.length), xGap, yGap });
-    return graphLayoutSize(positions, cardWidth, cardHeight, padX, padY);
+    const layout = graphLayoutSize(positions, cardWidth, cardHeight, padX, padY);
+    layout.columns = [{ x: padX, y: 24, title: 'Unlinked work', count: isolatedNodes.length }];
+    return layout;
   }
 
   const ranks = graphRanks(connectedNodes, layoutEdges);
@@ -1397,18 +2613,31 @@ function graphLayout(snapshot, nodes) {
     columns.get(rank).push(node);
   }
   const orderedRanks = Array.from(columns.keys()).sort((a, b) => a - b);
+  const columnMeta = [];
   for (const [index, rank] of orderedRanks.entries()) {
     const column = columns.get(rank).sort((a, b) => graphDegree(layoutEdges, b.id) - graphDegree(layoutEdges, a.id) || graphNodeSort(a, b));
-    placeNodeGrid(column, positions, { x: padX + index * xGap, y: padY, cols: 1, xGap, yGap });
+    const x = padX + index * xGap;
+    placeNodeGrid(column, positions, { x, y: padY, cols: 1, xGap, yGap });
+    columnMeta.push({ x, y: 24, title: graphRankTitle(index, orderedRanks.length), count: column.length });
   }
 
   if (isolatedNodes.length > 0) {
     const isolatedCols = graphGridColumns(isolatedNodes.length);
     const isolatedX = padX + orderedRanks.length * xGap + 38;
     placeNodeGrid(isolatedNodes, positions, { x: isolatedX, y: padY, cols: isolatedCols, xGap: 236, yGap: 102 });
+    columnMeta.push({ x: isolatedX, y: 24, title: 'Unlinked', count: isolatedNodes.length });
   }
 
-  return graphLayoutSize(positions, cardWidth, cardHeight, padX, padY);
+  const layout = graphLayoutSize(positions, cardWidth, cardHeight, padX, padY);
+  layout.columns = columnMeta;
+  return layout;
+}
+
+function graphRankTitle(index, total) {
+  if (total <= 1) return 'Connected work';
+  if (index === 0) return 'Upstream';
+  if (index === total - 1) return 'Downstream';
+  return `Layer ${index + 1}`;
 }
 
 function graphLayoutEdges(snapshot, visible) {
@@ -1498,8 +2727,8 @@ function graphNodeSort(a, b) {
 }
 
 function graphEdgeLine(from, to) {
-  const cardWidth = 218;
-  const centerY = 39;
+  const cardWidth = 204;
+  const centerY = 50;
   if (from.x === to.x) {
     return { x1: from.x + cardWidth / 2, y1: from.y + centerY, x2: to.x + cardWidth / 2, y2: to.y + centerY };
   }
@@ -1514,10 +2743,10 @@ function renderTable(nodes) {
     const id = node.url ? `<a href="${esc(node.url)}">${esc(node.id)}</a>` : esc(node.id);
     const klass = nodeCardClasses(node).filter(Boolean).join(' ');
     const labelText = labels(node).join(', ');
-    return `<tr class="${klass}">
-      <td><div class="tableItem"><div class="tableItemID">${id}</div><div class="tableItemTitle">${esc(node.title)}</div></div></td>
+    return `<tr class="${klass}" data-node-id="${esc(node.id)}">
+      <td><div class="tableItem"><div class="tableItemID">${id}</div><div class="tableItemTitle">${emojiHTML(node.title)}</div></div></td>
       <td>${badgesHTML(nodeBadges(node))}</td>
-      <td>${esc(labelText)}</td>
+      <td>${emojiHTML(labelText)}</td>
     </tr>`;
   }).join('');
   const empty = '<tr><td colspan="3"><div class="reason">no visible cards</div></td></tr>';
@@ -1528,6 +2757,52 @@ function renderTable(nodes) {
   </table>`;
 }
 
+function handleNodePickClick(event) {
+  const target = event.target.closest('[data-node-id]');
+  if (!target) return;
+  selectNode(target.dataset.nodeId || '');
+}
+
+function handleBriefClick(event) {
+  const emptyAction = event.target.closest('[data-empty-action]');
+  if (emptyAction) {
+    handleEmptyBoardAction(emptyAction);
+    return;
+  }
+  handleNodePickClick(event);
+}
+
+function handleEmptyBoardAction(target) {
+  const action = target.dataset.emptyAction || '';
+  if (action === 'add-item') {
+    setWorkspaceTab('actions');
+    dom.newItemRef.focus();
+    return;
+  }
+  if (action === 'sources') {
+    setWorkspaceTab('presets');
+    loadGitHubPresets();
+    return;
+  }
+  if (action === 'sync') {
+    syncCurrentBoard();
+    return;
+  }
+  if (action === 'useful' && target.dataset.boardId) {
+    state.currentBoardID = target.dataset.boardId;
+    writeURLBoard(state.currentBoardID);
+    loadBackendBoard();
+  }
+}
+
+function selectNode(nodeID) {
+  if (!nodeByID(nodeID)) return;
+  state.selectedNodeID = nodeID;
+  state.selectedEdgeID = '';
+  render();
+  dom.status.textContent = 'item selected';
+}
+
 function renderSuggestions(snapshot) {
   const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
   const suggestions = suggestedEdges(snapshot).filter((edge) => !state.dismissedSuggestionIDs.has(edgeSelectionID(edge)));
@@ -1536,12 +2811,16 @@ function renderSuggestions(snapshot) {
     dom.suggestions.innerHTML = '';
     return;
   }
-  const rows = suggestions.slice(0, 8).map((edge) => renderSuggestion(edge, nodes)).join('');
-  const more = suggestions.length > 8 ? `<div class="suggestionMore">${suggestions.length - 8} more hidden by the compact panel</div>` : '';
+  const limit = state.view === 'graph' ? 1 : 8;
+  const rows = suggestions.slice(0, limit).map((edge) => renderSuggestion(edge, nodes)).join('');
+  const more = suggestions.length > limit ? `<div class="suggestionMore">${suggestions.length - limit} more in Links</div>` : '';
   dom.suggestions.innerHTML = `<section class="suggestionBox" aria-label="Suggested relations">
     <div class="suggestionHead">
-      <strong>Suggested relations</strong>
-      <span>${suggestions.length} soft edge${suggestions.length === 1 ? '' : 's'} from GitHub or low-confidence sources</span>
+      <div>
+        <strong>Suggested relations</strong>
+        <span>${suggestions.length} soft edge${suggestions.length === 1 ? '' : 's'} from GitHub or low-confidence sources</span>
+      </div>
+      <button type="button" data-suggestion-action="review-all">Review all</button>
     </div>
     <div class="suggestionList">${rows}</div>
     ${more}
@@ -1556,7 +2835,7 @@ function renderSuggestion(edge, nodes) {
   const evidence = evidenceText(edge);
   const kind = relationLabel(edge.kind);
   const confidence = confidenceLabel(edge);
-  return `<article class="suggestionRow ${selected ? 'selectedSuggestion' : ''}">
+  return `<article class="suggestionRow ${selected ? 'selectedSuggestion' : ''}" data-edge-id="${esc(edgeID)}">
     <div class="suggestionMain">
       <div class="suggestionRelation">
         <strong>${esc(shortNodeLabel(from))}</strong>
@@ -1630,6 +2909,90 @@ function renderEdgeInspector(snapshot) {
   </section>`;
 }
 
+function renderItemInspector(snapshot) {
+  if (!dom.itemInspector) return;
+  const node = nodeByID(state.selectedNodeID);
+  dom.itemInspector.classList.toggle('hidden', !node || state.mode !== 'stateful');
+  if (!node || state.mode !== 'stateful') {
+    dom.itemInspector.innerHTML = '';
+    return;
+  }
+  const incoming = (snapshot.edges || []).filter((edge) => edge.to_id === node.id);
+  const outgoing = (snapshot.edges || []).filter((edge) => edge.from_id === node.id);
+  const data = nodeData(node);
+  const github = parseGitHubNodeID(node.id);
+  const labelsHTML = labels(node).slice(0, 10).map((label) => `<span>${emojiHTML(label)}</span>`).join('');
+  dom.itemInspector.innerHTML = `<section class="inspectorBox">
+    <div class="inspectorHead">
+      <div>
+        <span>${esc(node.kind || 'item')}</span>
+        <strong>${emojiHTML(node.title || node.id)}</strong>
+      </div>
+      <button type="button" data-item-action="close">×</button>
+    </div>
+    <div class="inspectorMeta">
+      <span>${esc(node.id)}</span>
+      <span>${esc(node.state || 'unknown')}</span>
+      ${node.owner ? `<span>@${esc(node.owner)}</span>` : ''}
+      ${github ? `<span>${esc(github.repo)}</span>` : ''}
+    </div>
+    ${labelsHTML ? `<div class="inspectorLabels">${labelsHTML}</div>` : ''}
+    <div class="inspectorActions">
+      ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
+      <button type="button" data-item-action="link-from">Link from</button>
+      <button type="button" data-item-action="link-to">Link to</button>
+    </div>
+    <div class="inspectorSection">
+      <h3>Links</h3>
+      ${renderInspectorLinks('Out', outgoing)}
+      ${renderInspectorLinks('In', incoming)}
+    </div>
+    <details class="inspectorRaw">
+      <summary>Raw data</summary>
+      <pre>${esc(JSON.stringify(data, null, 2))}</pre>
+    </details>
+  </section>`;
+}
+
+function renderInspectorLinks(label, edges) {
+  if (!edges.length) return `<div class="inspectorLink empty">${esc(label)}: none</div>`;
+  return edges.slice(0, 8).map((edge) => {
+    const otherID = label === 'Out' ? edge.to_id : edge.from_id;
+    const other = nodeByID(otherID) || placeholderNode(otherID);
+    return `<button type="button" class="inspectorLink" data-node-id="${esc(otherID)}">
+      <span>${esc(label)} / ${esc(relationLabel(edge.kind))}</span>
+      <strong>${esc(shortNodeLabel(other))}</strong>
+    </button>`;
+  }).join('');
+}
+
+function handleItemInspectorClick(event) {
+  const nodeButton = event.target.closest('[data-node-id]');
+  if (nodeButton && dom.itemInspector.contains(nodeButton)) {
+    selectNode(nodeButton.dataset.nodeId || '');
+    return;
+  }
+  const button = event.target.closest('[data-item-action]');
+  if (!button) return;
+  if (button.dataset.itemAction === 'close') {
+    state.selectedNodeID = '';
+    render();
+    return;
+  }
+  const node = nodeByID(state.selectedNodeID);
+  if (!node) return;
+  if (button.dataset.itemAction === 'link-from') {
+    dom.newLinkFrom.value = node.id;
+    setWorkspaceTab('actions');
+    dom.newLinkTo.focus();
+  }
+  if (button.dataset.itemAction === 'link-to') {
+    dom.newLinkTo.value = node.id;
+    setWorkspaceTab('actions');
+    dom.newLinkFrom.focus();
+  }
+}
+
 function handleEdgeInspectorClick(event) {
   const button = event.target.closest('[data-edge-action]');
   if (!button) return;
@@ -1653,6 +3016,11 @@ function handleSuggestionClick(event) {
   if (!button) return;
   const edgeID = button.dataset.edgeId || '';
   const action = button.dataset.suggestionAction;
+  if (action === 'review-all') {
+    setWorkspaceTab('suggestions');
+    dom.status.textContent = 'all suggested relations visible in Links';
+    return;
+  }
   if (action === 'focus') focusSuggestedEdge(edgeID);
   if (action === 'promote') promoteSuggestedEdge(edgeID);
   if (action === 'dismiss') dismissSuggestedEdge(edgeID);
@@ -1673,6 +3041,12 @@ function scrollSelectedEdgeIntoView() {
   target.scrollIntoView({ block: 'center', inline: 'center' });
 }
 
+function scrollSelectedNodeIntoView() {
+  const node = dom.graphCanvas.querySelector('.selectedNode');
+  if (!node) return;
+  node.scrollIntoView({ block: 'center', inline: 'center' });
+}
+
 function dismissSuggestedEdge(edgeID) {
   state.dismissedSuggestionIDs.add(edgeID);
   if (state.selectedEdgeID === edgeID) state.selectedEdgeID = '';
@@ -1680,9 +3054,35 @@ function dismissSuggestedEdge(edgeID) {
   dom.status.textContent = 'suggested relation hidden for this session';
 }
 
-function promoteSuggestedEdge(edgeID) {
+async function promoteSuggestedEdge(edgeID) {
   const edge = edgeByID(edgeID);
   if (!edge) return;
+  if (state.mode === 'stateful' && state.backendSession.authenticated) {
+    try {
+      const res = await fetch('./api/board-links', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          board_id: state.currentBoardID || 'default',
+          from: edge.from_id,
+          to: edge.to_id,
+          kind: edge.kind || 'relates_to',
+          note: evidenceText(edge),
+        }),
+      });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      state.dismissedSuggestionIDs.delete(edgeID);
+      await loadBackendBoard();
+      await refreshBoards();
+      dom.status.textContent = 'suggested relation saved';
+      return;
+    } catch (err) {
+      dom.error.textContent = err.message;
+      dom.status.textContent = 'promotion failed';
+      return;
+    }
+  }
   try {
     dom.input.value = promoteInputText(dom.input.value, edge);
     state.dismissedSuggestionIDs.delete(edgeID);
@@ -1842,6 +3242,10 @@ function edgeByID(edgeID) {
   return (state.data.snapshot.edges || []).find((edge) => edgeSelectionID(edge) === edgeID);
 }
 
+function nodeByID(nodeID) {
+  return (state.data.snapshot.nodes || []).find((node) => node.id === nodeID);
+}
+
 function edgeSelectionID(edge) {
   return edge.id || relationSignature(edge);
 }
@@ -1885,13 +3289,30 @@ function visibleNodes(nodes) {
     if (!state.showClosed && isClosed(node)) return false;
     if (!state.showLocal && isLocal(node)) return false;
     if (!state.showExternal && !isLocal(node)) return false;
-    const hay = [node.id, node.title, node.state, node.kind, badgeText(nodeBadges(node)), labels(node).join(' ')].join(' ').toLowerCase();
-    return !state.filter || hay.includes(state.filter);
+    const hay = [node.id, node.title, node.state, node.kind, badgeText(nodeBadges(node)), labels(node).join(' '), nodePeople(node).map((person) => person.login).join(' '), nodeData(node).milestone || ''].join(' ').toLowerCase();
+    if (state.filter && !hay.includes(state.filter)) return false;
+    if (state.activeChipFilters.size > 0) {
+      const byType = {};
+      for (const key of state.activeChipFilters) {
+        const colonIdx = key.indexOf(':');
+        const type = key.slice(0, colonIdx);
+        const value = key.slice(colonIdx + 1);
+        if (!byType[type]) byType[type] = new Set();
+        byType[type].add(value);
+      }
+      for (const [type, values] of Object.entries(byType)) {
+        if (type === 'kind' && !values.has(node.kind)) return false;
+        if (type === 'label' && !labels(node).some((l) => values.has(l))) return false;
+        if (type === 'assignee' && !nodePeople(node).some((p) => values.has(p.login))) return false;
+        if (type === 'status' && !values.has(node.state)) return false;
+      }
+    }
+    return true;
   });
 }
 
 function setView(view, options = {}) {
-  const next = views.has(view) ? view : 'brief';
+  const next = views.has(view) ? view : 'graph';
   state.view = next;
   document.querySelectorAll('[data-view]').forEach((item) => {
     item.classList.toggle('active', item.dataset.view === next);
@@ -1901,18 +3322,78 @@ function setView(view, options = {}) {
 }
 
 function readURLView() {
-  const view = new URLSearchParams(location.search).get('view') || 'brief';
-  return views.has(view) ? view : 'brief';
+  const view = new URLSearchParams(location.search).get('view') || 'graph';
+  return views.has(view) ? view : 'graph';
 }
 
 function writeURLView(view) {
   const url = new URL(location.href);
-  if (view === 'brief') url.searchParams.delete('view');
+  if (view === 'graph') url.searchParams.delete('view');
   else url.searchParams.set('view', view);
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
+function readURLBoard() {
+  return new URLSearchParams(location.search).get('board') || '';
+}
+
+function writeURLBoard(boardID) {
+  const url = new URL(location.href);
+  if (!boardID || boardID === 'default') url.searchParams.delete('board');
+  else url.searchParams.set('board', boardID);
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function readURLFilters() {
+  const params = new URLSearchParams(location.search);
+  const filter = params.get('filter') || '';
+  if (filter) {
+    state.filter = filter;
+    if (dom.filter) dom.filter.value = filter;
+  }
+  const chips = params.get('chips') || '';
+  if (chips) {
+    state.activeChipFilters = parseChipFilterParam(chips);
+  }
+}
+
+function writeURLFilters() {
+  const url = new URL(location.href);
+  if (state.filter) url.searchParams.set('filter', state.filter);
+  else url.searchParams.delete('filter');
+  if (state.activeChipFilters.size > 0) url.searchParams.set('chips', formatChipFilterParam(state.activeChipFilters));
+  else url.searchParams.delete('chips');
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function readURLDriver() {
+  const driver = new URLSearchParams(location.search).get('driver') || 'pairs';
+  return ['pairs', 'focus', 'backlog'].includes(driver) ? driver : 'pairs';
+}
+
+function writeURLDriver(driver) {
+  const url = new URL(location.href);
+  if (driver === 'pairs') url.searchParams.delete('driver');
+  else url.searchParams.set('driver', driver);
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function formatChipFilterParam(filters) {
+  return Array.from(filters).sort().map(encodeURIComponent).join(',');
+}
+
+function parseChipFilterParam(value) {
+  return new Set(String(value || '').split(',').filter(Boolean).map((item) => {
+    try {
+      return decodeURIComponent(item);
+    } catch (_) {
+      return item;
+    }
+  }));
+}
+
 function shareLink() {
+  if (state.mode !== 'stateless') return;
   const encoded = encodeBase64URL(dom.input.value);
   const url = new URL(location.href);
   url.hash = `data=${encoded}`;
@@ -1974,11 +3455,25 @@ function nodeCardClasses(node) {
   ];
 }
 
+function nodeKindLabel(node) {
+  if (node.kind === 'pr') return 'PR';
+  if (node.kind === 'issue') return 'Issue';
+  if (isLocal(node)) return 'Note';
+  return capitalize(node.kind || 'Task');
+}
+
+function nodeReferenceLabel(node) {
+  const ref = parseGitHubNodeID(node.id);
+  if (ref) return `${ref.marker}${ref.number}`;
+  if (String(node.id || '').startsWith('note:')) return 'local';
+  return String(node.id || '').replace(/^gh:/, '').slice(0, 28);
+}
+
 function nodeBadges(node) {
   const data = nodeData(node);
   const badges = [];
   if (isLocal(node)) {
-    badges.push(badge('type-local', '📝 note'));
+    badges.push(badge('type-local', 'note'));
     return badges;
   }
   badges.push(typeBadge(node));
@@ -1999,9 +3494,9 @@ function plainBadges(item) {
 
 function typeBadge(node) {
   const kind = node.kind || 'task';
-  if (kind === 'pr') return badge('type-pr', '🔀 PR');
-  if (kind === 'issue') return badge('type-issue', '📌 issue');
-  if (kind === 'note') return badge('type-local', '📝 note');
+  if (kind === 'pr') return badge('type-pr', 'PR');
+  if (kind === 'issue') return badge('type-issue', 'issue');
+  if (kind === 'note') return badge('type-local', 'note');
   return badge('type-task', '▣ task');
 }
 
@@ -2051,6 +3546,39 @@ function badgeClass(value) {
 
 function labels(node) {
   return nodeData(node).labels || [];
+}
+
+function nodeSignalsHTML(node) {
+  const people = nodePeople(node).slice(0, 5);
+  const labelItems = labels(node).slice(0, 5);
+  const milestone = nodeData(node).milestone || '';
+  const peopleHTML = people.length
+    ? `<div class="nodePeople">${people.map((person) => `<img src="${esc(person.avatar_url || githubAvatarURL(person.login))}" alt="@${esc(person.login)}" title="@${esc(person.login)}" loading="lazy">`).join('')}</div>`
+    : '';
+  const labelsHTML = labelItems.length
+    ? `<div class="nodeLabels">${labelItems.map((label) => `<span>${emojiHTML(label)}</span>`).join('')}</div>`
+    : '';
+  const milestoneHTML = milestone ? `<div class="nodeMilestone">${emojiHTML(milestone)}</div>` : '';
+  return peopleHTML || labelsHTML || milestoneHTML ? `<div class="nodeSignals">${peopleHTML}${labelsHTML}${milestoneHTML}</div>` : '';
+}
+
+function nodePeople(node) {
+  const data = nodeData(node);
+  const people = [];
+  const add = (person) => {
+    const normalized = githubPersonData(person);
+    if (!normalized || people.some((item) => item.login === normalized.login)) return;
+    people.push(normalized);
+  };
+  (Array.isArray(data.assignees) ? data.assignees : []).forEach(add);
+  (Array.isArray(data.reviewers) ? data.reviewers : []).forEach(add);
+  add(data.author);
+  add(node.owner);
+  return people;
+}
+
+function githubAvatarURL(login) {
+  return login ? `https://github.com/${encodeURIComponent(login)}.png?size=40` : '';
 }
 
 function nodeData(node) {
@@ -2151,6 +3679,53 @@ function stableEdgeID(board, from, to, kind) {
 
 function slug(text) {
   return String(text || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) || 'untitled';
+}
+
+const emojiShortcodes = {
+  package: '📦',
+  bug: '🐛',
+  zap: '⚡',
+  sparkles: '✨',
+  fire: '🔥',
+  warning: '⚠️',
+  wrench: '🔧',
+  hammer: '🔨',
+  construction: '🚧',
+  rocket: '🚀',
+  memo: '📝',
+  book: '📖',
+  books: '📚',
+  lock: '🔒',
+  key: '🔑',
+  shield: '🛡️',
+  test_tube: '🧪',
+  white_check_mark: '✅',
+  x: '❌',
+  question: '❓',
+  bulb: '💡',
+  recycle: '♻️',
+  art: '🎨',
+  lipstick: '💄',
+  mag: '🔍',
+  chart_with_upwards_trend: '📈',
+  hourglass: '⌛',
+  tada: '🎉',
+  eyes: '👀',
+  pray: '🙏',
+};
+
+function emojiHTML(value) {
+  const text = String(value || '');
+  const parts = [];
+  let index = 0;
+  for (const match of text.matchAll(/:([a-z0-9_+\-]+):/gi)) {
+    parts.push(esc(text.slice(index, match.index)));
+    const emoji = emojiShortcodes[String(match[1] || '').toLowerCase()];
+    parts.push(emoji ? `<span class="emojiShortcode" title="${esc(match[0])}">${emoji}</span>` : esc(match[0]));
+    index = match.index + match[0].length;
+  }
+  parts.push(esc(text.slice(index)));
+  return parts.join('');
 }
 
 function esc(value) {
