@@ -90,6 +90,7 @@
           <button data-workspace-tab="actions" type="button">Actions</button>
           <button data-workspace-tab="presets" type="button">Sources</button>
           <button data-workspace-tab="suggestions" type="button">Links</button>
+          <button data-workspace-tab="sync" type="button">Sync</button>
         </nav>
 
         <div class="workspaceBody">
@@ -159,6 +160,16 @@
               </div>
             </div>
             <div id="workspaceSuggestionList" class="workspaceList"></div>
+          </section>
+
+          <section id="workspaceSync" class="workspaceTab hidden">
+            <div class="workspaceHeader">
+              <div>
+                <h3>Sync Quality</h3>
+                <p>Last sync results, token mode, and data health.</p>
+              </div>
+            </div>
+            <div id="syncPanel" class="syncPanel"></div>
           </section>
 
           <section id="workspaceDebug" class="workspaceTab hidden">

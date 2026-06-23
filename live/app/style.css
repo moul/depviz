@@ -370,7 +370,7 @@ button:disabled {
 
 .workspaceNav {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 2px;
 }
 
@@ -1593,6 +1593,53 @@ textarea::selection {
   min-height: 24px;
   padding: 3px 8px;
   font-size: 11px;
+}
+
+.syncPanel {
+  font-size: 12px;
+}
+
+.syncList {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+}
+
+.syncList > div {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.syncList dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.syncList dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.syncStatus {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.syncOk { background: #dcfce7; color: #15803d; }
+.syncFailed { background: #fee2e2; color: #b91c1c; }
+.syncRunning { background: #fef9c3; color: #92400e; }
+.syncUnknown { background: #f3f4f6; color: #6b7280; }
+
+.syncActions {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
 }
 
 .graphPairGroup {

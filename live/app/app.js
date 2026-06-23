@@ -54,6 +54,7 @@ const dom = {
   syncBoard: document.getElementById('syncBoardBtn'),
   workspaceSuggestionList: document.getElementById('workspaceSuggestionList'),
   debugPanel: document.getElementById('debugPanel'),
+  syncPanel: document.getElementById('syncPanel'),
   connectGithub: document.getElementById('connectGithubBtn'),
   pasteGithubToken: document.getElementById('pasteGithubTokenBtn'),
   forgetGithubToken: document.getElementById('forgetGithubTokenBtn'),
@@ -321,11 +322,12 @@ function toggleUserPanel() {
 }
 
 function setWorkspaceTab(tab) {
-  state.workspaceTab = ['views', 'actions', 'presets', 'suggestions', 'debug'].includes(tab) ? tab : 'views';
+  state.workspaceTab = ['views', 'actions', 'presets', 'suggestions', 'debug', 'sync'].includes(tab) ? tab : 'views';
   renderWorkspaceTabs();
   if (state.workspaceTab === 'presets') renderGitHubPresets();
   if (state.workspaceTab === 'suggestions') renderWorkspaceSuggestions();
   if (state.workspaceTab === 'debug') renderDebugPanel();
+  if (state.workspaceTab === 'sync') renderSyncPanel();
 }
 
 async function createBoard(event) {
@@ -667,6 +669,37 @@ function renderDebugPanel() {
     <div><dt>GitHub App</dt><dd>${state.backendSession.github_app_configured ? 'configured' : 'not configured'}</dd></div>
     <div><dt>Webhook</dt><dd>${state.backendSession.github_webhook_configured ? 'configured' : 'not configured'}</dd></div>
   </dl>`;
+}
+
+function renderSyncPanel() {
+  if (!dom.syncPanel) return;
+  const board = currentBoard();
+  const metrics = board.metrics || {};
+  const session = state.backendSession || {};
+  const lastSync = state.lastSync || {};
+  const syncStatus = metrics.sync_status || 'unknown';
+  const syncError = metrics.sync_error || '';
+  const statusClass = syncStatus === 'ok' ? 'syncOk' : syncStatus === 'running' ? 'syncRunning' : syncStatus === 'failed' ? 'syncFailed' : 'syncUnknown';
+  const provider = session.github_app_configured ? 'GitHub App' : 'OAuth user';
+  const webhookState = session.github_webhook_configured ? 'configured' : 'not configured';
+  const items = Number(metrics.items || 0);
+  const links = Number(metrics.links || 0);
+  const open = Number(metrics.open || 0);
+  dom.syncPanel.innerHTML = `<dl class="syncList">
+    <div><dt>View</dt><dd>${esc(board.name || state.currentBoardID)}</dd></div>
+    <div><dt>Scope</dt><dd>${esc(board.scope_query || 'local')}</dd></div>
+    <div><dt>Status</dt><dd><span class="syncStatus ${statusClass}">${esc(syncStatus)}</span>${syncError ? ` — <em>${esc(syncError)}</em>` : ''}</dd></div>
+    <div><dt>Last sync</dt><dd>${esc(currentBoardSyncLabel())}</dd></div>
+    ${metrics.last_sync_at ? `<div><dt>Synced at</dt><dd>${esc(metrics.last_sync_at)}</dd></div>` : ''}
+    <div><dt>Items</dt><dd>${esc(String(items))} total · ${esc(String(open))} open · ${esc(String(links))} links</dd></div>
+    <div><dt>Token mode</dt><dd>${esc(lastSync.mode || provider)}</dd></div>
+    <div><dt>Webhook</dt><dd>${esc(webhookState)}</dd></div>
+    <div><dt>GitHub App</dt><dd>${session.github_app_configured ? 'configured' : 'not configured'}</dd></div>
+  </dl>
+  <div class="syncActions">
+    <button type="button" id="syncFromPanelBtn">Sync now</button>
+  </div>`;
+  document.getElementById('syncFromPanelBtn')?.addEventListener('click', syncCurrentBoard);
 }
 
 function currentBoard() {
