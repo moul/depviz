@@ -4541,14 +4541,22 @@ function nodeSignalsHTML(node) {
   const people = nodePeople(node).slice(0, 5);
   const labelItems = labels(node).slice(0, 5);
   const milestone = nodeData(node).milestone || '';
+  const assigneeList = (nodeData(node).assignees || []).slice(0, 3);
   const peopleHTML = people.length
     ? `<div class="nodePeople">${people.map((person) => `<img src="${esc(person.avatar_url || githubAvatarURL(person.login))}" alt="@${esc(person.login)}" title="@${esc(person.login)}" loading="lazy">`).join('')}</div>`
+    : '';
+  const assigneeChipsHTML = assigneeList.length
+    ? `<div class="avatarChips">${assigneeList.map((a) => {
+        const login = a.login || a;
+        const avatarURL = a.avatar_url || githubAvatarURL(login);
+        return `<span class="avatarChip" title="@${esc(login)}"><img src="${esc(avatarURL)}" alt="@${esc(login)}" loading="lazy"><span class="avatarFallback">${esc(login)}</span></span>`;
+      }).join('')}</div>`
     : '';
   const labelsHTML = labelItems.length
     ? `<div class="nodeLabels">${labelItems.map((label) => `<span>${emojiHTML(label)}</span>`).join('')}</div>`
     : '';
   const milestoneHTML = milestone ? `<div class="nodeMilestone">${emojiHTML(milestone)}</div>` : '';
-  return peopleHTML || labelsHTML || milestoneHTML ? `<div class="nodeSignals">${peopleHTML}${labelsHTML}${milestoneHTML}</div>` : '';
+  return peopleHTML || assigneeChipsHTML || labelsHTML || milestoneHTML ? `<div class="nodeSignals">${peopleHTML}${assigneeChipsHTML}${labelsHTML}${milestoneHTML}</div>` : '';
 }
 
 function nodePeople(node) {

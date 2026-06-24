@@ -1151,6 +1151,7 @@ func (s *Server) upsertGitHubIssueREST(ctx context.Context, boardID, repo string
 		"html_url":   issue.HTMLURL,
 		"api_url":    issue.URL,
 		"repository": repo,
+		"draft":      issue.Draft,
 	})
 	node := core.Node{
 		ID:        id,
@@ -1363,6 +1364,7 @@ type githubIssueREST struct {
 		Title string `json:"title"`
 	} `json:"milestone"`
 	PullRequest githubPullRequestRef `json:"pull_request"`
+	Draft       bool                 `json:"draft"`
 }
 
 type githubPullRequestRef struct {
