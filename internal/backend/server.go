@@ -1376,11 +1376,15 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var in struct {
-		BoardID string `json:"board_id"`
-		NodeID  string `json:"node_id"`
-		Repo    string `json:"repo"`
-		Title   string `json:"title"`
-		Body    string `json:"body"`
+		BoardID      string   `json:"board_id"`
+		NodeID       string   `json:"node_id"`
+		Repo         string   `json:"repo"`
+		Title        string   `json:"title"`
+		Body         string   `json:"body"`
+		Labels       []string `json:"labels"`
+		Assignees    []string `json:"assignees"`
+		Milestone    int      `json:"milestone"`
+		ArchiveLocal bool     `json:"archive_local"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -1400,7 +1404,17 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no github token available; sign in first"})
 		return
 	}
-	payload, _ := json.Marshal(map[string]string{"title": in.Title, "body": in.Body})
+	issueBody := map[string]any{"title": in.Title, "body": in.Body}
+	if len(in.Labels) > 0 {
+		issueBody["labels"] = in.Labels
+	}
+	if len(in.Assignees) > 0 {
+		issueBody["assignees"] = in.Assignees
+	}
+	if in.Milestone > 0 {
+		issueBody["milestone"] = in.Milestone
+	}
+	payload, _ := json.Marshal(issueBody)
 	apiURL := "https://api.github.com/repos/" + parts[0] + "/" + parts[1] + "/issues"
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, apiURL, bytes.NewReader(payload))
 	if err != nil {
@@ -1438,6 +1452,9 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 	}
 	if strings.TrimSpace(in.NodeID) != "" {
 		_, _ = s.store.AddEdge(r.Context(), boardID, strings.TrimSpace(in.NodeID), node.ID, "addresses", "user", map[string]any{"source": "github-create-issue"})
+	}
+	if in.ArchiveLocal && strings.TrimSpace(in.NodeID) != "" {
+		_ = s.store.ArchiveNode(r.Context(), strings.TrimSpace(in.NodeID))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"url": issueURL, "number": issueNumber, "node": node})
 }

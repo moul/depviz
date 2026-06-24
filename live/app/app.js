@@ -3479,6 +3479,9 @@ function renderItemInspector(snapshot) {
           <input type="text" name="repo" placeholder="owner/repo" required>
           <input type="text" name="title" value="${esc(node.title || '')}" required>
           <textarea name="body" rows="2" placeholder="Description (optional)">${esc(data.description || '')}</textarea>
+          <input type="text" name="labels" placeholder="Labels (comma-separated, optional)">
+          <input type="text" name="assignees" placeholder="Assignees (comma-separated logins, optional)">
+          <label class="inspectorCheckbox"><input type="checkbox" name="archive_local"> Archive local node after creating issue</label>
           <button type="submit" class="primaryAction">Create issue</button>
         </form>
       </details>
@@ -3533,7 +3536,12 @@ function renderItemInspector(snapshot) {
     createGHForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const fd = new FormData(createGHForm);
-      createGitHubIssueFromNode(node.id, fd.get('repo'), fd.get('title'), fd.get('body'));
+      const labelsStr = fd.get('labels') || '';
+      const assigneesStr = fd.get('assignees') || '';
+      const archiveLocal = fd.get('archive_local') === 'on';
+      const lbls = labelsStr ? labelsStr.split(',').map((l) => l.trim()).filter(Boolean) : [];
+      const asgns = assigneesStr ? assigneesStr.split(',').map((a) => a.trim()).filter(Boolean) : [];
+      createGitHubIssueFromNode(node.id, fd.get('repo'), fd.get('title'), fd.get('body'), lbls, asgns, archiveLocal);
     });
   }
 }
@@ -4787,12 +4795,12 @@ async function addBoardLinkDirect(from, kind, to) {
   }
 }
 
-async function createGitHubIssueFromNode(nodeID, repo, title, body) {
+async function createGitHubIssueFromNode(nodeID, repo, title, body, labels = [], assignees = [], archiveLocal = false) {
 	try {
 		const res = await fetch('./api/github/create-issue', {
 			method: 'POST', credentials: 'same-origin',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: nodeID, repo, title, body }),
+			body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: nodeID, repo, title, body, labels, assignees, archive_local: archiveLocal }),
 		});
 		if (!res.ok) throw new Error(await responseErrorMessage(res));
 		const data = await res.json();
