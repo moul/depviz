@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.19-dev';
+const assetVersion = 'v4.1.20-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -117,7 +117,19 @@ const state = {
   syncIndicator: 'idle',
   linkingFrom: null,
   linkingKind: 'blocked_by',
+  boardLastLoadedAt: null,
+  currentWorkspaceID: '',
+  renderTimings: {},
+  performanceMode: false,
 };
+
+function timedRender(name, fn) {
+  const t0 = performance.now();
+  fn();
+  const elapsed = performance.now() - t0;
+  if (!state.renderTimings) state.renderTimings = {};
+  state.renderTimings[name] = elapsed.toFixed(1) + 'ms';
+}
 
 function emptyExport() {
   return {
@@ -427,6 +439,7 @@ async function loadBackendBoard() {
       state.selectedNodeID = '';
       writeURLNode('');
     }
+    state.boardLastLoadedAt = new Date().toISOString();
     setSyncIndicator('done');
     dom.status.textContent = 'stateful backend graph';
   } catch (err) {
@@ -946,6 +959,11 @@ function renderDebugPanel() {
   const selectedEdge = state.selectedEdgeID ? edgeByID(state.selectedEdgeID) : null;
   const selectedNodeJSON = selectedNode ? JSON.stringify(nodeData(selectedNode), null, 2) : null;
   const selectedEdgeJSON = selectedEdge ? JSON.stringify(selectedEdge, null, 2) : null;
+  const timings = state.renderTimings || {};
+  const timingEntries = Object.entries(timings);
+  const timingHTML = timingEntries.length
+    ? `<details><summary>Render timings</summary><dl>${timingEntries.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></details>`
+    : '';
   dom.debugPanel.innerHTML = `<dl>
     <div><dt>Board name</dt><dd>${esc(board.name || state.currentBoardID)}</dd></div>
     <div><dt>Board id</dt><dd>${esc(state.currentBoardID)}</dd></div>
@@ -958,6 +976,7 @@ function renderDebugPanel() {
     <div><dt>User</dt><dd>${account.login ? `@${esc(account.login)}` : 'not signed in'}</dd></div>
     <div><dt>Mode</dt><dd>${esc(state.mode)}</dd></div>
   </dl>
+  ${timingHTML}
   ${selectedNodeJSON ? `<details><summary>Selected node data <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedNodeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedNodeJSON)}</pre></details>` : ''}
   ${selectedEdgeJSON ? `<details><summary>Selected edge <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedEdgeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedEdgeJSON)}</pre></details>` : ''}
   <div class="debugGitHubSetup">
@@ -971,7 +990,13 @@ function renderDebugPanel() {
       <div class="checkItem ${session.github_app_configured ? 'done' : ''}">GitHub App configured ${session.github_app_configured ? '✅' : '❌'}</div>
       <div class="checkItem ${session.github_webhook_configured ? 'done' : ''}">Webhook receiving ${session.github_webhook_configured ? '✅' : '❌'}</div>
     </div>
-  </div>`;
+  </div>
+  <label><input type="checkbox" id="perfModeToggle"> Performance mode</label>`;
+  const perfToggle = document.getElementById('perfModeToggle');
+  if (perfToggle) {
+    perfToggle.checked = !!state.performanceMode;
+    perfToggle.onchange = () => { state.performanceMode = perfToggle.checked; };
+  }
 }
 
 function renderSyncPanel() {
@@ -1008,6 +1033,22 @@ function renderSyncPanel() {
   </div>`;
   document.getElementById('syncFromPanelBtn')?.addEventListener('click', syncCurrentBoard);
   loadSyncLogs();
+}
+
+async function loadWorkspaces() {
+  if (!state.backendSession.authenticated) return;
+  try {
+    const res = await fetch('./api/workspaces', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const workspaces = Array.isArray(data.workspaces) ? data.workspaces : [];
+    const el = document.getElementById('workspaceSwitcher');
+    if (!el) return;
+    el.innerHTML = '<option value="">All workspaces</option>' +
+      workspaces.map((ws) => `<option value="${esc(ws.id)}">${esc(ws.name)}</option>`).join('');
+    el.value = state.currentWorkspaceID || '';
+    el.onchange = () => { state.currentWorkspaceID = el.value; render(); };
+  } catch (_) {}
 }
 
 async function loadSyncLogs() {
@@ -2379,6 +2420,9 @@ function render() {
     renderStatefulSignedOut();
     return;
   }
+  if (state.performanceMode) {
+    dom.status.textContent = 'Performance mode active';
+  }
   const { snapshot, brief } = state.data;
   const nodes = visibleNodes(snapshot.nodes);
   const graphSelection = graphVisibleNodeSelection(snapshot, nodes);
@@ -2398,10 +2442,10 @@ function render() {
   dom.graph.classList.toggle('hidden', state.view !== 'graph');
   dom.table.classList.toggle('hidden', state.view !== 'table');
   if (dom.kanban) dom.kanban.classList.toggle('hidden', state.view !== 'kanban');
-  if (state.view === 'brief') renderBrief(brief);
-  if (state.view === 'graph') renderGraph(snapshot, graphSelection.nodes, graphSelection.hidden);
-  if (state.view === 'table') renderTable(nodes);
-  if (state.view === 'kanban') renderKanbanView();
+  if (state.view === 'brief') timedRender('brief', () => renderBrief(brief));
+  if (state.view === 'graph') timedRender('graph', () => renderGraph(snapshot, graphSelection.nodes, graphSelection.hidden));
+  if (state.view === 'table') timedRender('table', () => renderTable(nodes));
+  if (state.view === 'kanban') timedRender('kanban', renderKanbanView);
 }
 
 function renderStatefulSignedOut() {
@@ -4522,14 +4566,22 @@ function nodeSignalsHTML(node) {
   const people = nodePeople(node).slice(0, 5);
   const labelItems = labels(node).slice(0, 5);
   const milestone = nodeData(node).milestone || '';
+  const assigneeList = (nodeData(node).assignees || []).slice(0, 3);
   const peopleHTML = people.length
     ? `<div class="nodePeople">${people.map((person) => `<img src="${esc(person.avatar_url || githubAvatarURL(person.login))}" alt="@${esc(person.login)}" title="@${esc(person.login)}" loading="lazy">`).join('')}</div>`
+    : '';
+  const assigneeChipsHTML = assigneeList.length
+    ? `<div class="avatarChips">${assigneeList.map((a) => {
+        const login = a.login || a;
+        const avatarURL = a.avatar_url || githubAvatarURL(login);
+        return `<span class="avatarChip" title="@${esc(login)}"><img src="${esc(avatarURL)}" alt="@${esc(login)}" loading="lazy"><span class="avatarFallback">${esc(login)}</span></span>`;
+      }).join('')}</div>`
     : '';
   const labelsHTML = labelItems.length
     ? `<div class="nodeLabels">${labelItems.map((label) => `<span>${emojiHTML(label)}</span>`).join('')}</div>`
     : '';
   const milestoneHTML = milestone ? `<div class="nodeMilestone">${emojiHTML(milestone)}</div>` : '';
-  return peopleHTML || labelsHTML || milestoneHTML ? `<div class="nodeSignals">${peopleHTML}${labelsHTML}${milestoneHTML}</div>` : '';
+  return peopleHTML || assigneeChipsHTML || labelsHTML || milestoneHTML ? `<div class="nodeSignals">${peopleHTML}${assigneeChipsHTML}${labelsHTML}${milestoneHTML}</div>` : '';
 }
 
 function nodePeople(node) {
@@ -4962,9 +5014,10 @@ async function loadSavedViews() {
       let cfg = {};
       try { cfg = JSON.parse(v.config_json || '{}'); } catch (_) {}
       const desc = [cfg.driver, cfg.view, cfg.filter_text].filter(Boolean).join(' · ');
+      const visibilityBadge = v.visibility === 'shared' ? '<span class="savedViewBadge shared">Shared</span>' : '<span class="savedViewBadge personal">Personal</span>';
       return `<div class="savedViewItem">
         <div>
-          <strong>${esc(v.name)}</strong>
+          <strong>${esc(v.name)}</strong>${visibilityBadge}
           ${desc ? `<span class="savedViewDesc">${esc(desc)}</span>` : ''}
         </div>
         <div class="savedViewActions">
@@ -5093,6 +5146,7 @@ async function submitGitHubComment(repo, issueNumber, body) {
       const el = document.getElementById('inspectorCommentBody');
       if (el) el.value = '';
     }
+    await loadBackendBoard();
   } catch (err) {
     dom.error.textContent = err.message;
     dom.status.textContent = 'comment failed';
@@ -5275,7 +5329,7 @@ async function applySourcePatch() {
     const res = await fetch('./api/board-source/apply', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ board_id: boardID, dry_run: true, ...patch }),
+      body: JSON.stringify({ board_id: boardID, dry_run: true, base_updated_at: state.boardLastLoadedAt || '', ...patch }),
     });
     if (!res.ok) throw new Error(await responseErrorMessage(res));
     renderSourcePatchModal(patch, async () => {
@@ -5283,7 +5337,7 @@ async function applySourcePatch() {
         const res2 = await fetch('./api/board-source/apply', {
           method: 'POST', credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ board_id: boardID, dry_run: false, ...patch }),
+          body: JSON.stringify({ board_id: boardID, dry_run: false, base_updated_at: state.boardLastLoadedAt || '', ...patch }),
         });
         if (!res2.ok) throw new Error(await responseErrorMessage(res2));
         state.sourceDirty = false;

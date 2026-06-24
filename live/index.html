@@ -7,7 +7,7 @@
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="icon" href="./favicon.png" type="image/png" sizes="64x64">
   <link rel="apple-touch-icon" href="./logo-512.png">
-  <link rel="stylesheet" href="./style.css?v=v4.1.19-dev">
+  <link rel="stylesheet" href="./style.css?v=v4.1.20-dev">
 </head>
 <body>
   <header class="topbar">
@@ -106,6 +106,7 @@
             <h3>Workspace</h3>
             <p id="workspaceSummary">Pick or create a view.</p>
           </div>
+          <select id="workspaceSwitcher" aria-label="Workspace" class="statefulOnly"></select>
           <button id="syncBoardBtn" type="button">Sync</button>
         </div>
 
@@ -324,6 +325,6 @@
   </main>
 
   <div id="linkModeIndicator" class="linkModeIndicator" aria-live="polite"></div>
-  <script src="./app.js?v=v4.1.19-dev"></script>
+  <script src="./app.js?v=v4.1.20-dev"></script>
 </body>
 </html>
