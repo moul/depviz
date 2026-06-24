@@ -1494,6 +1494,13 @@ func (s *Store) GetSyncLogs(ctx context.Context, boardID string, limit int) ([]S
 	return out, rows.Err()
 }
 
+// CancelSyncLog marks a queued or running sync log entry as cancelled.
+func (s *Store) CancelSyncLog(ctx context.Context, id string) error {
+	now := formatTime(nowUTC())
+	_, err := s.db.ExecContext(ctx, `UPDATE sync_logs SET status = 'cancelled', completed_at = ? WHERE id = ? AND status IN ('queued', 'running')`, now, id)
+	return err
+}
+
 func (s *Store) DismissSuggestion(ctx context.Context, accountID, boardID, edgeID string) error {
 	now := formatTime(nowUTC())
 	_, err := s.db.ExecContext(ctx, `INSERT INTO dismissed_suggestions(account_id, board_id, edge_id, dismissed_at)

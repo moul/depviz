@@ -1959,27 +1959,39 @@ func (s *Server) handleBoardViews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleBoardSyncLogs(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
-		return
-	}
 	if _, ok := s.requireAccount(w, r); !ok {
 		return
 	}
-	boardID := r.URL.Query().Get("board_id")
-	if boardID == "" {
-		boardID = core.DefaultBoardID
+	switch r.Method {
+	case http.MethodGet:
+		boardID := r.URL.Query().Get("board_id")
+		if boardID == "" {
+			boardID = core.DefaultBoardID
+		}
+		logs, err := s.store.GetSyncLogs(r.Context(), boardID, 20)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		if logs == nil {
+			logs = []core.SyncLog{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"logs": logs})
+	case http.MethodDelete:
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})
+			return
+		}
+		if err := s.store.CancelSyncLog(r.Context(), id); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	default:
+		w.Header().Set("Allow", "GET, DELETE")
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 	}
-	logs, err := s.store.GetSyncLogs(r.Context(), boardID, 20)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
-	}
-	if logs == nil {
-		logs = []core.SyncLog{}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"logs": logs})
 }
 
 func (s *Server) handleDismissSuggestion(w http.ResponseWriter, r *http.Request) {
