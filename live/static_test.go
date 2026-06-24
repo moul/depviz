@@ -279,6 +279,60 @@ func TestLiveAssetsExposeStatefulMode(t *testing.T) {
 	}
 }
 
+func TestLiveAssetsExposeUXBacklog709Features(t *testing.T) {
+	fsys := AppFS()
+	index, err := fs.ReadFile(fsys, "index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	style, err := fs.ReadFile(fsys, "style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"command palette mount", string(index), `id="commandPalette"`},
+		{"palette input", string(index), `id="paletteInput"`},
+		{"board filter input", string(index), `id="boardFilterInput"`},
+		{"sync indicator", string(index), `id="syncIndicator"`},
+		{"auth gate panel", string(index), `id="authGatePanel"`},
+		{"onboarding panel", string(index), `id="onboardingPanel"`},
+		{"link mode indicator", string(index), `id="linkModeIndicator"`},
+		{"command palette style", string(style), `.commandPalette`},
+		{"auth gate style", string(style), `.authGate`},
+		{"onboarding checklist style", string(style), `.onboardingChecklist`},
+		{"sync indicator style", string(style), `.syncIndicator`},
+		{"open palette func", string(app), `function openPalette()`},
+		{"close palette func", string(app), `function closePalette()`},
+		{"render palette func", string(app), `function renderPalette()`},
+		{"palette commands func", string(app), `function paletteCommands()`},
+		{"auth gate render", string(app), `function renderAuthGate()`},
+		{"onboarding render", string(app), `function renderOnboardingChecklist()`},
+		{"sync indicator func", string(app), `function setSyncIndicator(`},
+		{"source dirty indicator", string(app), `function renderSourceDirtyIndicator()`},
+		{"github issue create", string(app), `function createGitHubIssueFromNode(`},
+		{"read attribute func", string(app), `function readAttribute(`},
+		{"resolve node by ref", string(app), `function resolveNodeByRef(`},
+		{"add board link direct", string(app), `function addBoardLinkDirect(`},
+		{"write url node", string(app), `function writeURLNode(`},
+		{"compute source diff", string(app), `function computeSourceDiff(`},
+		{"graph driver hint", string(style), `.graphDriverHint`},
+		{"inspector link group", string(style), `.inspectorLinkGroup`},
+		{"link target style", string(style), `.linkTarget`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
+
 func TestLiveAssetsExposeGitHubDiagnostics(t *testing.T) {
 	fsys := AppFS()
 	app, err := fs.ReadFile(fsys, "app.js")
