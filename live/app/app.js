@@ -1548,6 +1548,8 @@ function parseFlowLocalNode(ctx, line, lineNo) {
     source: kind === 'note' ? 'local' : 'flow',
     external_id: id,
     labels: readLabels(tail),
+    time_horizon: readAttribute(tail, 'horizon'),
+    priority: readAttribute(tail, 'priority'),
   });
 }
 
@@ -1737,6 +1739,12 @@ function readLabels(text) {
 
 function readOwner(text) {
   const match = /(?:^|\s)\+([A-Za-z0-9_.-]+)/.exec(text);
+  return match ? match[1] : '';
+}
+
+function readAttribute(text, key) {
+  const re = new RegExp(`\\b${key}:([A-Za-z0-9_.-]+)`, 'i');
+  const match = re.exec(text);
   return match ? match[1] : '';
 }
 
