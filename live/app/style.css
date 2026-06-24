@@ -2618,3 +2618,15 @@ button.dangerAction:hover {
 
 /* --- UX backlog 709: graph driver hint --- */
 .graphDriverHint { font-size: 11px; color: var(--muted); padding: 2px 6px 4px; }
+
+/* --- UX backlog 709: inspector layout --- */
+.inspectorTitle { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.inspectorRef { font-size: 11px; color: var(--muted); font-family: monospace; }
+.inspectorMeta2 { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; align-items: center; }
+.inspectorRepo { font-size: 11px; color: var(--muted); background: #f3f4f6; padding: 1px 5px; border-radius: 4px; }
+.inspectorOwner { font-size: 11px; color: var(--muted); }
+.inspectorLinks { display: flex; flex-direction: column; gap: 8px; }
+.inspectorLinkGroup { display: flex; flex-direction: column; gap: 3px; }
+.linkGroupLabel { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.inspectorPrimaryActions { display: flex; gap: 6px; }
+.inspectorDangerActions { display: flex; gap: 6px; margin-top: 4px; }

@@ -3196,11 +3196,15 @@ function renderItemInspector(snapshot) {
   const deleteLabel = local ? 'Archive' : 'Remove';
   const deleteAction = local ? 'archive-node' : 'delete-node';
   const actionsSection = `<div class="inspectorActions">
-    ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
-    <button type="button" data-item-action="link-from">Link from</button>
-    <button type="button" data-item-action="link-to">Link to</button>
-    ${duplicateBtn}
-    <button type="button" class="dangerAction" data-item-action="${deleteAction}">${esc(deleteLabel)}</button>
+    <div class="inspectorPrimaryActions">
+      ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
+      <button type="button" data-item-action="link-from">Link from</button>
+      <button type="button" data-item-action="link-to">Link to</button>
+      ${duplicateBtn}
+    </div>
+    <div class="inspectorDangerActions">
+      <button type="button" class="dangerAction" data-item-action="${deleteAction}">${esc(deleteLabel)}</button>
+    </div>
   </div>`;
   dom.itemInspector.innerHTML = `<section class="inspectorBox">
     ${headSection}
@@ -3209,10 +3213,10 @@ function renderItemInspector(snapshot) {
     ${descriptionSection}
     ${editFormSection}
     ${actionsSection}
-    <div class="inspectorSection">
-      <h3>Links</h3>
-      ${renderInspectorLinks('Out', outgoing)}
-      ${renderInspectorLinks('In', incoming)}
+    <div class="inspectorSection inspectorLinks">
+      ${outgoing.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocks / Out</div>${renderInspectorLinks('Out', outgoing)}</div>` : ''}
+      ${incoming.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocked by / In</div>${renderInspectorLinks('In', incoming)}</div>` : ''}
+      ${(!outgoing.length && !incoming.length) ? '<div class="emptyState">No links</div>' : ''}
     </div>
     <details class="inspectorRaw">
       <summary>Raw data</summary>
