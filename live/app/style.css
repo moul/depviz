@@ -2630,3 +2630,12 @@ button.dangerAction:hover {
 .linkGroupLabel { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .inspectorPrimaryActions { display: flex; gap: 6px; }
 .inspectorDangerActions { display: flex; gap: 6px; margin-top: 4px; }
+
+/* --- UX backlog 709: sync indicator --- */
+.syncIndicator { font-size: 11px; padding: 0 4px; }
+.syncIdle { color: var(--muted); }
+.syncSyncing { color: #f59e0b; animation: blink 0.8s infinite; }
+.syncDone { color: var(--green, #16a34a); }
+.syncFailed { color: var(--red); }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.boardSyncError { display: block; font-size: 11px; color: var(--red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

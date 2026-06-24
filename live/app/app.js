@@ -110,6 +110,7 @@ const state = {
   paletteOpen: false,
   paletteQuery: '',
   paletteSelected: 0,
+  syncIndicator: 'idle',
 };
 
 function emptyExport() {
@@ -376,6 +377,7 @@ async function loadBackendBoard() {
     render();
     return;
   }
+  setSyncIndicator('syncing');
   dom.status.textContent = 'loading stateful graph';
   dom.error.textContent = '';
   state.githubRefresh = [];
@@ -386,8 +388,10 @@ async function loadBackendBoard() {
     const res = await fetch(`./api/export?board=${board}`, { credentials: 'same-origin' });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     state.data = normalizeExport(await res.json());
+    setSyncIndicator('done');
     dom.status.textContent = 'stateful backend graph';
   } catch (err) {
+    setSyncIndicator('failed');
     state.data = emptyExport();
     dom.error.textContent = err.message;
     dom.status.textContent = 'stateful load failed';
@@ -668,6 +672,7 @@ async function syncBoard(boardID, options = {}) {
     dom.status.textContent = 'syncing github view';
     dom.syncBoard.disabled = true;
   }
+  setSyncIndicator('syncing');
   try {
     const res = await fetch('./api/board-sync', {
       method: 'POST',
@@ -682,8 +687,10 @@ async function syncBoard(boardID, options = {}) {
       await refreshBoards();
       dom.status.textContent = `synced ${state.lastSync.items || 0} GitHub items`;
     }
+    setSyncIndicator('done');
     return state.lastSync;
   } catch (err) {
+    setSyncIndicator('failed');
     if (!options.quiet) {
       dom.status.textContent = 'github sync failed';
       dom.error.textContent = err.message;
@@ -741,6 +748,7 @@ function renderBoardListButton(board) {
       const draft = isDraftBoard(board);
       const scope = board.scope_query || 'local view';
       const description = board.description || scope;
+      const syncError = draft ? '' : (metrics.sync_error ? `<span class="boardSyncError" title="${esc(metrics.sync_error)}">${esc(metrics.sync_error.slice(0, 60))}</span>` : '');
       return `<button class="${[active ? 'active' : '', draft ? 'draftBoard' : ''].filter(Boolean).join(' ')}" type="button" data-board-id="${esc(board.id)}">
         <span class="boardListTitle">
           <strong>${esc(board.name || board.id)}</strong>
@@ -753,6 +761,7 @@ function renderBoardListButton(board) {
           <span><strong>${esc(metrics.links || 0)}</strong> links</span>
           <span><strong>${esc(metrics.open || 0)}</strong> open</span>
         </span>
+        ${syncError}
       </button>`;
 }
 
@@ -4451,6 +4460,16 @@ async function loadArchivedNodes() {
       });
     });
   } catch (_) {}
+}
+
+function setSyncIndicator(status) {
+  state.syncIndicator = status;
+  const el = document.getElementById('syncIndicator');
+  if (!el) return;
+  el.className = `syncIndicator sync${capitalize(status)}`;
+  if (status === 'done' || status === 'failed') {
+    setTimeout(() => setSyncIndicator('idle'), 3000);
+  }
 }
 
 function paletteCommands() {
