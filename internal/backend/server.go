@@ -60,6 +60,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/github/projects", s.handleGitHubProjects)
 	mux.HandleFunc("/api/github/repos", s.handleGitHubRepos)
 	mux.HandleFunc("/api/github/webhook", s.handleGitHubWebhook)
+	mux.HandleFunc("/api/github/create-issue", s.handleCreateGitHubIssue)
 	mux.HandleFunc("/api/overrides", s.handleOverrides)
 	mux.HandleFunc("/api/auth/github/start", s.handleGitHubStart)
 	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
@@ -1361,6 +1362,69 @@ type githubProjectsGraphQL struct {
 			} `json:"nodes"`
 		} `json:"organizations"`
 	} `json:"viewer"`
+}
+
+func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	var in struct {
+		NodeID string `json:"node_id"`
+		Repo   string `json:"repo"`
+		Title  string `json:"title"`
+		Body   string `json:"body"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	if in.Repo == "" || in.Title == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "repo and title are required"})
+		return
+	}
+	parts := strings.SplitN(in.Repo, "/", 2)
+	if len(parts) != 2 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "repo must be owner/repo"})
+		return
+	}
+	token, _, err := s.githubTokenForBoardSync(r.Context(), account.ID, core.Board{})
+	if err != nil || token == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no github token available; sign in first"})
+		return
+	}
+	payload, _ := json.Marshal(map[string]string{"title": in.Title, "body": in.Body})
+	apiURL := "https://api.github.com/repos/" + parts[0] + "/" + parts[1] + "/issues"
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, apiURL, bytes.NewReader(payload))
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+	var ghResult map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&ghResult)
+	if resp.StatusCode >= 300 {
+		errMsg, _ := ghResult["message"].(string)
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: " + errMsg})
+		return
+	}
+	issueURL, _ := ghResult["html_url"].(string)
+	issueNumber := ghResult["number"]
+	writeJSON(w, http.StatusOK, map[string]any{"url": issueURL, "number": issueNumber})
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

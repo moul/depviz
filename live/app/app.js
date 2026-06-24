@@ -3227,6 +3227,18 @@ function renderItemInspector(snapshot) {
   const duplicateBtn = local ? `<button type="button" data-item-action="duplicate">Duplicate</button>` : '';
   const deleteLabel = local ? 'Archive' : 'Remove';
   const deleteAction = local ? 'archive-node' : 'delete-node';
+  const createGHIssueSection = local && state.backendSession.authenticated ? `
+    <div class="inspectorGitHubCreate">
+      <details>
+        <summary>Create GitHub Issue</summary>
+        <form class="inlineForm" id="createGHIssueForm">
+          <input type="text" name="repo" placeholder="owner/repo" required>
+          <input type="text" name="title" value="${esc(node.title || '')}" required>
+          <textarea name="body" rows="2" placeholder="Description (optional)">${esc(data.description || '')}</textarea>
+          <button type="submit" class="primaryAction">Create issue</button>
+        </form>
+      </details>
+    </div>` : '';
   const actionsSection = `<div class="inspectorActions">
     <div class="inspectorPrimaryActions">
       ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
@@ -3245,6 +3257,7 @@ function renderItemInspector(snapshot) {
     ${descriptionSection}
     ${editFormSection}
     ${actionsSection}
+    ${createGHIssueSection}
     <div class="inspectorSection inspectorLinks">
       ${outgoing.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocks / Out</div>${renderInspectorLinks('Out', outgoing)}</div>` : ''}
       ${incoming.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocked by / In</div>${renderInspectorLinks('In', incoming)}</div>` : ''}
@@ -3259,6 +3272,14 @@ function renderItemInspector(snapshot) {
   const editForm = document.getElementById('inspectorEditForm');
   if (editForm) {
     editForm.addEventListener('submit', (e) => { e.preventDefault(); saveNodeEdit(); });
+  }
+  const createGHForm = document.getElementById('createGHIssueForm');
+  if (createGHForm) {
+    createGHForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const fd = new FormData(createGHForm);
+      createGitHubIssueFromNode(node.id, fd.get('repo'), fd.get('title'), fd.get('body'));
+    });
   }
 }
 
@@ -4460,6 +4481,22 @@ async function loadArchivedNodes() {
       });
     });
   } catch (_) {}
+}
+
+async function createGitHubIssueFromNode(nodeID, repo, title, body) {
+  try {
+    const res = await fetch('./api/github/create-issue', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ node_id: nodeID, repo, title, body }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    const data = await res.json();
+    dom.status.textContent = `GitHub issue #${data.number} created`;
+    if (data.url) window.open(data.url, '_blank', 'noreferrer');
+  } catch (err) {
+    dom.error.textContent = err.message;
+  }
 }
 
 function setSyncIndicator(status) {
