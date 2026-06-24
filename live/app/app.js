@@ -5112,6 +5112,7 @@ async function submitGitHubComment(repo, issueNumber, body) {
       const el = document.getElementById('inspectorCommentBody');
       if (el) el.value = '';
     }
+    await loadBackendBoard();
   } catch (err) {
     dom.error.textContent = err.message;
     dom.status.textContent = 'comment failed';
