@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -128,5 +129,77 @@ func TestIngestEventPreservesEdgeConfidence(t *testing.T) {
 	}
 	if snap.Edges[0].Authority != "github-inferred" {
 		t.Fatalf("authority = %q, want github-inferred", snap.Edges[0].Authority)
+	}
+}
+
+func TestUpdateNodeFieldsCanClearOptionalFields(t *testing.T) {
+	ctx := context.Background()
+	s, err := OpenStore(ctx, t.TempDir()+"/state.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	labels := []string{"strategy", "urgent"}
+	node, err := s.CreateStrategyNode(ctx, DefaultBoardID, "strategy", "Shape DepViz cockpit", "active", "moul", "Original description", "now", "high", labels)
+	if err != nil {
+		t.Fatal(err)
+	}
+	empty := ""
+	title := "Shape DepViz cockpit"
+	status := "active"
+	emptyLabels := []string{}
+	updated, err := s.UpdateNodeFields(ctx, node.ID, NodeFieldUpdate{
+		Title:       &title,
+		Status:      &status,
+		Owner:       &empty,
+		Description: &empty,
+		TimeHorizon: &empty,
+		Priority:    &empty,
+		Labels:      &emptyLabels,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Owner != "" {
+		t.Fatalf("owner = %q, want empty", updated.Owner)
+	}
+	var data map[string]any
+	if err := json.Unmarshal([]byte(updated.DataJSON), &data); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"owner", "description", "time_horizon", "priority", "labels"} {
+		if _, ok := data[key]; ok {
+			t.Fatalf("data[%q] still present after clear: %+v", key, data)
+		}
+	}
+}
+
+func TestBoardMetricsIgnoreArchivedNodes(t *testing.T) {
+	ctx := context.Background()
+	s, err := OpenStore(ctx, t.TempDir()+"/state.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	node, err := s.CreateStrategyNode(ctx, DefaultBoardID, "task", "Temporary plan", "active", "", "", "", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := s.BoardMetrics(ctx, DefaultBoardID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.Items != 1 || before.Open != 1 {
+		t.Fatalf("before metrics = %+v, want one open item", before)
+	}
+	if err := s.ArchiveNode(ctx, node.ID); err != nil {
+		t.Fatal(err)
+	}
+	after, err := s.BoardMetrics(ctx, DefaultBoardID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Items != 0 || after.Open != 0 || after.Closed != 0 {
+		t.Fatalf("after metrics = %+v, want no visible items", after)
 	}
 }

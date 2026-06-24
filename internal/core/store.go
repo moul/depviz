@@ -25,6 +25,16 @@ type Store struct {
 	path string
 }
 
+type NodeFieldUpdate struct {
+	Title       *string
+	Status      *string
+	Owner       *string
+	Description *string
+	TimeHorizon *string
+	Priority    *string
+	Labels      *[]string
+}
+
 func OpenStore(ctx context.Context, path string) (*Store, error) {
 	if path == "" {
 		path = DefaultDBPath
@@ -235,6 +245,8 @@ func (s *Store) Migrate(ctx context.Context) error {
 			return err
 		}
 	}
+	// Additive migrations (ALTER TABLE — idempotent via ignored errors)
+	_, _ = s.db.ExecContext(ctx, `ALTER TABLE nodes ADD COLUMN archived_at TEXT`)
 	return nil
 }
 
@@ -353,7 +365,7 @@ func (s *Store) CreateNote(ctx context.Context, boardID, text string) (Node, err
 	if err != nil {
 		return Node{}, err
 	}
-	payload, _ := json.Marshal(map[string]any{"source": "local", "text": text})
+	payload, _ := json.Marshal(map[string]any{"source": "local", "text": text, "created_at": formatTime(nowUTC())})
 	n := Node{
 		ID:        id,
 		Kind:      "note",
@@ -559,15 +571,15 @@ func (s *Store) BoardMetrics(ctx context.Context, boardID string) (BoardMetrics,
 	var latestNode string
 	err := s.db.QueryRowContext(ctx, `SELECT
 			COUNT(DISTINCT n.id),
-			COUNT(DISTINCT CASE WHEN lower(n.state) NOT IN ('closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved') THEN n.id END),
-			COUNT(DISTINCT CASE WHEN lower(n.state) IN ('closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved') THEN n.id END),
+			COUNT(DISTINCT CASE WHEN lower(n.state) NOT IN ('closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved', 'rejected') THEN n.id END),
+			COUNT(DISTINCT CASE WHEN lower(n.state) IN ('closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved', 'rejected') THEN n.id END),
 			COUNT(DISTINCT CASE WHEN n.kind = 'note' OR n.id LIKE 'note:%' OR bi.local_state != '' THEN n.id END),
 			COUNT(DISTINCT CASE WHEN COALESCE(sr.source_id, '') != '' AND sr.source_id != ? THEN n.id END),
 			COALESCE(MAX(n.updated_at), '')
 		FROM board_items bi
 		JOIN nodes n ON n.id = bi.node_id
 		LEFT JOIN source_refs sr ON sr.node_id = n.id
-		WHERE bi.board_id = ?`, LocalSourceID, boardID).Scan(&m.Items, &m.Open, &m.Closed, &m.Local, &m.External, &latestNode)
+		WHERE bi.board_id = ? AND (n.archived_at IS NULL OR n.archived_at = '')`, LocalSourceID, boardID).Scan(&m.Items, &m.Open, &m.Closed, &m.Local, &m.External, &latestNode)
 	if err != nil {
 		return BoardMetrics{}, err
 	}
@@ -699,7 +711,7 @@ func (s *Store) AddTaskToBoard(ctx context.Context, boardID, title string) (Node
 	if err != nil {
 		return Node{}, err
 	}
-	payload, _ := json.Marshal(map[string]any{"source": "local", "text": title})
+	payload, _ := json.Marshal(map[string]any{"source": "local", "text": title, "created_at": formatTime(nowUTC())})
 	n := Node{
 		ID:        id,
 		Kind:      "task",
@@ -721,6 +733,314 @@ func (s *Store) AddTaskToBoard(ctx context.Context, boardID, title string) (Node
 		return Node{}, err
 	}
 	return n, nil
+}
+
+// CreateStrategyNode creates a local non-GitHub planning node with an extended type.
+// kind must be one of: strategy, initiative, bet, project, workstream, risk, decision, question, metric, task, note
+// status must be one of: draft, active, blocked, at-risk, paused, done, rejected, open, closed
+func (s *Store) CreateStrategyNode(ctx context.Context, boardID, kind, title, status, owner, description, timeHorizon, priority string, labels []string) (Node, error) {
+	kind = strings.TrimSpace(strings.ToLower(kind))
+	title = strings.TrimSpace(title)
+	status = strings.TrimSpace(strings.ToLower(status))
+	owner = strings.TrimSpace(owner)
+	description = strings.TrimSpace(description)
+	if title == "" {
+		return Node{}, errors.New("title is required")
+	}
+	validKinds := map[string]bool{
+		"strategy": true, "initiative": true, "bet": true, "project": true,
+		"workstream": true, "risk": true, "decision": true, "question": true,
+		"metric": true, "task": true, "note": true,
+	}
+	if !validKinds[kind] {
+		kind = "task"
+	}
+	if status == "" {
+		if kind == "note" {
+			status = "local"
+		} else {
+			status = "draft"
+		}
+	}
+	prefix := kind + ":"
+	id, err := s.availableNodeID(ctx, prefix+slug(title))
+	if err != nil {
+		return Node{}, err
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"source":       "local",
+		"kind":         kind,
+		"text":         title,
+		"description":  description,
+		"owner":        owner,
+		"time_horizon": timeHorizon,
+		"priority":     priority,
+		"labels":       labels,
+		"created_at":   formatTime(nowUTC()),
+	})
+	n := Node{
+		ID:        id,
+		Kind:      kind,
+		Title:     title,
+		State:     status,
+		Owner:     owner,
+		DataJSON:  string(payload),
+		UpdatedAt: nowUTC(),
+	}
+	if err := s.UpsertNode(ctx, n); err != nil {
+		return Node{}, err
+	}
+	if err := s.UpsertSourceRef(ctx, n.ID, LocalSourceID, n.ID, ""); err != nil {
+		return Node{}, err
+	}
+	role := "card"
+	if kind == "note" {
+		role = "note"
+	}
+	if err := s.AddNodeToBoard(ctx, boardID, n.ID, role, "local"); err != nil {
+		return Node{}, err
+	}
+	evPayload, _ := json.Marshal(n)
+	return n, s.RecordEvent(ctx, "depviz.strategy_node.v1", n.ID, evPayload)
+}
+
+// UpdateNodeFields updates editable fields of a node.
+// Nil fields are left untouched; present empty values clear optional fields.
+func (s *Store) UpdateNodeFields(ctx context.Context, nodeID string, update NodeFieldUpdate) (Node, error) {
+	n, err := s.nodeByID(ctx, nodeID)
+	if err != nil {
+		return Node{}, fmt.Errorf("node not found: %w", err)
+	}
+	if update.Title != nil {
+		title := strings.TrimSpace(*update.Title)
+		if title == "" {
+			return Node{}, errors.New("title is required")
+		}
+		n.Title = title
+	}
+	if update.Status != nil {
+		status := strings.TrimSpace(strings.ToLower(*update.Status))
+		if status == "" {
+			return Node{}, errors.New("status is required")
+		}
+		n.State = status
+	}
+	if update.Owner != nil {
+		n.Owner = strings.TrimSpace(*update.Owner)
+	}
+	var data map[string]any
+	if n.DataJSON != "" {
+		_ = json.Unmarshal([]byte(n.DataJSON), &data)
+	}
+	if data == nil {
+		data = map[string]any{}
+	}
+	if update.Description != nil {
+		description := strings.TrimSpace(*update.Description)
+		if description == "" {
+			delete(data, "description")
+		} else {
+			data["description"] = description
+		}
+	}
+	if update.Owner != nil {
+		if n.Owner == "" {
+			delete(data, "owner")
+		} else {
+			data["owner"] = n.Owner
+		}
+	}
+	if update.TimeHorizon != nil {
+		timeHorizon := strings.TrimSpace(*update.TimeHorizon)
+		if timeHorizon == "" {
+			delete(data, "time_horizon")
+		} else {
+			data["time_horizon"] = timeHorizon
+		}
+	}
+	if update.Priority != nil {
+		priority := strings.TrimSpace(*update.Priority)
+		if priority == "" {
+			delete(data, "priority")
+		} else {
+			data["priority"] = priority
+		}
+	}
+	if update.Labels != nil {
+		cleaned := make([]string, 0, len(*update.Labels))
+		for _, label := range *update.Labels {
+			label = strings.TrimSpace(label)
+			if label != "" {
+				cleaned = append(cleaned, label)
+			}
+		}
+		if len(cleaned) == 0 {
+			delete(data, "labels")
+		} else {
+			data["labels"] = cleaned
+		}
+	}
+	n.UpdatedAt = nowUTC()
+	merged, _ := json.Marshal(data)
+	n.DataJSON = string(merged)
+	if err := s.UpsertNode(ctx, n); err != nil {
+		return Node{}, err
+	}
+	evPayload, _ := json.Marshal(n)
+	return n, s.RecordEvent(ctx, "depviz.node_update.v1", n.ID, evPayload)
+}
+
+// RemoveNodeFromBoard removes a node from a board. If the node is local-only and has no
+// other board references, it is also deleted from the nodes table.
+func (s *Store) RemoveNodeFromBoard(ctx context.Context, boardID, nodeID string) error {
+	if boardID == "" {
+		boardID = DefaultBoardID
+	}
+	_, err := s.db.ExecContext(ctx, `DELETE FROM board_items WHERE board_id = ? AND node_id = ?`, boardID, nodeID)
+	if err != nil {
+		return err
+	}
+	// Also delete edges scoped to this board that reference the node
+	_, err = s.db.ExecContext(ctx, `DELETE FROM edges WHERE scope_board_id = ? AND (from_id = ? OR to_id = ?)`, boardID, nodeID, nodeID)
+	if err != nil {
+		return err
+	}
+	// If local node and no other board references, delete from nodes too
+	isLocal := strings.HasPrefix(nodeID, "note:") || strings.HasPrefix(nodeID, "task:") ||
+		strings.HasPrefix(nodeID, "strategy:") || strings.HasPrefix(nodeID, "initiative:") ||
+		strings.HasPrefix(nodeID, "bet:") || strings.HasPrefix(nodeID, "project:") ||
+		strings.HasPrefix(nodeID, "workstream:") || strings.HasPrefix(nodeID, "risk:") ||
+		strings.HasPrefix(nodeID, "decision:") || strings.HasPrefix(nodeID, "question:") ||
+		strings.HasPrefix(nodeID, "metric:")
+	if isLocal {
+		var count int
+		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM board_items WHERE node_id = ?`, nodeID).Scan(&count); err == nil && count == 0 {
+			_, _ = s.db.ExecContext(ctx, `DELETE FROM source_refs WHERE node_id = ?`, nodeID)
+			_, _ = s.db.ExecContext(ctx, `DELETE FROM nodes WHERE id = ?`, nodeID)
+		}
+	}
+	payload, _ := json.Marshal(map[string]any{"board_id": boardID, "node_id": nodeID})
+	return s.RecordEvent(ctx, "depviz.node_remove.v1", nodeID, payload)
+}
+
+// DeleteEdge removes an edge by ID.
+func (s *Store) DeleteEdge(ctx context.Context, edgeID string) error {
+	if edgeID == "" {
+		return errors.New("edge id is required")
+	}
+	res, err := s.db.ExecContext(ctx, `DELETE FROM edges WHERE id = ?`, edgeID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return errors.New("edge not found")
+	}
+	payload, _ := json.Marshal(map[string]any{"edge_id": edgeID})
+	return s.RecordEvent(ctx, "depviz.edge_delete.v1", edgeID, payload)
+}
+
+// DuplicateNode creates a copy of an existing node with "Copy of " prefix.
+func (s *Store) DuplicateNode(ctx context.Context, boardID, nodeID string) (Node, error) {
+	src, err := s.nodeByID(ctx, nodeID)
+	if err != nil {
+		return Node{}, fmt.Errorf("source node not found: %w", err)
+	}
+	var data map[string]any
+	_ = json.Unmarshal([]byte(src.DataJSON), &data)
+	if data == nil {
+		data = map[string]any{}
+	}
+	description, _ := data["description"].(string)
+	timeHorizon, _ := data["time_horizon"].(string)
+	priority, _ := data["priority"].(string)
+	var labelsList []string
+	if ls, ok := data["labels"].([]interface{}); ok {
+		for _, l := range ls {
+			if lStr, ok := l.(string); ok {
+				labelsList = append(labelsList, lStr)
+			}
+		}
+	}
+	return s.CreateStrategyNode(ctx, boardID, src.Kind, "Copy of "+src.Title, src.State, src.Owner, description, timeHorizon, priority, labelsList)
+}
+
+// ConvertNodeKind changes the kind of a local node.
+func (s *Store) ConvertNodeKind(ctx context.Context, nodeID, newKind string) (Node, error) {
+	n, err := s.nodeByID(ctx, nodeID)
+	if err != nil {
+		return Node{}, fmt.Errorf("node not found: %w", err)
+	}
+	validKinds := map[string]bool{
+		"strategy": true, "initiative": true, "bet": true, "project": true,
+		"workstream": true, "risk": true, "decision": true, "question": true,
+		"metric": true, "task": true, "note": true,
+	}
+	if !validKinds[newKind] {
+		return Node{}, errors.New("invalid kind")
+	}
+	n.Kind = newKind
+	n.UpdatedAt = nowUTC()
+	var data map[string]any
+	_ = json.Unmarshal([]byte(n.DataJSON), &data)
+	if data == nil {
+		data = map[string]any{}
+	}
+	data["kind"] = newKind
+	merged, _ := json.Marshal(data)
+	n.DataJSON = string(merged)
+	if err := s.UpsertNode(ctx, n); err != nil {
+		return Node{}, err
+	}
+	evPayload, _ := json.Marshal(n)
+	return n, s.RecordEvent(ctx, "depviz.node_convert.v1", n.ID, evPayload)
+}
+
+// ArchiveNode soft-archives a node by setting archived_at.
+func (s *Store) ArchiveNode(ctx context.Context, nodeID string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE nodes SET archived_at = ? WHERE id = ?`, formatTime(nowUTC()), nodeID)
+	if err != nil {
+		return err
+	}
+	payload, _ := json.Marshal(map[string]any{"node_id": nodeID})
+	return s.RecordEvent(ctx, "depviz.node_archive.v1", nodeID, payload)
+}
+
+// RestoreNode clears the archived_at field, making the node visible again.
+func (s *Store) RestoreNode(ctx context.Context, nodeID string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE nodes SET archived_at = NULL WHERE id = ?`, nodeID)
+	if err != nil {
+		return err
+	}
+	payload, _ := json.Marshal(map[string]any{"node_id": nodeID})
+	return s.RecordEvent(ctx, "depviz.node_restore.v1", nodeID, payload)
+}
+
+// ListArchivedNodes returns nodes that have been soft-archived on a board.
+func (s *Store) ListArchivedNodes(ctx context.Context, boardID string) ([]Node, error) {
+	if boardID == "" {
+		boardID = DefaultBoardID
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT n.id, n.kind, n.title, n.state, n.owner, n.data_json, n.updated_at
+		FROM board_items bi
+		JOIN nodes n ON n.id = bi.node_id
+		WHERE bi.board_id = ? AND n.archived_at IS NOT NULL AND n.archived_at != ''
+		ORDER BY n.updated_at DESC`, boardID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var nodes []Node
+	for rows.Next() {
+		var n Node
+		var updated string
+		if err := rows.Scan(&n.ID, &n.Kind, &n.Title, &n.State, &n.Owner, &n.DataJSON, &updated); err != nil {
+			return nil, err
+		}
+		n.UpdatedAt = parseTime(updated)
+		nodes = append(nodes, n)
+	}
+	return nodes, rows.Err()
 }
 
 func (s *Store) AddGitHubRefToBoard(ctx context.Context, boardID, repo, marker, number, title string) (Node, error) {
@@ -777,7 +1097,7 @@ func (s *Store) Snapshot(ctx context.Context, boardID string) (Snapshot, error) 
 		FROM board_items bi
 		JOIN nodes n ON n.id = bi.node_id
 		LEFT JOIN source_refs sr ON sr.node_id = n.id
-		WHERE bi.board_id = ?
+		WHERE bi.board_id = ? AND (n.archived_at IS NULL OR n.archived_at = '')
 		GROUP BY n.id
 		ORDER BY n.updated_at DESC, n.id`, boardID)
 	if err != nil {
