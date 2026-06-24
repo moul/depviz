@@ -278,15 +278,15 @@ func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodPatch:
 		var in struct {
-			NodeID      string   `json:"node_id"`
-			Title       string   `json:"title"`
-			Status      string   `json:"status"`
-			Owner       string   `json:"owner"`
-			Description string   `json:"description"`
-			TimeHorizon string   `json:"time_horizon"`
-			Priority    string   `json:"priority"`
-			Labels      []string `json:"labels"`
-			Kind        string   `json:"kind"`
+			NodeID      string    `json:"node_id"`
+			Title       *string   `json:"title"`
+			Status      *string   `json:"status"`
+			Owner       *string   `json:"owner"`
+			Description *string   `json:"description"`
+			TimeHorizon *string   `json:"time_horizon"`
+			Priority    *string   `json:"priority"`
+			Labels      *[]string `json:"labels"`
+			Kind        string    `json:"kind"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -306,7 +306,15 @@ func (s *Server) handleBoardItems(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusOK, map[string]any{"node": node})
 			return
 		}
-		node, err := s.store.UpdateNodeFields(r.Context(), nodeID, in.Title, in.Status, in.Owner, in.Description, in.TimeHorizon, in.Priority, in.Labels)
+		node, err := s.store.UpdateNodeFields(r.Context(), nodeID, core.NodeFieldUpdate{
+			Title:       in.Title,
+			Status:      in.Status,
+			Owner:       in.Owner,
+			Description: in.Description,
+			TimeHorizon: in.TimeHorizon,
+			Priority:    in.Priority,
+			Labels:      in.Labels,
+		})
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return

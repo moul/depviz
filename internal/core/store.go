@@ -25,6 +25,16 @@ type Store struct {
 	path string
 }
 
+type NodeFieldUpdate struct {
+	Title       *string
+	Status      *string
+	Owner       *string
+	Description *string
+	TimeHorizon *string
+	Priority    *string
+	Labels      *[]string
+}
+
 func OpenStore(ctx context.Context, path string) (*Store, error) {
 	if path == "" {
 		path = DefaultDBPath
@@ -561,15 +571,15 @@ func (s *Store) BoardMetrics(ctx context.Context, boardID string) (BoardMetrics,
 	var latestNode string
 	err := s.db.QueryRowContext(ctx, `SELECT
 			COUNT(DISTINCT n.id),
-			COUNT(DISTINCT CASE WHEN lower(n.state) NOT IN ('closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved') THEN n.id END),
-			COUNT(DISTINCT CASE WHEN lower(n.state) IN ('closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved') THEN n.id END),
+			COUNT(DISTINCT CASE WHEN lower(n.state) NOT IN ('closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved', 'rejected') THEN n.id END),
+			COUNT(DISTINCT CASE WHEN lower(n.state) IN ('closed', 'done', 'merged', 'cancelled', 'canceled', 'resolved', 'rejected') THEN n.id END),
 			COUNT(DISTINCT CASE WHEN n.kind = 'note' OR n.id LIKE 'note:%' OR bi.local_state != '' THEN n.id END),
 			COUNT(DISTINCT CASE WHEN COALESCE(sr.source_id, '') != '' AND sr.source_id != ? THEN n.id END),
 			COALESCE(MAX(n.updated_at), '')
 		FROM board_items bi
 		JOIN nodes n ON n.id = bi.node_id
 		LEFT JOIN source_refs sr ON sr.node_id = n.id
-		WHERE bi.board_id = ?`, LocalSourceID, boardID).Scan(&m.Items, &m.Open, &m.Closed, &m.Local, &m.External, &latestNode)
+		WHERE bi.board_id = ? AND (n.archived_at IS NULL OR n.archived_at = '')`, LocalSourceID, boardID).Scan(&m.Items, &m.Open, &m.Closed, &m.Local, &m.External, &latestNode)
 	if err != nil {
 		return BoardMetrics{}, err
 	}
@@ -794,23 +804,30 @@ func (s *Store) CreateStrategyNode(ctx context.Context, boardID, kind, title, st
 	return n, s.RecordEvent(ctx, "depviz.strategy_node.v1", n.ID, evPayload)
 }
 
-// UpdateNodeFields updates editable fields of a local node.
-// Only non-empty values are applied (pass "" to skip a field).
-func (s *Store) UpdateNodeFields(ctx context.Context, nodeID, title, status, owner, description, timeHorizon, priority string, labels []string) (Node, error) {
+// UpdateNodeFields updates editable fields of a node.
+// Nil fields are left untouched; present empty values clear optional fields.
+func (s *Store) UpdateNodeFields(ctx context.Context, nodeID string, update NodeFieldUpdate) (Node, error) {
 	n, err := s.nodeByID(ctx, nodeID)
 	if err != nil {
 		return Node{}, fmt.Errorf("node not found: %w", err)
 	}
-	if title != "" {
-		n.Title = strings.TrimSpace(title)
+	if update.Title != nil {
+		title := strings.TrimSpace(*update.Title)
+		if title == "" {
+			return Node{}, errors.New("title is required")
+		}
+		n.Title = title
 	}
-	if status != "" {
-		n.State = strings.TrimSpace(strings.ToLower(status))
+	if update.Status != nil {
+		status := strings.TrimSpace(strings.ToLower(*update.Status))
+		if status == "" {
+			return Node{}, errors.New("status is required")
+		}
+		n.State = status
 	}
-	if owner != "" {
-		n.Owner = strings.TrimSpace(owner)
+	if update.Owner != nil {
+		n.Owner = strings.TrimSpace(*update.Owner)
 	}
-	// Merge description into data_json
 	var data map[string]any
 	if n.DataJSON != "" {
 		_ = json.Unmarshal([]byte(n.DataJSON), &data)
@@ -818,20 +835,50 @@ func (s *Store) UpdateNodeFields(ctx context.Context, nodeID, title, status, own
 	if data == nil {
 		data = map[string]any{}
 	}
-	if description != "" {
-		data["description"] = description
+	if update.Description != nil {
+		description := strings.TrimSpace(*update.Description)
+		if description == "" {
+			delete(data, "description")
+		} else {
+			data["description"] = description
+		}
 	}
-	if owner != "" {
-		data["owner"] = n.Owner
+	if update.Owner != nil {
+		if n.Owner == "" {
+			delete(data, "owner")
+		} else {
+			data["owner"] = n.Owner
+		}
 	}
-	if timeHorizon != "" {
-		data["time_horizon"] = timeHorizon
+	if update.TimeHorizon != nil {
+		timeHorizon := strings.TrimSpace(*update.TimeHorizon)
+		if timeHorizon == "" {
+			delete(data, "time_horizon")
+		} else {
+			data["time_horizon"] = timeHorizon
+		}
 	}
-	if priority != "" {
-		data["priority"] = priority
+	if update.Priority != nil {
+		priority := strings.TrimSpace(*update.Priority)
+		if priority == "" {
+			delete(data, "priority")
+		} else {
+			data["priority"] = priority
+		}
 	}
-	if len(labels) > 0 {
-		data["labels"] = labels
+	if update.Labels != nil {
+		cleaned := make([]string, 0, len(*update.Labels))
+		for _, label := range *update.Labels {
+			label = strings.TrimSpace(label)
+			if label != "" {
+				cleaned = append(cleaned, label)
+			}
+		}
+		if len(cleaned) == 0 {
+			delete(data, "labels")
+		} else {
+			data["labels"] = cleaned
+		}
 	}
 	n.UpdatedAt = nowUTC()
 	merged, _ := json.Marshal(data)
