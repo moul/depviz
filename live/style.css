@@ -212,11 +212,21 @@ button:disabled {
 }
 
 .shell.statefulMode {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(300px, 28vw) 1fr;
 }
 
 .shell.statefulMode .inputPane {
-  display: none;
+  display: grid;
+  background: #f8fafc;
+}
+
+.shell.sourceDirty .inputPane {
+  background: #fffaf0;
+}
+
+.shell.sourceDirty .editorWrap {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
 }
 
 .shell.statefulMode .workPane {
@@ -647,9 +657,22 @@ button:disabled {
 .paneHeader,
 .boardHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.paneSubtitle {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sourceActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .boardHeader {

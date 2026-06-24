@@ -42,11 +42,17 @@
   <main id="shell" class="shell">
     <section class="inputPane" aria-label="Input">
       <div class="paneHeader">
-        <h1>Input</h1>
-        <label class="filePick">
+        <div>
+          <h1 id="sourcePaneTitle">Input</h1>
+          <p id="sourcePaneSubtitle" class="paneSubtitle">DepViz Flow, JSONL, or export JSON.</p>
+        </div>
+        <div class="sourceActions">
+          <button id="resetSourceBtn" class="statefulOnly hidden" type="button">Reset preview</button>
+          <label class="filePick">
           <input id="fileInput" type="file" accept=".json,.jsonl,application/json,text/plain">
           Open file
-        </label>
+          </label>
+        </div>
       </div>
       <div class="editorWrap" id="editorWrap">
         <pre id="syntaxLayer" class="syntaxLayer" aria-hidden="true"></pre>
