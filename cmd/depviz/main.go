@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -64,6 +65,8 @@ func run(ctx context.Context, args []string) error {
 		return runLive(ctx, args)
 	case "backup":
 		return runBackup(ctx, dbPath, args)
+	case "restore":
+		return runRestore(ctx, dbPath, args)
 	case "server":
 		return runServer(ctx, dbPath, args)
 	default:
@@ -349,6 +352,50 @@ func runBackup(ctx context.Context, dbPath string, args []string) error {
 	return nil
 }
 
+func runRestore(ctx context.Context, dbPath string, args []string) error {
+	_ = ctx
+	fs := flag.NewFlagSet("restore", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	from := fs.String("from", "", "path to backup database")
+	force := fs.Bool("force", false, "actually perform the restore")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *from == "" {
+		return errors.New("--from is required")
+	}
+	if !*force {
+		fmt.Printf("dry run: would restore %s -> %s\n", *from, dbPath)
+		fmt.Println("use --force to actually restore")
+		return nil
+	}
+	// Backup current DB first
+	ts := time.Now().UTC().Format("20060102T150405Z")
+	backupPath := dbPath + ".before-restore-" + ts
+	if _, err := os.Stat(dbPath); err == nil {
+		if err := os.Rename(dbPath, backupPath); err != nil {
+			return fmt.Errorf("could not backup current db: %w", err)
+		}
+		fmt.Printf("current db backed up to: %s\n", backupPath)
+	}
+	// Copy backup to dbPath
+	src, err := os.Open(*from)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	dst, err := os.Create(dbPath)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+	if _, err := io.Copy(dst, src); err != nil {
+		return err
+	}
+	fmt.Printf("restored %s -> %s\n", *from, dbPath)
+	return nil
+}
+
 func runServer(ctx context.Context, dbPath string, args []string) error {
 	fs := flag.NewFlagSet("server", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -400,6 +447,7 @@ Usage:
   depviz gen json --board default --out dist/depviz.json
   depviz live --addr 127.0.0.1:8686
   depviz backup [--out backups]
+  depviz restore --from <backup.db> [--force]
   depviz server --addr 127.0.0.1:8766 --base-url https://depviz.moul.io
 
 Environment:
