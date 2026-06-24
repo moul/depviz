@@ -441,13 +441,14 @@ function syncSourcePaneMode() {
 }
 
 function setStatefulSourceFromSnapshot(snapshot) {
-  if (state.mode !== 'stateful') return;
-  const source = snapshotToFlow(snapshot || emptyExport().snapshot);
-  state.sourceBase = source;
-  state.sourceDirty = false;
-  dom.input.value = source;
-  updateHighlight(source);
-  dom.lineCount.textContent = `${countLines(source)} lines`;
+	if (state.mode !== 'stateful') return;
+	const source = snapshotToFlow(snapshot || emptyExport().snapshot);
+	state.sourceBase = source;
+	state.sourceDirty = false;
+	state.sourceSnapshot = normalizeExport(buildExportFromSnapshot(snapshot || emptyExport().snapshot));
+	dom.input.value = source;
+	updateHighlight(source);
+	dom.lineCount.textContent = `${countLines(source)} lines`;
   updateSourceDirtyState();
 }
 
@@ -480,8 +481,9 @@ function updateStatefulSourcePreview() {
 }
 
 function updateSourceDirtyState() {
-  dom.shell.classList.toggle('sourceDirty', state.mode === 'stateful' && state.sourceDirty);
-  dom.shell.classList.toggle('sourcePreviewMode', state.mode === 'stateful');
+	dom.shell.classList.toggle('sourceDirty', state.mode === 'stateful' && state.sourceDirty);
+	dom.shell.classList.toggle('sourcePreviewMode', state.mode === 'stateful');
+	renderSourceDirtyIndicator();
 }
 
 async function refreshBoards() {
@@ -4785,19 +4787,21 @@ async function addBoardLinkDirect(from, kind, to) {
 }
 
 async function createGitHubIssueFromNode(nodeID, repo, title, body) {
-  try {
-    const res = await fetch('./api/github/create-issue', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ node_id: nodeID, repo, title, body }),
-    });
-    if (!res.ok) throw new Error(await responseErrorMessage(res));
-    const data = await res.json();
-    dom.status.textContent = `GitHub issue #${data.number} created`;
-    if (data.url) window.open(data.url, '_blank', 'noreferrer');
-  } catch (err) {
-    dom.error.textContent = err.message;
-  }
+	try {
+		const res = await fetch('./api/github/create-issue', {
+			method: 'POST', credentials: 'same-origin',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: nodeID, repo, title, body }),
+		});
+		if (!res.ok) throw new Error(await responseErrorMessage(res));
+		const data = await res.json();
+		dom.status.textContent = `GitHub issue #${data.number} created`;
+		await loadBackendBoard();
+		await refreshBoards();
+		if (data.url) window.open(data.url, '_blank', 'noreferrer');
+	} catch (err) {
+		dom.error.textContent = err.message;
+	}
 }
 
 function setSyncIndicator(status) {
