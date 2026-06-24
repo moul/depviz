@@ -118,6 +118,7 @@ const state = {
   linkingFrom: null,
   linkingKind: 'blocked_by',
   boardLastLoadedAt: null,
+  currentWorkspaceID: '',
 };
 
 function emptyExport() {
@@ -1010,6 +1011,22 @@ function renderSyncPanel() {
   </div>`;
   document.getElementById('syncFromPanelBtn')?.addEventListener('click', syncCurrentBoard);
   loadSyncLogs();
+}
+
+async function loadWorkspaces() {
+  if (!state.backendSession.authenticated) return;
+  try {
+    const res = await fetch('./api/workspaces', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const workspaces = Array.isArray(data.workspaces) ? data.workspaces : [];
+    const el = document.getElementById('workspaceSwitcher');
+    if (!el) return;
+    el.innerHTML = '<option value="">All workspaces</option>' +
+      workspaces.map((ws) => `<option value="${esc(ws.id)}">${esc(ws.name)}</option>`).join('');
+    el.value = state.currentWorkspaceID || '';
+    el.onchange = () => { state.currentWorkspaceID = el.value; render(); };
+  } catch (_) {}
 }
 
 async function loadSyncLogs() {

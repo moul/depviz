@@ -357,6 +357,30 @@ func (s *Store) UpsertGitHubCache(ctx context.Context, accountID, repo, refID, p
 	return err
 }
 
+func (s *Store) ListWorkspacesForAccount(ctx context.Context, accountID string) ([]Workspace, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT w.id, w.provider, w.external_id, w.kind, w.name, w.url, w.data_json, w.created_at, w.updated_at
+		FROM workspaces w
+		JOIN workspace_memberships m ON m.workspace_id = w.id
+		WHERE m.account_id = ?
+		ORDER BY w.updated_at DESC`, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var workspaces []Workspace
+	for rows.Next() {
+		var ws Workspace
+		var created, updated string
+		if err := rows.Scan(&ws.ID, &ws.Provider, &ws.ExternalID, &ws.Kind, &ws.Name, &ws.URL, &ws.DataJSON, &created, &updated); err != nil {
+			return nil, err
+		}
+		ws.CreatedAt = parseTime(created)
+		ws.UpdatedAt = parseTime(updated)
+		workspaces = append(workspaces, ws)
+	}
+	return workspaces, rows.Err()
+}
+
 func randomToken(bytes int) (string, error) {
 	buf := make([]byte, bytes)
 	if _, err := rand.Read(buf); err != nil {

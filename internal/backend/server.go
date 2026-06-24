@@ -72,6 +72,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/auth/github/start", s.handleGitHubStart)
 	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
 	mux.HandleFunc("/api/auth/logout", s.handleLogout)
+	mux.HandleFunc("/api/workspaces", s.handleWorkspaces)
 	mux.Handle("/", http.FileServer(http.FS(live.AppFS())))
 	return mux
 }
@@ -681,6 +682,27 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		Secure:   strings.HasPrefix(s.cfg.BaseURL, "https://"),
 	})
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (s *Server) handleWorkspaces(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	workspaces, err := s.store.ListWorkspacesForAccount(r.Context(), account.ID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if workspaces == nil {
+		workspaces = []core.Workspace{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"workspaces": workspaces})
 }
 
 func (s *Server) handleGitHubRepos(w http.ResponseWriter, r *http.Request) {
