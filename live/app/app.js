@@ -948,7 +948,19 @@ function renderDebugPanel() {
     <div><dt>Mode</dt><dd>${esc(state.mode)}</dd></div>
   </dl>
   ${selectedNodeJSON ? `<details><summary>Selected node data <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedNodeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedNodeJSON)}</pre></details>` : ''}
-  ${selectedEdgeJSON ? `<details><summary>Selected edge <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedEdgeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedEdgeJSON)}</pre></details>` : ''}`;
+  ${selectedEdgeJSON ? `<details><summary>Selected edge <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedEdgeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedEdgeJSON)}</pre></details>` : ''}
+  <div class="debugGitHubSetup">
+    <h4>GitHub App Setup</h4>
+    <dl>
+      <div><dt>Webhook URL <button type="button" onclick="navigator.clipboard.writeText('${esc(`${location.origin}/api/github/webhook`)}').catch(()=>{})">Copy</button></dt><dd><code>${esc(`${location.origin}/api/github/webhook`)}</code></dd></div>
+      <div><dt>OAuth callback URL <button type="button" onclick="navigator.clipboard.writeText('${esc(`${location.origin}/api/auth/github/callback`)}').catch(()=>{})">Copy</button></dt><dd><code>${esc(`${location.origin}/api/auth/github/callback`)}</code></dd></div>
+    </dl>
+    <div class="debugChecklist">
+      <div class="checkItem ${session.github_oauth_configured ? 'done' : ''}">OAuth app configured ${session.github_oauth_configured ? '✅' : '❌'}</div>
+      <div class="checkItem ${session.github_app_configured ? 'done' : ''}">GitHub App configured ${session.github_app_configured ? '✅' : '❌'}</div>
+      <div class="checkItem ${session.github_webhook_configured ? 'done' : ''}">Webhook receiving ${session.github_webhook_configured ? '✅' : '❌'}</div>
+    </div>
+  </div>`;
 }
 
 function renderSyncPanel() {
