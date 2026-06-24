@@ -115,6 +115,8 @@ const state = {
   paletteQuery: '',
   paletteSelected: 0,
   syncIndicator: 'idle',
+  activities: [],
+  activityDismissed: null,
   linkingFrom: null,
   linkingKind: 'blocked_by',
   boardLastLoadedAt: null,
@@ -320,6 +322,12 @@ function wireEvents() {
   });
   document.getElementById('commandPalette')?.addEventListener('click', (e) => {
     if (e.target.classList.contains('paletteBackdrop')) closePalette();
+  });
+  document.getElementById('activityDismiss')?.addEventListener('click', () => {
+    const activities = state.activities || [];
+    const primary = activities.find(a => a.status === 'running') || activities[0];
+    if (primary) state.activityDismissed = primary.id;
+    renderActivityFooter();
   });
   const paletteInput = document.getElementById('paletteInput');
   paletteInput?.addEventListener('input', (e) => {
@@ -780,7 +788,95 @@ function handlePresetClick(event) {
 }
 
 async function syncCurrentBoard() {
+  startActivityPolling();
   await syncBoard(state.currentBoardID || 'default');
+}
+
+let activityPollTimer = null;
+
+function startActivityPolling() {
+  if (activityPollTimer) return;
+  activityPollTimer = setInterval(pollActivities, 1200);
+}
+
+function stopActivityPolling() {
+  clearInterval(activityPollTimer);
+  activityPollTimer = null;
+}
+
+async function pollActivities() {
+  if (state.mode !== 'stateful' || !state.backendSession?.authenticated) return;
+  try {
+    const res = await fetch('./api/activities', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    state.activities = data.activities || [];
+    renderActivityFooter();
+    const anyRunning = state.activities.some(a => a.status === 'running');
+    if (!anyRunning && state.activities.length === 0) {
+      stopActivityPolling();
+    }
+  } catch (_) {}
+}
+
+function renderActivityFooter() {
+  const el = document.getElementById('activityFooter');
+  if (!el) return;
+
+  const activities = state.activities || [];
+  if (activities.length === 0) {
+    el.classList.add('hidden');
+    document.body.style.paddingBottom = '';
+    return;
+  }
+
+  const running = activities.filter(a => a.status === 'running');
+  const primary = running[0] || activities[0];
+
+  if (!primary || primary.id === state.activityDismissed) {
+    el.classList.add('hidden');
+    document.body.style.paddingBottom = '';
+    return;
+  }
+
+  el.classList.remove('hidden');
+  document.body.style.paddingBottom = '34px';
+
+  const bar = document.getElementById('activityBar');
+  if (bar) {
+    const pct = primary.total > 0 ? Math.round((primary.done / primary.total) * 100) : 0;
+    const isRunning = primary.status === 'running';
+    bar.className = `activityBar${primary.status === 'failed' ? ' failed' : primary.status === 'done' ? ' done' : ''}`;
+    bar.style.width = (isRunning && primary.total === 0) ? '100%' : pct + '%';
+    bar.style.animationPlayState = (isRunning && primary.total === 0) ? 'running' : 'paused';
+  }
+
+  const labelEl = document.getElementById('activityLabel');
+  if (labelEl) {
+    const icon = primary.status === 'running' ? '⟳ ' : primary.status === 'done' ? '✓ ' : '✕ ';
+    labelEl.textContent = icon + (primary.label || primary.kind);
+  }
+
+  const detailEl = document.getElementById('activityDetail');
+  if (detailEl) detailEl.textContent = primary.detail || '';
+
+  const countsEl = document.getElementById('activityCounts');
+  if (countsEl) {
+    if (primary.done > 0 || primary.total > 0) {
+      countsEl.textContent = primary.total > 0
+        ? `${primary.done}/${primary.total}`
+        : `${primary.done} fetched`;
+    } else {
+      countsEl.textContent = '';
+    }
+  }
+
+  const extraEl = document.getElementById('activityExtra');
+  if (extraEl && running.length > 1) {
+    extraEl.textContent = `+${running.length - 1} more`;
+  } else if (extraEl) {
+    extraEl.textContent = '';
+  }
 }
 
 async function syncBoard(boardID, options = {}) {
@@ -1234,6 +1330,9 @@ async function refreshBackendSession() {
   }
   refreshBackendAuthUI();
   document.querySelector('[data-mode="stateful"]').disabled = !state.backendSession.available;
+  if (state.backendSession.available && state.backendSession.authenticated) {
+    startActivityPolling();
+  }
 }
 
 function refreshBackendAuthUI() {
@@ -2473,6 +2572,7 @@ function render() {
   if (state.view === 'graph') timedRender('graph', () => renderGraph(snapshot, graphSelection.nodes, graphSelection.hidden));
   if (state.view === 'table') timedRender('table', () => renderTable(nodes));
   if (state.view === 'kanban') timedRender('kanban', renderKanbanView);
+  renderActivityFooter();
 }
 
 function renderStatefulSignedOut() {

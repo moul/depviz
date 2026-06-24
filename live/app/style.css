@@ -2809,3 +2809,83 @@ button.dangerAction:hover {
 .savedViewItem { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line-soft, var(--line)); }
 .savedViewDesc { display: block; font-size: 11px; color: var(--muted); }
 .savedViewActions { display: flex; gap: 4px; }
+
+/* --- activity progress footer --- */
+.activityFooter {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  background: #1e293b;
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 34px;
+  font-size: 12px;
+  box-shadow: 0 -1px 4px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease;
+}
+
+.activityFooter.hidden {
+  display: none;
+}
+
+.activityProgress {
+  width: 100px;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.activityBar {
+  height: 100%;
+  background: #6366f1;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+.activityBar:not(.done):not(.failed) {
+  animation: activityIndeterminate 1.6s ease-in-out infinite;
+  animation-play-state: paused;
+}
+
+@keyframes activityIndeterminate {
+  0%   { transform: translateX(-100%); width: 60%; }
+  50%  { transform: translateX(80%); width: 60%; }
+  100% { transform: translateX(-100%); width: 60%; }
+}
+
+.activityBar.done { background: #22c55e; }
+.activityBar.failed { background: #ef4444; }
+
+.activityText {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.activityLabel { font-weight: 600; color: #f1f5f9; flex-shrink: 0; }
+.activityDetail { color: #94a3b8; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.activityCounts { color: #6366f1; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.activityExtra { color: #64748b; flex-shrink: 0; }
+
+.activityDismiss {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.activityDismiss:hover { color: #e2e8f0; }
