@@ -85,6 +85,14 @@ func (s *Store) Backup(ctx context.Context, outPath string) error {
 }
 
 func (s *Store) Migrate(ctx context.Context) error {
+	// Create schema_migrations table first
+	if _, err := s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
+		version INTEGER PRIMARY KEY,
+		applied_at DATETIME NOT NULL,
+		description TEXT
+	)`); err != nil {
+		return err
+	}
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS sources (
 			id TEXT PRIMARY KEY,
