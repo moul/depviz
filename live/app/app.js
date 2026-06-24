@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.17-dev';
+const assetVersion = 'v4.1.18-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -107,8 +107,16 @@ const state = {
   data: emptyExport(),
   inspectorEditMode: false,
   undoStack: [],
+  boardFilter: '',
   sourceBase: '',
   sourceDirty: false,
+  sourceSnapshot: null,
+  paletteOpen: false,
+  paletteQuery: '',
+  paletteSelected: 0,
+  syncIndicator: 'idle',
+  linkingFrom: null,
+  linkingKind: 'blocked_by',
 };
 
 function emptyExport() {
@@ -137,6 +145,8 @@ async function boot() {
   setView(readURLView(), { persist: false, renderNow: false });
   state.currentBoardID = readURLBoard() || state.currentBoardID;
   readURLFilters();
+  const urlNode = readURLNode();
+  if (urlNode) state.selectedNodeID = urlNode;
   state.graphDriver = readURLDriver();
   if (dom.graphDriver) dom.graphDriver.value = state.graphDriver;
   const hashed = readHash();
@@ -197,6 +207,10 @@ function wireEvents() {
   dom.addBoardLinkForm.addEventListener('submit', addBoardLink);
   dom.syncBoard.addEventListener('click', syncCurrentBoard);
   dom.boardList.addEventListener('click', handleBoardListClick);
+  document.getElementById('boardFilterInput')?.addEventListener('input', (e) => {
+    state.boardFilter = e.target.value.toLowerCase();
+    renderManagePanel();
+  });
   dom.githubPresetList.addEventListener('click', handlePresetClick);
   dom.pasteGithubToken.addEventListener('click', pasteGitHubToken);
   dom.forgetGithubToken.addEventListener('click', forgetGitHubToken);
@@ -232,6 +246,20 @@ function wireEvents() {
   }
   document.addEventListener('keydown', handleGraphKeydown);
   document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      if (state.paletteOpen) closePalette(); else openPalette();
+      return;
+    }
+    if (e.key === 'Escape' && state.paletteOpen) {
+      closePalette();
+      return;
+    }
+    if (e.key === 'Escape' && state.linkingFrom) {
+      state.linkingFrom = null;
+      render();
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
       e.preventDefault();
       undoLastOp();
@@ -264,6 +292,27 @@ function wireEvents() {
     }
   });
   document.getElementById('bulkImportForm')?.addEventListener('submit', handleBulkImport);
+  document.getElementById('resetPreviewBtn')?.addEventListener('click', () => {
+    resetStatefulSourcePreview();
+  });
+  document.getElementById('commandPalette')?.addEventListener('click', (e) => {
+    if (e.target.classList.contains('paletteBackdrop')) closePalette();
+  });
+  const paletteInput = document.getElementById('paletteInput');
+  paletteInput?.addEventListener('input', (e) => {
+    state.paletteQuery = e.target.value;
+    state.paletteSelected = 0;
+    renderPalette();
+  });
+  paletteInput?.addEventListener('keydown', (e) => {
+    const q = (state.paletteQuery || '').toLowerCase();
+    const cmds = paletteCommands().filter((c) => !q || c.label.toLowerCase().includes(q) || (c.hint || '').toLowerCase().includes(q));
+    const visible = cmds.slice(0, 12);
+    if (e.key === 'ArrowDown') { e.preventDefault(); state.paletteSelected = Math.min(state.paletteSelected + 1, visible.length - 1); renderPalette(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); state.paletteSelected = Math.max(state.paletteSelected - 1, 0); renderPalette(); }
+    if (e.key === 'Enter') { e.preventDefault(); if (visible[state.paletteSelected]) { visible[state.paletteSelected].action(); closePalette(); } }
+    if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+  });
 }
 
 async function loadSample() {
@@ -347,9 +396,11 @@ async function loadBackendBoard() {
     dom.status.textContent = state.backendSession.github_oauth_configured ? 'sign in for stateful graph' : 'stateful backend needs oauth config';
     dom.error.textContent = '';
     state.userPanelOpen = false;
+    renderAuthGate();
     render();
     return;
   }
+  setSyncIndicator('syncing');
   dom.status.textContent = 'loading stateful graph';
   dom.error.textContent = '';
   state.githubRefresh = [];
@@ -361,8 +412,14 @@ async function loadBackendBoard() {
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     state.data = normalizeExport(await res.json());
     setStatefulSourceFromSnapshot(state.data.snapshot);
+    if (state.selectedNodeID && !nodeByID(state.selectedNodeID)) {
+      state.selectedNodeID = '';
+      writeURLNode('');
+    }
+    setSyncIndicator('done');
     dom.status.textContent = 'stateful backend graph';
   } catch (err) {
+    setSyncIndicator('failed');
     state.data = emptyExport();
     setStatefulSourceFromSnapshot(state.data.snapshot);
     dom.error.textContent = err.message;
@@ -384,13 +441,14 @@ function syncSourcePaneMode() {
 }
 
 function setStatefulSourceFromSnapshot(snapshot) {
-  if (state.mode !== 'stateful') return;
-  const source = snapshotToFlow(snapshot || emptyExport().snapshot);
-  state.sourceBase = source;
-  state.sourceDirty = false;
-  dom.input.value = source;
-  updateHighlight(source);
-  dom.lineCount.textContent = `${countLines(source)} lines`;
+	if (state.mode !== 'stateful') return;
+	const source = snapshotToFlow(snapshot || emptyExport().snapshot);
+	state.sourceBase = source;
+	state.sourceDirty = false;
+	state.sourceSnapshot = normalizeExport(buildExportFromSnapshot(snapshot || emptyExport().snapshot));
+	dom.input.value = source;
+	updateHighlight(source);
+	dom.lineCount.textContent = `${countLines(source)} lines`;
   updateSourceDirtyState();
 }
 
@@ -423,8 +481,9 @@ function updateStatefulSourcePreview() {
 }
 
 function updateSourceDirtyState() {
-  dom.shell.classList.toggle('sourceDirty', state.mode === 'stateful' && state.sourceDirty);
-  dom.shell.classList.toggle('sourcePreviewMode', state.mode === 'stateful');
+	dom.shell.classList.toggle('sourceDirty', state.mode === 'stateful' && state.sourceDirty);
+	dom.shell.classList.toggle('sourcePreviewMode', state.mode === 'stateful');
+	renderSourceDirtyIndicator();
 }
 
 async function refreshBoards() {
@@ -700,6 +759,7 @@ async function syncBoard(boardID, options = {}) {
     dom.status.textContent = 'syncing github view';
     dom.syncBoard.disabled = true;
   }
+  setSyncIndicator('syncing');
   try {
     const res = await fetch('./api/board-sync', {
       method: 'POST',
@@ -714,8 +774,10 @@ async function syncBoard(boardID, options = {}) {
       await refreshBoards();
       dom.status.textContent = `synced ${state.lastSync.items || 0} GitHub items`;
     }
+    setSyncIndicator('done');
     return state.lastSync;
   } catch (err) {
+    setSyncIndicator('failed');
     if (!options.quiet) {
       dom.status.textContent = 'github sync failed';
       dom.error.textContent = err.message;
@@ -743,8 +805,15 @@ function renderManagePanel() {
   if (!state.boards.length) {
     dom.boardList.innerHTML = '<div class="emptyState">No saved views yet</div>';
   } else {
-    const usefulBoards = state.boards.filter((board) => !isDraftBoard(board) || board.id === state.currentBoardID);
-    const draftBoards = state.boards.filter((board) => isDraftBoard(board) && board.id !== state.currentBoardID);
+    const filterQuery = state.boardFilter || '';
+    const filteredBoards = filterQuery
+      ? state.boards.filter((b) => {
+          const hay = [b.name || '', b.scope_query || '', b.description || ''].join(' ').toLowerCase();
+          return hay.includes(filterQuery);
+        })
+      : state.boards;
+    const usefulBoards = filteredBoards.filter((board) => !isDraftBoard(board) || board.id === state.currentBoardID);
+    const draftBoards = filteredBoards.filter((board) => isDraftBoard(board) && board.id !== state.currentBoardID);
     const boardButtons = usefulBoards.map(renderBoardListButton).join('');
     const draftList = draftBoards.length
       ? `<details class="draftGroup"><summary>Draft views <strong>${draftBoards.length}</strong></summary>${draftBoards.map(renderBoardListButton).join('')}</details>`
@@ -753,6 +822,7 @@ function renderManagePanel() {
   }
   if (state.githubPresets.loaded) renderGitHubPresets();
   renderDebugPanel();
+  renderAuthGate();
   renderWorkspaceSuggestions();
   if (state.mode === 'stateful' && state.backendSession.authenticated) {
     loadArchivedNodes();
@@ -765,6 +835,7 @@ function renderBoardListButton(board) {
       const draft = isDraftBoard(board);
       const scope = board.scope_query || 'local view';
       const description = board.description || scope;
+      const syncError = draft ? '' : (metrics.sync_error ? `<span class="boardSyncError" title="${esc(metrics.sync_error)}">${esc(metrics.sync_error.slice(0, 60))}</span>` : '');
       return `<button class="${[active ? 'active' : '', draft ? 'draftBoard' : ''].filter(Boolean).join(' ')}" type="button" data-board-id="${esc(board.id)}">
         <span class="boardListTitle">
           <strong>${esc(board.name || board.id)}</strong>
@@ -777,6 +848,7 @@ function renderBoardListButton(board) {
           <span><strong>${esc(metrics.links || 0)}</strong> links</span>
           <span><strong>${esc(metrics.open || 0)}</strong> open</span>
         </span>
+        ${syncError}
       </button>`;
 }
 
@@ -806,21 +878,76 @@ function renderUserPanel() {
     session.github_app_configured ? 'App auth configured' : 'OAuth mode',
     session.github_webhook_configured ? 'webhook active' : 'webhook pending',
   ].join(' - ');
+  renderOnboardingChecklist();
+}
+
+function renderOnboardingChecklist() {
+  const el = document.getElementById('onboardingPanel');
+  if (!el) return;
+  if (!state.backendSession.authenticated) { el.classList.add('hidden'); return; }
+  const hasBoards = state.boards.some((b) => !isDraftBoard(b));
+  const hasSynced = state.boards.some((b) => b.metrics && b.metrics.items > 0);
+  const hasLocalItem = (state.data.snapshot.nodes || []).some((n) => n.kind === 'task' || n.kind === 'note');
+  const hasLinks = (state.data.snapshot.edges || []).length > 0;
+  if (hasSynced && hasBoards && hasLocalItem && hasLinks) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerHTML = `<div class="onboardingChecklist">
+    <h3>Get started</h3>
+    <ol>
+      <li class="checkItem ${hasBoards ? 'done' : ''}">Choose a repo or org in Sources tab</li>
+      <li class="checkItem ${hasSynced ? 'done' : ''}">Sync a board</li>
+      <li class="checkItem ${hasLocalItem ? 'done' : ''}">Add a local planning item</li>
+      <li class="checkItem ${hasLinks ? 'done' : ''}">Inspect a dependency link</li>
+    </ol>
+  </div>`;
+}
+
+function renderAuthGate() {
+  const el = document.getElementById('authGatePanel');
+  if (!el) return;
+  const session = state.backendSession || {};
+  if (session.authenticated) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const hasOAuth = session.github_oauth_configured;
+  el.innerHTML = `<div class="authGate">
+    <h2>Sign in to use live mode</h2>
+    <p>DepViz stateful mode lets you manage dependency boards backed by GitHub.</p>
+    ${hasOAuth
+      ? `<button type="button" class="primaryAction" id="authGateSignIn">Sign in with GitHub</button>`
+      : `<div class="envVars">DEPVIZ_GITHUB_CLIENT_ID<br>DEPVIZ_GITHUB_CLIENT_SECRET</div><p>Configure these env vars to enable GitHub OAuth.</p>`}
+    <a href="#" data-mode="stateless">Use stateless mode instead</a>
+  </div>`;
+  document.getElementById('authGateSignIn')?.addEventListener('click', signInWithBackendGitHub);
+  el.querySelector('[data-mode="stateless"]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    setMode('stateless', { renderNow: true });
+  });
 }
 
 function renderDebugPanel() {
   if (!dom.debugPanel) return;
   const board = state.data.snapshot.board || {};
   const counts = state.data.brief.counts || {};
+  const session = state.backendSession || {};
+  const account = session.account || {};
+  const selectedNode = state.selectedNodeID ? nodeByID(state.selectedNodeID) : null;
+  const selectedEdge = state.selectedEdgeID ? edgeByID(state.selectedEdgeID) : null;
+  const selectedNodeJSON = selectedNode ? JSON.stringify(nodeData(selectedNode), null, 2) : null;
+  const selectedEdgeJSON = selectedEdge ? JSON.stringify(selectedEdge, null, 2) : null;
   dom.debugPanel.innerHTML = `<dl>
-    <div><dt>Current view</dt><dd>${esc(board.name || state.currentBoardID)}</dd></div>
-    <div><dt>View id</dt><dd>${esc(state.currentBoardID)}</dd></div>
+    <div><dt>Board name</dt><dd>${esc(board.name || state.currentBoardID)}</dd></div>
+    <div><dt>Board id</dt><dd>${esc(state.currentBoardID)}</dd></div>
     <div><dt>Scope</dt><dd>${esc(board.scope_query || 'none')}</dd></div>
-    <div><dt>Nodes</dt><dd>${esc(counts.nodes || 0)}</dd></div>
+    <div><dt>Nodes</dt><dd>${esc(String(counts.nodes || 0))}</dd></div>
     <div><dt>Last sync</dt><dd>${esc(currentBoardSyncLabel())}</dd></div>
-    <div><dt>GitHub App</dt><dd>${state.backendSession.github_app_configured ? 'configured' : 'not configured'}</dd></div>
-    <div><dt>Webhook</dt><dd>${state.backendSession.github_webhook_configured ? 'configured' : 'not configured'}</dd></div>
-  </dl>`;
+    <div><dt>OAuth</dt><dd>${session.github_oauth_configured ? 'configured' : 'not configured'}</dd></div>
+    <div><dt>GitHub App</dt><dd>${session.github_app_configured ? 'configured' : 'not configured'}</dd></div>
+    <div><dt>Webhook</dt><dd>${session.github_webhook_configured ? 'configured' : 'not configured'}</dd></div>
+    <div><dt>User</dt><dd>${account.login ? `@${esc(account.login)}` : 'not signed in'}</dd></div>
+    <div><dt>Mode</dt><dd>${esc(state.mode)}</dd></div>
+  </dl>
+  ${selectedNodeJSON ? `<details><summary>Selected node data <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedNodeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedNodeJSON)}</pre></details>` : ''}
+  ${selectedEdgeJSON ? `<details><summary>Selected edge <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedEdgeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedEdgeJSON)}</pre></details>` : ''}`;
 }
 
 function renderSyncPanel() {
@@ -1647,6 +1774,8 @@ function parseFlowLocalNode(ctx, line, lineNo) {
     source: kind === 'note' ? 'local' : 'flow',
     external_id: id,
     labels: readLabels(tail),
+    time_horizon: readAttribute(tail, 'horizon'),
+    priority: readAttribute(tail, 'priority'),
   });
 }
 
@@ -1836,6 +1965,12 @@ function readLabels(text) {
 
 function readOwner(text) {
   const match = /(?:^|\s)\+([A-Za-z0-9_.-]+)/.exec(text);
+  return match ? match[1] : '';
+}
+
+function readAttribute(text, key) {
+  const re = new RegExp(`\\b${key}:([A-Za-z0-9_.-]+)`, 'i');
+  const match = re.exec(text);
   return match ? match[1] : '';
 }
 
@@ -2122,6 +2257,9 @@ function collectNodeChips(nodes) {
   const assigneeCounts = new Map();
   const kindCounts = new Map();
   const statusCounts = new Map();
+  const milestoneCounts = new Map();
+  const repoCounts = new Map();
+  const ownerCounts = new Map();
   for (const node of nodes) {
     for (const label of labels(node)) {
       labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
@@ -2134,6 +2272,17 @@ function collectNodeChips(nodes) {
     }
     if (node.state) {
       statusCounts.set(node.state, (statusCounts.get(node.state) || 0) + 1);
+    }
+    const nd = nodeData(node);
+    if (nd.milestone) {
+      milestoneCounts.set(nd.milestone, (milestoneCounts.get(nd.milestone) || 0) + 1);
+    }
+    const gh = parseGitHubNodeID(node.id);
+    if (gh && gh.repo) {
+      repoCounts.set(gh.repo, (repoCounts.get(gh.repo) || 0) + 1);
+    }
+    if (node.owner) {
+      ownerCounts.set(node.owner, (ownerCounts.get(node.owner) || 0) + 1);
     }
   }
   const chips = [];
@@ -2148,6 +2297,15 @@ function collectNodeChips(nodes) {
   }
   for (const [login, count] of [...assigneeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)) {
     chips.push({ type: 'assignee', value: login, label: `@${login}`, count });
+  }
+  for (const [milestone, count] of [...milestoneCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+    chips.push({ type: 'milestone', value: milestone, label: `🏁 ${milestone}`, count });
+  }
+  for (const [repo, count] of [...repoCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+    chips.push({ type: 'repo', value: repo, label: repo, count });
+  }
+  for (const [owner, count] of [...ownerCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+    chips.push({ type: 'owner', value: owner, label: `+${owner}`, count });
   }
   return chips;
 }
@@ -2393,6 +2551,13 @@ function graphRelationScore(edge, snapshot) {
 }
 
 function renderGraph(snapshot, nodes, hidden = {}) {
+  const hints = {
+    pairs: 'Grouped by dependency direction. Blocked items on left, blockers on right.',
+    focus: 'Select an item to see its neighbors and dependency chain.',
+    backlog: 'Items not yet linked to anything. Use to triage and connect.',
+  };
+  const hintEl = document.getElementById('graphDriverHint');
+  if (hintEl) hintEl.textContent = hints[state.graphDriver] || '';
   if (dom.graphDriver && dom.graphDriver.value !== state.graphDriver) dom.graphDriver.value = state.graphDriver;
   if (state.graphDriver === 'pairs') {
     renderGraphPairs(snapshot, nodes, hidden);
@@ -3090,6 +3255,7 @@ function handleEmptyBoardAction(target) {
 function selectNode(nodeID) {
   if (!nodeByID(nodeID)) return;
   state.selectedNodeID = nodeID;
+  writeURLNode(nodeID);
   state.selectedEdgeID = '';
   render();
   dom.status.textContent = 'item selected';
@@ -3304,12 +3470,38 @@ function renderItemInspector(snapshot) {
   const duplicateBtn = local ? `<button type="button" data-item-action="duplicate">Duplicate</button>` : '';
   const deleteLabel = local ? 'Archive' : 'Remove';
   const deleteAction = local ? 'archive-node' : 'delete-node';
+  const createGHIssueSection = local && state.backendSession.authenticated ? `
+    <div class="inspectorGitHubCreate">
+      <details>
+        <summary>Create GitHub Issue</summary>
+        <form class="inlineForm" id="createGHIssueForm">
+          <input type="text" name="repo" placeholder="owner/repo" required>
+          <input type="text" name="title" value="${esc(node.title || '')}" required>
+          <textarea name="body" rows="2" placeholder="Description (optional)">${esc(data.description || '')}</textarea>
+          <button type="submit" class="primaryAction">Create issue</button>
+        </form>
+      </details>
+    </div>` : '';
+  const linkCreateSection = `<div class="inspectorLinkCreate">
+    <select id="inspectorLinkKind">
+      <option value="blocked_by">depends on</option>
+      <option value="blocks">blocks</option>
+      <option value="relates_to">relates to</option>
+      <option value="addresses">addresses</option>
+    </select>
+    <input id="inspectorLinkTarget" type="text" placeholder="node-id or title fragment">
+    <button type="button" data-item-action="create-link-from-inspector">Add link</button>
+  </div>`;
   const actionsSection = `<div class="inspectorActions">
-    ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
-    <button type="button" data-item-action="link-from">Link from</button>
-    <button type="button" data-item-action="link-to">Link to</button>
-    ${duplicateBtn}
-    <button type="button" class="dangerAction" data-item-action="${deleteAction}">${esc(deleteLabel)}</button>
+    <div class="inspectorPrimaryActions">
+      ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
+      <button type="button" data-item-action="link-from">Link from</button>
+      <button type="button" data-item-action="link-to">Link to</button>
+      ${duplicateBtn}
+    </div>
+    <div class="inspectorDangerActions">
+      <button type="button" class="dangerAction" data-item-action="${deleteAction}">${esc(deleteLabel)}</button>
+    </div>
   </div>`;
   dom.itemInspector.innerHTML = `<section class="inspectorBox">
     ${headSection}
@@ -3318,10 +3510,12 @@ function renderItemInspector(snapshot) {
     ${descriptionSection}
     ${editFormSection}
     ${actionsSection}
-    <div class="inspectorSection">
-      <h3>Links</h3>
-      ${renderInspectorLinks('Out', outgoing)}
-      ${renderInspectorLinks('In', incoming)}
+    ${createGHIssueSection}
+    ${linkCreateSection}
+    <div class="inspectorSection inspectorLinks">
+      ${outgoing.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocks / Out</div>${renderInspectorLinks('Out', outgoing)}</div>` : ''}
+      ${incoming.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocked by / In</div>${renderInspectorLinks('In', incoming)}</div>` : ''}
+      ${(!outgoing.length && !incoming.length) ? '<div class="emptyState">No links</div>' : ''}
     </div>
     <details class="inspectorRaw">
       <summary>Raw data</summary>
@@ -3332,6 +3526,14 @@ function renderItemInspector(snapshot) {
   const editForm = document.getElementById('inspectorEditForm');
   if (editForm) {
     editForm.addEventListener('submit', (e) => { e.preventDefault(); saveNodeEdit(); });
+  }
+  const createGHForm = document.getElementById('createGHIssueForm');
+  if (createGHForm) {
+    createGHForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const fd = new FormData(createGHForm);
+      createGitHubIssueFromNode(node.id, fd.get('repo'), fd.get('title'), fd.get('body'));
+    });
   }
 }
 
@@ -3358,6 +3560,7 @@ function handleItemInspectorClick(event) {
   if (button.dataset.itemAction === 'close') {
     state.selectedNodeID = '';
     state.inspectorEditMode = false;
+    writeURLNode('');
     render();
     return;
   }
@@ -3394,6 +3597,17 @@ function handleItemInspectorClick(event) {
     dom.newLinkTo.value = node.id;
     setWorkspaceTab('actions');
     dom.newLinkFrom.focus();
+  }
+  if (button.dataset.itemAction === 'create-link-from-inspector') {
+    const kindEl = document.getElementById('inspectorLinkKind');
+    const targetEl = document.getElementById('inspectorLinkTarget');
+    const kind = kindEl ? kindEl.value : 'blocked_by';
+    const targetStr = targetEl ? targetEl.value.trim() : '';
+    if (!targetStr) return;
+    const target = resolveNodeByRef(targetStr);
+    if (!target) { dom.error.textContent = `Cannot find node: ${targetStr}`; return; }
+    addBoardLinkDirect(state.selectedNodeID, kind, target.id);
+    return;
   }
 }
 
@@ -3841,6 +4055,9 @@ function visibleNodes(nodes) {
         if (type === 'label' && !labels(node).some((l) => values.has(l))) return false;
         if (type === 'assignee' && !nodePeople(node).some((p) => values.has(p.login))) return false;
         if (type === 'status' && !values.has(node.state)) return false;
+        if (type === 'milestone') { const nd2 = nodeData(node); if (!values.has(nd2.milestone || '')) return false; }
+        if (type === 'repo') { const gh2 = parseGitHubNodeID(node.id); if (!gh2 || !values.has(gh2.repo)) return false; }
+        if (type === 'owner' && !values.has(node.owner || '')) return false;
       }
     }
     return true;
@@ -3877,6 +4094,17 @@ function writeURLBoard(boardID) {
   const url = new URL(location.href);
   if (!boardID || boardID === 'default') url.searchParams.delete('board');
   else url.searchParams.set('board', boardID);
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function readURLNode() {
+  return new URLSearchParams(location.search).get('node') || '';
+}
+
+function writeURLNode(nodeID) {
+  const url = new URL(location.href);
+  if (!nodeID) url.searchParams.delete('node');
+  else url.searchParams.set('node', nodeID);
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
@@ -4530,6 +4758,137 @@ async function loadArchivedNodes() {
       });
     });
   } catch (_) {}
+}
+
+function resolveNodeByRef(ref) {
+  const nodes = state.data.snapshot.nodes || [];
+  const trimmed = ref.trim();
+  const byID = nodes.find((n) => n.id === trimmed);
+  if (byID) return byID;
+  const numMatch = /^#?(\d+)$/.exec(trimmed);
+  if (numMatch) return nodes.find((n) => n.external_id === `#${numMatch[1]}` || n.external_id === numMatch[1]);
+  const lower = trimmed.toLowerCase();
+  return nodes.find((n) => (n.title || '').toLowerCase().includes(lower));
+}
+
+async function addBoardLinkDirect(from, kind, to) {
+  try {
+    const res = await fetch('./api/board-links', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board_id: state.currentBoardID || 'default', from, to, kind }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    await loadBackendBoard();
+    dom.status.textContent = 'link added';
+  } catch (err) {
+    dom.error.textContent = err.message;
+  }
+}
+
+async function createGitHubIssueFromNode(nodeID, repo, title, body) {
+	try {
+		const res = await fetch('./api/github/create-issue', {
+			method: 'POST', credentials: 'same-origin',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: nodeID, repo, title, body }),
+		});
+		if (!res.ok) throw new Error(await responseErrorMessage(res));
+		const data = await res.json();
+		dom.status.textContent = `GitHub issue #${data.number} created`;
+		await loadBackendBoard();
+		await refreshBoards();
+		if (data.url) window.open(data.url, '_blank', 'noreferrer');
+	} catch (err) {
+		dom.error.textContent = err.message;
+	}
+}
+
+function setSyncIndicator(status) {
+  state.syncIndicator = status;
+  const el = document.getElementById('syncIndicator');
+  if (!el) return;
+  el.className = `syncIndicator sync${capitalize(status)}`;
+  if (status === 'done' || status === 'failed') {
+    setTimeout(() => setSyncIndicator('idle'), 3000);
+  }
+}
+
+function paletteCommands() {
+  return [
+    { id: 'new-item', label: 'New item', hint: 'Create a new node', action: () => { setWorkspaceTab('actions'); setTimeout(() => (dom.newItemTitle || dom.newItemRef)?.focus(), 50); } },
+    { id: 'new-link', label: 'New link', hint: 'Create a new link', action: () => { setWorkspaceTab('actions'); setTimeout(() => dom.newLinkFrom?.focus(), 50); } },
+    { id: 'view-graph', label: 'Switch to Relations view', action: () => setView('graph') },
+    { id: 'view-brief', label: 'Switch to Overview', action: () => setView('brief') },
+    { id: 'view-table', label: 'Switch to Table', action: () => setView('table') },
+    { id: 'view-kanban', label: 'Switch to Board', action: () => setView('kanban') },
+    { id: 'sync', label: 'Sync board', hint: 'Re-sync from GitHub', action: () => syncCurrentBoard() },
+    { id: 'export', label: 'Export JSON', action: () => exportJSON() },
+    { id: 'search', label: 'Search / filter', action: () => dom.filter?.focus() },
+    ...(state.boards || []).map((b) => ({
+      id: 'board-' + b.id,
+      label: 'Switch to: ' + (b.name || b.id),
+      hint: b.scope_query || '',
+      action: () => { state.currentBoardID = b.id; writeURLBoard(b.id); loadBackendBoard(); },
+    })),
+  ];
+}
+
+function openPalette() {
+  state.paletteOpen = true;
+  state.paletteQuery = '';
+  state.paletteSelected = 0;
+  document.getElementById('commandPalette')?.classList.remove('hidden');
+  const input = document.getElementById('paletteInput');
+  if (input) { input.value = ''; input.focus(); }
+  renderPalette();
+}
+
+function closePalette() {
+  state.paletteOpen = false;
+  document.getElementById('commandPalette')?.classList.add('hidden');
+}
+
+function renderPalette() {
+  const q = (state.paletteQuery || '').toLowerCase();
+  const cmds = paletteCommands().filter((c) =>
+    !q || c.label.toLowerCase().includes(q) || (c.hint || '').toLowerCase().includes(q)
+  );
+  const el = document.getElementById('paletteResults');
+  if (!el) return;
+  const visible = cmds.slice(0, 12);
+  el.innerHTML = visible.map((c, i) => `
+    <div class="paletteItem ${i === state.paletteSelected ? 'selected' : ''}" data-palette-index="${i}" role="option">
+      <span class="paletteLabel">${esc(c.label)}</span>
+      ${c.hint ? `<span class="paletteHint">${esc(c.hint)}</span>` : ''}
+    </div>`).join('');
+  el.querySelectorAll('[data-palette-index]').forEach((item) => {
+    item.addEventListener('click', () => {
+      const idx = Number(item.dataset.paletteIndex);
+      if (visible[idx]) { visible[idx].action(); closePalette(); }
+    });
+  });
+}
+
+function computeSourceDiff(base, current) {
+  const baseNodes = new Set((base?.snapshot?.nodes || []).map((n) => n.id));
+  const currNodes = new Set((current?.snapshot?.nodes || []).map((n) => n.id));
+  const added = [...currNodes].filter((id) => !baseNodes.has(id)).length;
+  const removed = [...baseNodes].filter((id) => !currNodes.has(id)).length;
+  const baseEdges = (base?.snapshot?.edges || []).length;
+  const currEdges = (current?.snapshot?.edges || []).length;
+  const edgeDiff = currEdges - baseEdges;
+  return { added, removed, edgeDiff };
+}
+function renderSourceDirtyIndicator() {
+  const el = document.getElementById('sourcePreviewMeta');
+  if (!el) return;
+  if (!state.sourceDirty) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const diff = state.sourceSnapshot ? computeSourceDiff(state.sourceSnapshot, state.data) : null;
+  const diffText = diff ? `+${diff.added} nodes  -${diff.removed}  ${diff.edgeDiff >= 0 ? '+' : ''}${diff.edgeDiff} edges` : '';
+  const summaryEl = document.getElementById('sourceDiffSummary');
+  if (summaryEl) summaryEl.textContent = diffText;
 }
 
 boot();

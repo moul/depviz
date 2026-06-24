@@ -951,22 +951,27 @@ textarea::selection {
   gap: 8px;
 }
 
-.emptyBoardPanel,
-.authGate {
-  display: grid;
-  gap: 16px;
-  border: 1px solid var(--line);
+.emptyBoardPanel {
+	display: grid;
+	gap: 16px;
+	border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
   padding: 18px;
-  box-shadow: var(--shadow);
+	box-shadow: var(--shadow);
 }
 
 .authGate {
-  max-width: 720px;
-  margin: 8vh auto 0;
-  border-color: #bfdbfe;
-  background: linear-gradient(180deg, #ffffff, #f8fbff);
+	display: grid;
+	gap: 16px;
+	border: 1px solid #bfdbfe;
+	border-radius: 8px;
+	padding: 18px;
+	box-shadow: var(--shadow);
+	max-width: 720px;
+	margin: 8vh auto 0;
+	background: linear-gradient(180deg, #ffffff, #f8fbff);
+	text-align: center;
 }
 
 .emptyBoardKicker {
@@ -2605,3 +2610,59 @@ button.dangerAction:hover {
 /* --- Commit J: archived nodes --- */
 .archivedNode { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; font-size: 12px; border-bottom: 1px solid var(--line-soft); }
 .archivedNode span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- UX backlog 709: auth gate and onboarding --- */
+.authGate h2 { font-size: 18px; margin: 0; }
+.authGate .envVars { font-family: monospace; font-size: 12px; background: #f3f4f6; padding: 8px 12px; border-radius: 6px; text-align: left; }
+.onboardingChecklist { padding: 12px; border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; }
+.onboardingChecklist h3 { margin: 0 0 8px; font-size: 13px; }
+.onboardingChecklist ol { margin: 0; padding-left: 18px; }
+.checkItem { font-size: 12px; padding: 3px 0; color: var(--muted); }
+.checkItem.done { color: var(--green, #16a34a); text-decoration: line-through; }
+
+/* --- UX backlog 709: board filter --- */
+#boardFilterInput { width: 100%; box-sizing: border-box; margin-bottom: 6px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 12px; }
+
+/* --- UX backlog 709: source dirty indicator --- */
+.sourcePreviewMeta { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-size: 12px; }
+.sourceDirtyPill { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 4px; padding: 1px 6px; font-size: 11px; font-weight: 600; }
+
+/* --- UX backlog 709: command palette --- */
+.commandPalette { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; }
+.commandPalette.hidden { display: none; }
+.paletteBackdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); }
+.paletteBox { position: relative; z-index: 1; background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: 480px; max-width: 95vw; overflow: hidden; }
+#paletteInput { width: 100%; box-sizing: border-box; border: none; border-bottom: 1px solid var(--line); padding: 14px 16px; font-size: 15px; outline: none; }
+.paletteResults { max-height: 320px; overflow-y: auto; }
+.paletteItem { padding: 10px 16px; cursor: pointer; display: flex; align-items: baseline; gap: 10px; }
+.paletteItem:hover, .paletteItem.selected { background: var(--accent-faint, #e0e7ff); }
+.paletteLabel { font-size: 13px; font-weight: 500; }
+.paletteHint { font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- UX backlog 709: graph driver hint --- */
+.graphDriverHint { font-size: 11px; color: var(--muted); padding: 2px 6px 4px; }
+
+/* --- UX backlog 709: inspector layout --- */
+.inspectorTitle { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.inspectorRef { font-size: 11px; color: var(--muted); font-family: monospace; }
+.inspectorMeta2 { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; align-items: center; }
+.inspectorRepo { font-size: 11px; color: var(--muted); background: #f3f4f6; padding: 1px 5px; border-radius: 4px; }
+.inspectorOwner { font-size: 11px; color: var(--muted); }
+.inspectorLinks { display: flex; flex-direction: column; gap: 8px; }
+.inspectorLinkGroup { display: flex; flex-direction: column; gap: 3px; }
+.linkGroupLabel { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.inspectorPrimaryActions { display: flex; gap: 6px; }
+.inspectorDangerActions { display: flex; gap: 6px; margin-top: 4px; }
+
+/* --- UX backlog 709: sync indicator --- */
+.syncIndicator { font-size: 11px; padding: 0 4px; }
+.syncIdle { color: var(--muted); }
+.syncSyncing { color: #f59e0b; animation: blink 0.8s infinite; }
+.syncDone { color: var(--green, #16a34a); }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.boardSyncError { display: block; font-size: 11px; color: var(--red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- UX backlog 709: visual link creation --- */
+.linkTarget { outline: 2px dashed var(--accent, #6366f1); cursor: crosshair; }
+.linkModeIndicator { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--accent, #6366f1); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 13px; z-index: 100; display: none; }
+.linkModeActive .linkModeIndicator { display: block; }

@@ -7,7 +7,7 @@
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="icon" href="./favicon.png" type="image/png" sizes="64x64">
   <link rel="apple-touch-icon" href="./logo-512.png">
-  <link rel="stylesheet" href="./style.css?v=v4.1.17-dev">
+  <link rel="stylesheet" href="./style.css?v=v4.1.18-dev">
 </head>
 <body>
   <header class="topbar">
@@ -15,6 +15,7 @@
       <img class="brandLogo" src="./logo.svg" alt="🔗" width="24" height="24">
       <strong>DepViz Live</strong>
       <span id="status">stateless work graph</span>
+      <span id="syncIndicator" class="syncIndicator syncIdle" title="Sync status">●</span>
     </div>
     <div class="actions">
       <div class="modeSwitch" role="tablist" aria-label="Mode">
@@ -40,6 +41,14 @@
   </header>
 
   <main id="shell" class="shell">
+
+  <div id="commandPalette" class="commandPalette hidden" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="paletteBackdrop"></div>
+    <div class="paletteBox">
+      <input id="paletteInput" type="text" autocomplete="off" placeholder="Type a command..." aria-label="Command search">
+      <div id="paletteResults" class="paletteResults" role="listbox"></div>
+    </div>
+  </div>
     <section class="inputPane" aria-label="Input">
       <div class="paneHeader">
         <div>
@@ -62,6 +71,12 @@
         <span id="lineCount">0 lines</span>
         <span id="errorText"></span>
       </div>
+      <div id="sourcePreviewMeta" class="sourcePreviewMeta hidden">
+        <span class="sourceDirtyPill">Unsaved preview</span>
+        <span id="sourceDiffSummary"></span>
+        <button id="resetPreviewBtn" type="button">Reset</button>
+        <button type="button" disabled title="Coming soon">Save</button>
+      </div>
     </section>
 
     <section class="workPane" aria-label="Board">
@@ -82,6 +97,8 @@
         <strong id="userPanelTitle">Account</strong>
         <span id="userPanelMeta">Signed in</span>
       </div>
+      <div id="authGatePanel" class="hidden"></div>
+      <div id="onboardingPanel" class="hidden"></div>
 
       <div id="workspacePanel" class="workspacePanel statefulOnly hidden">
         <div class="workspaceTop">
@@ -108,6 +125,7 @@
                 <p>Saved graphs for repos, orgs, projects, and local work.</p>
               </div>
             </div>
+            <input id="boardFilterInput" type="search" placeholder="Filter views..." aria-label="Filter views">
             <div id="boardList" class="boardList"></div>
             <form id="createBoardForm" class="inlineForm">
               <input id="newBoardName" type="text" autocomplete="off" placeholder="New empty view" aria-label="New view name">
@@ -274,10 +292,11 @@
             <div id="graphView" class="view hidden">
               <div class="graphToolbar" aria-label="Graph controls">
                 <select id="graphDriverSelect" aria-label="Graph driver">
-                  <option value="pairs">Relation pairs</option>
-                  <option value="focus">Selected item</option>
-                  <option value="backlog">Unlinked backlog</option>
+                  <option value="pairs">Relation pairs — dependency clusters</option>
+                  <option value="focus">Focus item — neighborhood view</option>
+                  <option value="backlog">Backlog lanes — unlinked items</option>
                 </select>
+                <div id="graphDriverHint" class="graphDriverHint"></div>
                 <button type="button" data-graph-action="fit">Fit</button>
                 <button type="button" id="graphConnectedToggle" data-graph-action="toggle-connected">Show more connected</button>
                 <button type="button" id="graphUnlinkedToggle" data-graph-action="toggle-unlinked">Show unlinked</button>
@@ -298,6 +317,7 @@
     </section>
   </main>
 
-  <script src="./app.js?v=v4.1.17-dev"></script>
+  <div id="linkModeIndicator" class="linkModeIndicator" aria-live="polite"></div>
+  <script src="./app.js?v=v4.1.18-dev"></script>
 </body>
 </html>
