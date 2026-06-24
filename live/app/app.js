@@ -119,7 +119,17 @@ const state = {
   linkingKind: 'blocked_by',
   boardLastLoadedAt: null,
   currentWorkspaceID: '',
+  renderTimings: {},
+  performanceMode: false,
 };
+
+function timedRender(name, fn) {
+  const t0 = performance.now();
+  fn();
+  const elapsed = performance.now() - t0;
+  if (!state.renderTimings) state.renderTimings = {};
+  state.renderTimings[name] = elapsed.toFixed(1) + 'ms';
+}
 
 function emptyExport() {
   return {
@@ -949,6 +959,11 @@ function renderDebugPanel() {
   const selectedEdge = state.selectedEdgeID ? edgeByID(state.selectedEdgeID) : null;
   const selectedNodeJSON = selectedNode ? JSON.stringify(nodeData(selectedNode), null, 2) : null;
   const selectedEdgeJSON = selectedEdge ? JSON.stringify(selectedEdge, null, 2) : null;
+  const timings = state.renderTimings || {};
+  const timingEntries = Object.entries(timings);
+  const timingHTML = timingEntries.length
+    ? `<details><summary>Render timings</summary><dl>${timingEntries.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></details>`
+    : '';
   dom.debugPanel.innerHTML = `<dl>
     <div><dt>Board name</dt><dd>${esc(board.name || state.currentBoardID)}</dd></div>
     <div><dt>Board id</dt><dd>${esc(state.currentBoardID)}</dd></div>
@@ -961,6 +976,7 @@ function renderDebugPanel() {
     <div><dt>User</dt><dd>${account.login ? `@${esc(account.login)}` : 'not signed in'}</dd></div>
     <div><dt>Mode</dt><dd>${esc(state.mode)}</dd></div>
   </dl>
+  ${timingHTML}
   ${selectedNodeJSON ? `<details><summary>Selected node data <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedNodeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedNodeJSON)}</pre></details>` : ''}
   ${selectedEdgeJSON ? `<details><summary>Selected edge <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedEdgeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedEdgeJSON)}</pre></details>` : ''}
   <div class="debugGitHubSetup">
@@ -974,7 +990,13 @@ function renderDebugPanel() {
       <div class="checkItem ${session.github_app_configured ? 'done' : ''}">GitHub App configured ${session.github_app_configured ? '✅' : '❌'}</div>
       <div class="checkItem ${session.github_webhook_configured ? 'done' : ''}">Webhook receiving ${session.github_webhook_configured ? '✅' : '❌'}</div>
     </div>
-  </div>`;
+  </div>
+  <label><input type="checkbox" id="perfModeToggle"> Performance mode</label>`;
+  const perfToggle = document.getElementById('perfModeToggle');
+  if (perfToggle) {
+    perfToggle.checked = !!state.performanceMode;
+    perfToggle.onchange = () => { state.performanceMode = perfToggle.checked; };
+  }
 }
 
 function renderSyncPanel() {
@@ -2398,6 +2420,9 @@ function render() {
     renderStatefulSignedOut();
     return;
   }
+  if (state.performanceMode) {
+    dom.status.textContent = 'Performance mode active';
+  }
   const { snapshot, brief } = state.data;
   const nodes = visibleNodes(snapshot.nodes);
   const graphSelection = graphVisibleNodeSelection(snapshot, nodes);
@@ -2417,10 +2442,10 @@ function render() {
   dom.graph.classList.toggle('hidden', state.view !== 'graph');
   dom.table.classList.toggle('hidden', state.view !== 'table');
   if (dom.kanban) dom.kanban.classList.toggle('hidden', state.view !== 'kanban');
-  if (state.view === 'brief') renderBrief(brief);
-  if (state.view === 'graph') renderGraph(snapshot, graphSelection.nodes, graphSelection.hidden);
-  if (state.view === 'table') renderTable(nodes);
-  if (state.view === 'kanban') renderKanbanView();
+  if (state.view === 'brief') timedRender('brief', () => renderBrief(brief));
+  if (state.view === 'graph') timedRender('graph', () => renderGraph(snapshot, graphSelection.nodes, graphSelection.hidden));
+  if (state.view === 'table') timedRender('table', () => renderTable(nodes));
+  if (state.view === 'kanban') timedRender('kanban', renderKanbanView);
 }
 
 function renderStatefulSignedOut() {
