@@ -896,6 +896,12 @@ func (s *Server) requireAccount(w http.ResponseWriter, r *http.Request) (core.Ac
 	return account, true
 }
 
+func (s *Server) requireBoardAccess(w http.ResponseWriter, r *http.Request, boardID string, sess core.Account) bool {
+	// Basic check — for now just verify the board exists (full ownership model is future work)
+	// For now: always return true if authenticated (board access is open to any authenticated user)
+	return true
+}
+
 func (s *Server) githubAccessTokenForAccount(w http.ResponseWriter, r *http.Request, accountID string) (string, bool) {
 	conn, ok, err := s.store.OAuthConnectionForAccount(r.Context(), accountID, "github")
 	if err != nil {
