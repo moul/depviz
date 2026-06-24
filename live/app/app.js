@@ -2061,6 +2061,9 @@ function collectNodeChips(nodes) {
   const assigneeCounts = new Map();
   const kindCounts = new Map();
   const statusCounts = new Map();
+  const milestoneCounts = new Map();
+  const repoCounts = new Map();
+  const ownerCounts = new Map();
   for (const node of nodes) {
     for (const label of labels(node)) {
       labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
@@ -2073,6 +2076,17 @@ function collectNodeChips(nodes) {
     }
     if (node.state) {
       statusCounts.set(node.state, (statusCounts.get(node.state) || 0) + 1);
+    }
+    const nd = nodeData(node);
+    if (nd.milestone) {
+      milestoneCounts.set(nd.milestone, (milestoneCounts.get(nd.milestone) || 0) + 1);
+    }
+    const gh = parseGitHubNodeID(node.id);
+    if (gh && gh.repo) {
+      repoCounts.set(gh.repo, (repoCounts.get(gh.repo) || 0) + 1);
+    }
+    if (node.owner) {
+      ownerCounts.set(node.owner, (ownerCounts.get(node.owner) || 0) + 1);
     }
   }
   const chips = [];
@@ -2087,6 +2101,15 @@ function collectNodeChips(nodes) {
   }
   for (const [login, count] of [...assigneeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)) {
     chips.push({ type: 'assignee', value: login, label: `@${login}`, count });
+  }
+  for (const [milestone, count] of [...milestoneCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+    chips.push({ type: 'milestone', value: milestone, label: `🏁 ${milestone}`, count });
+  }
+  for (const [repo, count] of [...repoCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+    chips.push({ type: 'repo', value: repo, label: repo, count });
+  }
+  for (const [owner, count] of [...ownerCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+    chips.push({ type: 'owner', value: owner, label: `+${owner}`, count });
   }
   return chips;
 }
@@ -3736,6 +3759,9 @@ function visibleNodes(nodes) {
         if (type === 'label' && !labels(node).some((l) => values.has(l))) return false;
         if (type === 'assignee' && !nodePeople(node).some((p) => values.has(p.login))) return false;
         if (type === 'status' && !values.has(node.state)) return false;
+        if (type === 'milestone') { const nd2 = nodeData(node); if (!values.has(nd2.milestone || '')) return false; }
+        if (type === 'repo') { const gh2 = parseGitHubNodeID(node.id); if (!gh2 || !values.has(gh2.repo)) return false; }
+        if (type === 'owner' && !values.has(node.owner || '')) return false;
       }
     }
     return true;
