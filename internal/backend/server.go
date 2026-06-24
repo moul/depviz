@@ -64,6 +64,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/github/update-issue", s.handleUpdateGitHubIssue)
 	mux.HandleFunc("/api/github/comment", s.handleCreateGitHubComment)
 	mux.HandleFunc("/api/board-source/apply", s.handleBoardSourceApply)
+	mux.HandleFunc("/api/suggestions/dismiss", s.handleDismissSuggestion)
 	mux.HandleFunc("/api/overrides", s.handleOverrides)
 	mux.HandleFunc("/api/auth/github/start", s.handleGitHubStart)
 	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
@@ -1719,6 +1720,49 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
+}
+
+func (s *Server) handleDismissSuggestion(w http.ResponseWriter, r *http.Request) {
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	switch r.Method {
+	case http.MethodPost:
+		var in struct {
+			EdgeID  string `json:"edge_id"`
+			BoardID string `json:"board_id"`
+			Restore bool   `json:"restore"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		boardID := strings.TrimSpace(in.BoardID)
+		if boardID == "" {
+			boardID = core.DefaultBoardID
+		}
+		edgeID := strings.TrimSpace(in.EdgeID)
+		if edgeID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "edge_id is required"})
+			return
+		}
+		if in.Restore {
+			if err := s.store.RestoreSuggestion(r.Context(), account.ID, boardID, edgeID); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+				return
+			}
+		} else {
+			if err := s.store.DismissSuggestion(r.Context(), account.ID, boardID, edgeID); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+				return
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	default:
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+	}
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

@@ -3846,11 +3846,20 @@ function scrollSelectedNodeIntoView() {
   node.scrollIntoView({ block: 'center', inline: 'center' });
 }
 
-function dismissSuggestedEdge(edgeID) {
+async function dismissSuggestedEdge(edgeID) {
   state.dismissedSuggestionIDs.add(edgeID);
   if (state.selectedEdgeID === edgeID) state.selectedEdgeID = '';
   render();
-  dom.status.textContent = 'suggested relation hidden for this session';
+  dom.status.textContent = 'suggested relation hidden';
+  if (state.mode === 'stateful' && state.backendSession.authenticated) {
+    try {
+      await fetch('./api/suggestions/dismiss', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ edge_id: edgeID, board_id: state.currentBoardID || 'default' }),
+      });
+    } catch (_) {}
+  }
 }
 
 async function promoteSuggestedEdge(edgeID) {

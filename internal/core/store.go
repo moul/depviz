@@ -247,6 +247,13 @@ func (s *Store) Migrate(ctx context.Context) error {
 	}
 	// Additive migrations (ALTER TABLE — idempotent via ignored errors)
 	_, _ = s.db.ExecContext(ctx, `ALTER TABLE nodes ADD COLUMN archived_at TEXT`)
+	_, _ = s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS dismissed_suggestions (
+		account_id TEXT NOT NULL,
+		board_id TEXT NOT NULL,
+		edge_id TEXT NOT NULL,
+		dismissed_at TEXT NOT NULL,
+		PRIMARY KEY (account_id, board_id, edge_id)
+	)`)
 	return nil
 }
 
@@ -1365,6 +1372,38 @@ func sourceURL(sourceID string) string {
 		return "https://github.com/" + strings.TrimPrefix(sourceID, "github:")
 	}
 	return ""
+}
+
+func (s *Store) DismissSuggestion(ctx context.Context, accountID, boardID, edgeID string) error {
+	now := formatTime(nowUTC())
+	_, err := s.db.ExecContext(ctx, `INSERT INTO dismissed_suggestions(account_id, board_id, edge_id, dismissed_at)
+		VALUES(?, ?, ?, ?)
+		ON CONFLICT(account_id, board_id, edge_id) DO UPDATE SET dismissed_at=excluded.dismissed_at`,
+		accountID, boardID, edgeID, now)
+	return err
+}
+
+func (s *Store) RestoreSuggestion(ctx context.Context, accountID, boardID, edgeID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM dismissed_suggestions WHERE account_id=? AND board_id=? AND edge_id=?`,
+		accountID, boardID, edgeID)
+	return err
+}
+
+func (s *Store) ListDismissedSuggestions(ctx context.Context, accountID, boardID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT edge_id FROM dismissed_suggestions WHERE account_id=? AND board_id=?`, accountID, boardID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
 }
 
 func formatTime(t time.Time) string {
