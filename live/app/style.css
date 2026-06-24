@@ -231,16 +231,15 @@ button:disabled {
 
 .shell.statefulMode .workPane {
   display: grid;
-  grid-template-columns: 304px minmax(0, 1fr);
-  grid-template-rows: auto auto auto;
+  grid-template-columns: 286px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
     "header header"
-    "user user"
     "workspace canvas";
   align-items: start;
   align-content: start;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  padding: 8px;
 }
 
 .shell.statefulMode .boardHeader {
@@ -248,7 +247,7 @@ button:disabled {
 }
 
 .shell.statefulMode .userPanel {
-  grid-area: user;
+  display: none;
 }
 
 .canvasStack {
@@ -298,8 +297,8 @@ button:disabled {
 .shell.statefulMode .workspacePanel {
   grid-area: workspace;
   position: sticky;
-  top: 58px;
-  max-height: calc(100vh - 68px);
+  top: 52px;
+  max-height: calc(100vh - 60px);
   overflow: auto;
 }
 
@@ -328,16 +327,17 @@ button:disabled {
 
 .quickAddForm {
   display: grid;
-  grid-template-columns: 92px 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
-  padding: 7px;
+  padding: 8px;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   background: var(--panel);
 }
 
 .quickAddForm input,
-.quickAddForm select {
+.quickAddForm select,
+.quickAddForm textarea {
   min-width: 0;
   width: 100%;
   border: 1px solid var(--line);
@@ -347,17 +347,25 @@ button:disabled {
   padding: 6px 7px;
 }
 
+.formGroupTitle,
 .quickAddForm input:nth-of-type(1),
 .quickAddForm input:nth-of-type(2),
+.quickAddForm textarea,
 .quickAddForm button {
   grid-column: 1 / -1;
 }
 
+.formGroupTitle {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .quickLinkForm {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 98px;
+  grid-template-columns: minmax(0, 1fr) 108px minmax(0, 1fr);
   gap: 6px;
-  padding: 7px;
+  padding: 8px;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   background: var(--panel);
@@ -375,6 +383,12 @@ button:disabled {
 }
 
 .quickLinkForm input:first-child {
+  grid-column: auto;
+}
+
+.quickLinkForm .formGroupTitle,
+.quickLinkForm input:last-of-type,
+.quickLinkForm button {
   grid-column: 1 / -1;
 }
 
@@ -796,10 +810,18 @@ textarea::selection {
 }
 
 .filterChips {
+  grid-area: chips;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   min-height: 0;
+  max-height: 70px;
+  overflow: auto;
+  align-content: flex-start;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  background: rgba(248, 250, 252, 0.72);
+  padding: 5px;
 }
 
 .filterChip {
@@ -807,14 +829,24 @@ textarea::selection {
   align-items: center;
   gap: 3px;
   padding: 2px 7px;
-  min-height: 22px;
+  min-height: 21px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: #f8fafc;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 500;
   color: var(--muted);
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.keyHints {
+  grid-area: hints;
+  align-self: center;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -875,13 +907,20 @@ textarea::selection {
 
 .canvasTools {
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(440px, 0.92fr);
-  gap: 8px;
-  align-items: center;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(320px, 1fr) minmax(390px, 0.95fr);
+  grid-template-areas:
+    "filters chips stats"
+    "hints chips stats";
+  gap: 6px;
+  align-items: start;
 }
 
 .filters {
-  min-height: 42px;
+  grid-area: filters;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
   padding: 6px;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -890,7 +929,7 @@ textarea::selection {
 }
 
 .filters input[type="search"] {
-  flex: 1 1 260px;
+  flex: 1 1 180px;
   min-width: 160px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -908,18 +947,19 @@ textarea::selection {
 }
 
 .stats {
+  grid-area: stats;
   display: grid;
   grid-template-columns: repeat(6, minmax(68px, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .stat {
   display: grid;
-  min-height: 42px;
+  min-height: 38px;
   border: 1px solid var(--line-soft);
   border-radius: 7px;
   background: var(--panel);
-  padding: 6px 8px;
+  padding: 5px 7px;
 }
 
 .stat span {
@@ -933,7 +973,7 @@ textarea::selection {
 .stat strong {
   margin: 1px 0 0;
   color: #111827;
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1.1;
 }
 
@@ -1269,10 +1309,12 @@ textarea::selection {
 }
 
 .suggestionBox {
+  max-height: 128px;
+  overflow: auto;
   border: 1px solid #fed7aa;
   border-radius: 7px;
   background: #fff7ed;
-  padding: 7px 8px;
+  padding: 6px 7px;
 }
 
 .suggestionHead {
@@ -1280,19 +1322,19 @@ textarea::selection {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 7px;
+  margin-bottom: 5px;
 }
 
 .suggestionHead strong {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .suggestionHead span,
 .suggestionEvidence,
 .suggestionMore {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .suggestionList {
@@ -1308,7 +1350,8 @@ textarea::selection {
   border: 1px solid #fed7aa;
   border-radius: 5px;
   background: #ffffff;
-  padding: 5px 6px;
+  min-height: 34px;
+  padding: 4px 5px;
 }
 
 .suggestionRow.selectedSuggestion {
@@ -1355,8 +1398,9 @@ textarea::selection {
 }
 
 .suggestionActions button {
-  min-height: 26px;
-  padding: 3px 7px;
+  min-height: 24px;
+  padding: 2px 6px;
+  font-size: 11px;
 }
 
 .suggestionBadge {
@@ -1489,8 +1533,8 @@ textarea::selection {
 
 .graphCanvas {
   position: relative;
-  min-width: 900px;
-  min-height: calc(100vh - 184px);
+  min-width: 0;
+  min-height: calc(100vh - 210px);
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 6px;
