@@ -2639,3 +2639,8 @@ button.dangerAction:hover {
 .syncFailed { color: var(--red); }
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 .boardSyncError { display: block; font-size: 11px; color: var(--red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- UX backlog 709: visual link creation --- */
+.linkTarget { outline: 2px dashed var(--accent, #6366f1); cursor: crosshair; }
+.linkModeIndicator { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--accent, #6366f1); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 13px; z-index: 100; display: none; }
+.linkModeActive .linkModeIndicator { display: block; }

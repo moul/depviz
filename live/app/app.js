@@ -111,6 +111,8 @@ const state = {
   paletteQuery: '',
   paletteSelected: 0,
   syncIndicator: 'idle',
+  linkingFrom: null,
+  linkingKind: 'blocked_by',
 };
 
 function emptyExport() {
@@ -244,6 +246,11 @@ function wireEvents() {
     }
     if (e.key === 'Escape' && state.paletteOpen) {
       closePalette();
+      return;
+    }
+    if (e.key === 'Escape' && state.linkingFrom) {
+      state.linkingFrom = null;
+      render();
       return;
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
@@ -3239,6 +3246,16 @@ function renderItemInspector(snapshot) {
         </form>
       </details>
     </div>` : '';
+  const linkCreateSection = `<div class="inspectorLinkCreate">
+    <select id="inspectorLinkKind">
+      <option value="blocked_by">depends on</option>
+      <option value="blocks">blocks</option>
+      <option value="relates_to">relates to</option>
+      <option value="addresses">addresses</option>
+    </select>
+    <input id="inspectorLinkTarget" type="text" placeholder="node-id or title fragment">
+    <button type="button" data-item-action="create-link-from-inspector">Add link</button>
+  </div>`;
   const actionsSection = `<div class="inspectorActions">
     <div class="inspectorPrimaryActions">
       ${node.url ? `<a href="${esc(node.url)}" target="_blank" rel="noreferrer">Open GitHub</a>` : ''}
@@ -3258,6 +3275,7 @@ function renderItemInspector(snapshot) {
     ${editFormSection}
     ${actionsSection}
     ${createGHIssueSection}
+    ${linkCreateSection}
     <div class="inspectorSection inspectorLinks">
       ${outgoing.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocks / Out</div>${renderInspectorLinks('Out', outgoing)}</div>` : ''}
       ${incoming.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocked by / In</div>${renderInspectorLinks('In', incoming)}</div>` : ''}
@@ -3342,6 +3360,17 @@ function handleItemInspectorClick(event) {
     dom.newLinkTo.value = node.id;
     setWorkspaceTab('actions');
     dom.newLinkFrom.focus();
+  }
+  if (button.dataset.itemAction === 'create-link-from-inspector') {
+    const kindEl = document.getElementById('inspectorLinkKind');
+    const targetEl = document.getElementById('inspectorLinkTarget');
+    const kind = kindEl ? kindEl.value : 'blocked_by';
+    const targetStr = targetEl ? targetEl.value.trim() : '';
+    if (!targetStr) return;
+    const target = resolveNodeByRef(targetStr);
+    if (!target) { dom.error.textContent = `Cannot find node: ${targetStr}`; return; }
+    addBoardLinkDirect(state.selectedNodeID, kind, target.id);
+    return;
   }
 }
 
@@ -4481,6 +4510,32 @@ async function loadArchivedNodes() {
       });
     });
   } catch (_) {}
+}
+
+function resolveNodeByRef(ref) {
+  const nodes = state.data.snapshot.nodes || [];
+  const trimmed = ref.trim();
+  const byID = nodes.find((n) => n.id === trimmed);
+  if (byID) return byID;
+  const numMatch = /^#?(\d+)$/.exec(trimmed);
+  if (numMatch) return nodes.find((n) => n.external_id === `#${numMatch[1]}` || n.external_id === numMatch[1]);
+  const lower = trimmed.toLowerCase();
+  return nodes.find((n) => (n.title || '').toLowerCase().includes(lower));
+}
+
+async function addBoardLinkDirect(from, kind, to) {
+  try {
+    const res = await fetch('./api/board-links', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board_id: state.currentBoardID || 'default', from, to, kind }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    await loadBackendBoard();
+    dom.status.textContent = 'link added';
+  } catch (err) {
+    dom.error.textContent = err.message;
+  }
 }
 
 async function createGitHubIssueFromNode(nodeID, repo, title, body) {
