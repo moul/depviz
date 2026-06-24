@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.20-dev';
+const assetVersion = 'v4.1.21-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -792,7 +792,7 @@ async function syncBoard(boardID, options = {}) {
       body: JSON.stringify({ board_id: boardID, limit: 100 }),
     });
     if (!res.ok) throw new Error(await responseErrorMessage(res));
-    state.lastSync = await res.json();
+    state.lastSync = await readJSONResponse(res);
     if (!options.quiet) {
       await loadBackendBoard();
       await refreshBoards();
@@ -818,9 +818,27 @@ async function responseErrorMessage(res) {
     const data = await res.clone().json();
     detail = data.error || data.message || '';
   } catch (_) {
-    detail = (await res.text()).trim();
+    detail = summarizeResponseText(await res.text());
   }
   return detail || `${res.status} ${res.statusText}`;
+}
+
+async function readJSONResponse(res) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    throw new Error(`expected JSON response, got ${summarizeResponseText(text)} (${err.message})`);
+  }
+}
+
+function summarizeResponseText(text) {
+  let value = String(text || '').trim();
+  if (!value) return 'empty response';
+  const prefix = value.slice(0, 120).toLowerCase();
+  if (prefix.includes('<html') || prefix.startsWith('<!doctype')) return 'non-JSON HTML response';
+  value = value.replace(/\s+/g, ' ');
+  return value.length > 240 ? `${value.slice(0, 240)}...` : value;
 }
 
 function renderManagePanel() {
