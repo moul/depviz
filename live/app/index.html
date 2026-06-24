@@ -7,7 +7,7 @@
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="icon" href="./favicon.png" type="image/png" sizes="64x64">
   <link rel="apple-touch-icon" href="./logo-512.png">
-  <link rel="stylesheet" href="./style.css?v=v4.1.15-dev">
+  <link rel="stylesheet" href="./style.css?v=v4.1.18-dev">
 </head>
 <body>
   <header class="topbar">
@@ -51,11 +51,17 @@
   </div>
     <section class="inputPane" aria-label="Input">
       <div class="paneHeader">
-        <h1>Input</h1>
-        <label class="filePick">
+        <div>
+          <h1 id="sourcePaneTitle">Input</h1>
+          <p id="sourcePaneSubtitle" class="paneSubtitle">DepViz Flow, JSONL, or export JSON.</p>
+        </div>
+        <div class="sourceActions">
+          <button id="resetSourceBtn" class="statefulOnly hidden" type="button">Reset preview</button>
+          <label class="filePick">
           <input id="fileInput" type="file" accept=".json,.jsonl,application/json,text/plain">
           Open file
-        </label>
+          </label>
+        </div>
       </div>
       <div class="editorWrap" id="editorWrap">
         <pre id="syntaxLayer" class="syntaxLayer" aria-hidden="true"></pre>
@@ -312,6 +318,6 @@
   </main>
 
   <div id="linkModeIndicator" class="linkModeIndicator" aria-live="polite"></div>
-  <script src="./app.js?v=v4.1.15-dev"></script>
+  <script src="./app.js?v=v4.1.18-dev"></script>
 </body>
 </html>
