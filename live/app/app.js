@@ -2293,6 +2293,13 @@ function graphRelationScore(edge, snapshot) {
 }
 
 function renderGraph(snapshot, nodes, hidden = {}) {
+  const hints = {
+    pairs: 'Grouped by dependency direction. Blocked items on left, blockers on right.',
+    focus: 'Select an item to see its neighbors and dependency chain.',
+    backlog: 'Items not yet linked to anything. Use to triage and connect.',
+  };
+  const hintEl = document.getElementById('graphDriverHint');
+  if (hintEl) hintEl.textContent = hints[state.graphDriver] || '';
   if (dom.graphDriver && dom.graphDriver.value !== state.graphDriver) dom.graphDriver.value = state.graphDriver;
   if (state.graphDriver === 'pairs') {
     renderGraphPairs(snapshot, nodes, hidden);

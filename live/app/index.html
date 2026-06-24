@@ -285,10 +285,11 @@
             <div id="graphView" class="view hidden">
               <div class="graphToolbar" aria-label="Graph controls">
                 <select id="graphDriverSelect" aria-label="Graph driver">
-                  <option value="pairs">Relation pairs</option>
-                  <option value="focus">Selected item</option>
-                  <option value="backlog">Unlinked backlog</option>
+                  <option value="pairs">Relation pairs — dependency clusters</option>
+                  <option value="focus">Focus item — neighborhood view</option>
+                  <option value="backlog">Backlog lanes — unlinked items</option>
                 </select>
+                <div id="graphDriverHint" class="graphDriverHint"></div>
                 <button type="button" data-graph-action="fit">Fit</button>
                 <button type="button" id="graphConnectedToggle" data-graph-action="toggle-connected">Show more connected</button>
                 <button type="button" id="graphUnlinkedToggle" data-graph-action="toggle-unlinked">Show unlinked</button>
