@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.22-dev';
+const assetVersion = 'v4.1.23-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -939,9 +939,9 @@ function renderOnboardingChecklist() {
   if (!state.backendSession.authenticated) { el.classList.add('hidden'); return; }
   const hasBoards = state.boards.some((b) => !isDraftBoard(b));
   const hasSynced = state.boards.some((b) => b.metrics && b.metrics.items > 0);
+  if (hasBoards || hasSynced) { el.classList.add('hidden'); return; }
   const hasLocalItem = (state.data.snapshot.nodes || []).some((n) => n.kind === 'task' || n.kind === 'note');
   const hasLinks = (state.data.snapshot.edges || []).length > 0;
-  if (hasSynced && hasBoards && hasLocalItem && hasLinks) { el.classList.add('hidden'); return; }
   el.classList.remove('hidden');
   el.innerHTML = `<div class="onboardingChecklist">
     <h3>Get started</h3>
@@ -2512,12 +2512,12 @@ function renderStatefulSignedOut() {
 
 function renderStats(counts, snapshot) {
   const values = [
-    ['Nodes', counts.nodes || 0],
-    ['Suggested', suggestedEdges(snapshot).length],
-    ['Ready', counts.ready || 0],
-    ['Blocked', counts.blocked || 0],
-    ['Local', counts.local_only || 0],
-    ['Stale', counts.stale || 0],
+    ['● Nodes', counts.nodes || 0],
+    ['💡 Suggested', suggestedEdges(snapshot).length],
+    ['✅ Ready', counts.ready || 0],
+    ['⛔ Blocked', counts.blocked || 0],
+    ['📝 Local', counts.local_only || 0],
+    ['🕰 Stale', counts.stale || 0],
   ];
   dom.stats.innerHTML = values.map(([label, value]) => `<div class="stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
 }
