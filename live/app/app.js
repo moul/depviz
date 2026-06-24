@@ -854,15 +854,26 @@ function renderDebugPanel() {
   if (!dom.debugPanel) return;
   const board = state.data.snapshot.board || {};
   const counts = state.data.brief.counts || {};
+  const session = state.backendSession || {};
+  const account = session.account || {};
+  const selectedNode = state.selectedNodeID ? nodeByID(state.selectedNodeID) : null;
+  const selectedEdge = state.selectedEdgeID ? edgeByID(state.selectedEdgeID) : null;
+  const selectedNodeJSON = selectedNode ? JSON.stringify(nodeData(selectedNode), null, 2) : null;
+  const selectedEdgeJSON = selectedEdge ? JSON.stringify(selectedEdge, null, 2) : null;
   dom.debugPanel.innerHTML = `<dl>
-    <div><dt>Current view</dt><dd>${esc(board.name || state.currentBoardID)}</dd></div>
-    <div><dt>View id</dt><dd>${esc(state.currentBoardID)}</dd></div>
+    <div><dt>Board name</dt><dd>${esc(board.name || state.currentBoardID)}</dd></div>
+    <div><dt>Board id</dt><dd>${esc(state.currentBoardID)}</dd></div>
     <div><dt>Scope</dt><dd>${esc(board.scope_query || 'none')}</dd></div>
-    <div><dt>Nodes</dt><dd>${esc(counts.nodes || 0)}</dd></div>
+    <div><dt>Nodes</dt><dd>${esc(String(counts.nodes || 0))}</dd></div>
     <div><dt>Last sync</dt><dd>${esc(currentBoardSyncLabel())}</dd></div>
-    <div><dt>GitHub App</dt><dd>${state.backendSession.github_app_configured ? 'configured' : 'not configured'}</dd></div>
-    <div><dt>Webhook</dt><dd>${state.backendSession.github_webhook_configured ? 'configured' : 'not configured'}</dd></div>
-  </dl>`;
+    <div><dt>OAuth</dt><dd>${session.github_oauth_configured ? 'configured' : 'not configured'}</dd></div>
+    <div><dt>GitHub App</dt><dd>${session.github_app_configured ? 'configured' : 'not configured'}</dd></div>
+    <div><dt>Webhook</dt><dd>${session.github_webhook_configured ? 'configured' : 'not configured'}</dd></div>
+    <div><dt>User</dt><dd>${account.login ? `@${esc(account.login)}` : 'not signed in'}</dd></div>
+    <div><dt>Mode</dt><dd>${esc(state.mode)}</dd></div>
+  </dl>
+  ${selectedNodeJSON ? `<details><summary>Selected node data <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedNodeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedNodeJSON)}</pre></details>` : ''}
+  ${selectedEdgeJSON ? `<details><summary>Selected edge <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedEdgeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedEdgeJSON)}</pre></details>` : ''}`;
 }
 
 function renderSyncPanel() {
