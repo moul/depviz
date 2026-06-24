@@ -3486,6 +3486,11 @@ function renderItemInspector(snapshot) {
         </form>
       </details>
     </div>` : '';
+  const githubStateSection = !local && github && state.backendSession.authenticated ? `
+    <div class="inspectorGitHubActions">
+      <div class="inspectorSectionLabel">GitHub Actions</div>
+      ${node.state === 'open' || node.state === 'active' || node.state === 'draft' ? `<button type="button" data-item-action="close-github-issue">Close issue</button>` : `<button type="button" data-item-action="reopen-github-issue">Reopen issue</button>`}
+    </div>` : '';
   const linkCreateSection = `<div class="inspectorLinkCreate">
     <select id="inspectorLinkKind">
       <option value="blocked_by">depends on</option>
@@ -3515,6 +3520,7 @@ function renderItemInspector(snapshot) {
     ${editFormSection}
     ${actionsSection}
     ${createGHIssueSection}
+    ${githubStateSection}
     ${linkCreateSection}
     <div class="inspectorSection inspectorLinks">
       ${outgoing.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocks / Out</div>${renderInspectorLinks('Out', outgoing)}</div>` : ''}
@@ -3606,6 +3612,13 @@ function handleItemInspectorClick(event) {
     dom.newLinkTo.value = node.id;
     setWorkspaceTab('actions');
     dom.newLinkFrom.focus();
+  }
+  if (button.dataset.itemAction === 'close-github-issue' || button.dataset.itemAction === 'reopen-github-issue') {
+    const gh = parseGitHubNodeID(state.selectedNodeID);
+    if (!gh) return;
+    const newState = button.dataset.itemAction === 'close-github-issue' ? 'closed' : 'open';
+    closeOrReopenGitHubIssue(gh.repo, Number(gh.number), newState);
+    return;
   }
   if (button.dataset.itemAction === 'create-link-from-inspector') {
     const kindEl = document.getElementById('inspectorLinkKind');
@@ -4811,6 +4824,22 @@ async function createGitHubIssueFromNode(nodeID, repo, title, body, labels = [],
 	} catch (err) {
 		dom.error.textContent = err.message;
 	}
+}
+
+async function closeOrReopenGitHubIssue(repo, issueNumber, issueState) {
+  try {
+    const res = await fetch('./api/github/update-issue', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repo, issue_number: issueNumber, state: issueState }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    dom.status.textContent = issueState === 'closed' ? 'issue closed' : 'issue reopened';
+    await loadBackendBoard();
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'github update failed';
+  }
 }
 
 function setSyncIndicator(status) {
