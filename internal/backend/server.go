@@ -1300,9 +1300,43 @@ func (s *Server) doJSON(req *http.Request, out any) error {
 		return err
 	}
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return fmt.Errorf("%s: %s", res.Status, strings.TrimSpace(string(data)))
+		return fmt.Errorf("%s: %s", res.Status, responseBodySummary(data))
 	}
-	return json.Unmarshal(data, out)
+	if err := json.Unmarshal(data, out); err != nil {
+		return fmt.Errorf("expected JSON from %s, got %s: %w", req.URL.Host, responseBodySummary(data), err)
+	}
+	return nil
+}
+
+func responseBodySummary(data []byte) string {
+	body := strings.TrimSpace(string(data))
+	if body == "" {
+		return "empty response"
+	}
+	var envelope struct {
+		Message string `json:"message"`
+		Error   string `json:"error"`
+	}
+	if json.Unmarshal(data, &envelope) == nil {
+		if envelope.Message != "" {
+			return envelope.Message
+		}
+		if envelope.Error != "" {
+			return envelope.Error
+		}
+	}
+	prefixLen := len(body)
+	if prefixLen > 120 {
+		prefixLen = 120
+	}
+	if strings.Contains(strings.ToLower(body[:prefixLen]), "<html") || strings.HasPrefix(strings.ToLower(body), "<!doctype") {
+		return "non-JSON HTML response"
+	}
+	body = strings.Join(strings.Fields(body), " ")
+	if len(body) > 240 {
+		body = body[:240] + "..."
+	}
+	return body
 }
 
 func (s *Server) callbackURL() string {
