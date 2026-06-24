@@ -192,7 +192,13 @@ function wireEvents() {
   document.getElementById('sampleBtn').addEventListener('click', loadSample);
   dom.resetSource.addEventListener('click', resetStatefulSourcePreview);
   document.getElementById('shareBtn').addEventListener('click', shareLink);
-  document.getElementById('exportBtn').addEventListener('click', exportJSON);
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const fmt = prompt('Export format: json, flow, md', 'json');
+    if (!fmt) return;
+    if (fmt === 'flow') exportFlow();
+    else if (fmt === 'md') exportMarkdown();
+    else exportJSON();
+  });
   document.getElementById('fileInput').addEventListener('change', readFile);
   dom.connectGithub.addEventListener('click', connectGitHub);
   dom.backendGithubLogin.addEventListener('click', signInWithBackendGitHub);
@@ -4310,6 +4316,50 @@ function exportJSON() {
   const link = document.createElement('a');
   link.href = url;
   link.download = 'depviz-live.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportFlow() {
+  const snap = state.data?.snapshot || {};
+  const nodes = snap.nodes || [];
+  const edges = snap.edges || [];
+  const boardName = snap.board?.name || 'Board';
+  const lines = [`board ${JSON.stringify(boardName)}`];
+  for (const n of nodes) {
+    if (n.id && n.id.startsWith('gh:')) continue;
+    let line = `${n.kind || 'task'} ${n.id}`;
+    if (n.title && n.title !== n.id) line += ` ${JSON.stringify(n.title)}`;
+    if (n.state && n.state !== 'open') line += ` [${n.state}]`;
+    lines.push(line);
+  }
+  for (const e of edges) {
+    if (e.authority === 'local' || e.authority === 'user') {
+      let verb = e.kind === 'blocked_by' ? 'depends on' : e.kind === 'relates_to' ? 'relates to' : e.kind;
+      lines.push(`${e.from_id} ${verb} ${e.to_id}`);
+    }
+  }
+  const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'depviz-board.depviz';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportMarkdown() {
+  const nodes = state.data?.snapshot?.nodes || [];
+  const lines = ['# DepViz Board Export', '', '## Items', ''];
+  for (const n of nodes) {
+    const done = isClosed(n);
+    lines.push(`- [${done ? 'x' : ' '}] ${n.title || n.id} (${n.kind}, ${n.state})`);
+  }
+  const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'depviz-board.md';
   link.click();
   URL.revokeObjectURL(url);
 }

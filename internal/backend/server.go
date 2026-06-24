@@ -102,7 +102,70 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
+	format := r.URL.Query().Get("format")
+	if format == "flow" {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, snapshotToFlowText(payload))
+		return
+	}
 	writeJSON(w, http.StatusOK, payload)
+}
+
+func snapshotToFlowText(payload any) string {
+	data, _ := json.Marshal(payload)
+	var export struct {
+		Snapshot struct {
+			Board struct {
+				Name string `json:"name"`
+				ID   string `json:"id"`
+			} `json:"board"`
+			Nodes []struct {
+				ID    string `json:"id"`
+				Kind  string `json:"kind"`
+				Title string `json:"title"`
+				State string `json:"state"`
+				Owner string `json:"owner"`
+			} `json:"nodes"`
+			Edges []struct {
+				FromID    string `json:"from_id"`
+				ToID      string `json:"to_id"`
+				Kind      string `json:"kind"`
+				Authority string `json:"authority"`
+			} `json:"edges"`
+		} `json:"snapshot"`
+	}
+	if err := json.Unmarshal(data, &export); err != nil {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("board %q\n", export.Snapshot.Board.Name))
+	for _, n := range export.Snapshot.Nodes {
+		if strings.HasPrefix(n.ID, "gh:") {
+			continue
+		}
+		sb.WriteString(fmt.Sprintf("%s %s", n.Kind, strings.ReplaceAll(n.ID, n.Kind+":", "")))
+		if n.Title != "" && n.Title != n.ID {
+			sb.WriteString(fmt.Sprintf(" %q", n.Title))
+		}
+		if n.State != "" && n.State != "open" {
+			sb.WriteString(fmt.Sprintf(" [%s]", n.State))
+		}
+		sb.WriteString("\n")
+	}
+	for _, e := range export.Snapshot.Edges {
+		if e.Authority == "local" || e.Authority == "user" {
+			verb := e.Kind
+			if e.Kind == "blocked_by" {
+				verb = "depends on"
+			}
+			if e.Kind == "relates_to" {
+				verb = "relates to"
+			}
+			sb.WriteString(fmt.Sprintf("%s %s %s\n", e.FromID, verb, e.ToID))
+		}
+	}
+	return sb.String()
 }
 
 func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
