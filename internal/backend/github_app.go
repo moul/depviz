@@ -55,6 +55,16 @@ func (s *Server) handleGitHubWebhook(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
+	case "issues":
+		if err := s.ingestGitHubIssueWebhook(r.Context(), body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+	case "pull_request":
+		if err := s.ingestGitHubPullRequestWebhook(r.Context(), body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "event": event})
 }
@@ -238,4 +248,83 @@ type githubInstallationPayload struct {
 		HTMLURL   string `json:"html_url"`
 		AvatarURL string `json:"avatar_url"`
 	} `json:"account"`
+}
+
+func (s *Server) ingestGitHubIssueWebhook(ctx context.Context, body []byte) error {
+	var payload struct {
+		Action string `json:"action"`
+		Issue  struct {
+			ID      int64  `json:"id"`
+			Number  int    `json:"number"`
+			Title   string `json:"title"`
+			State   string `json:"state"`
+			HTMLURL string `json:"html_url"`
+			User    struct {
+				Login string `json:"login"`
+			} `json:"user"`
+		} `json:"issue"`
+		Repository struct {
+			FullName string `json:"full_name"`
+		} `json:"repository"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return err
+	}
+	if payload.Issue.Number == 0 || payload.Repository.FullName == "" {
+		return nil
+	}
+	state := payload.Issue.State
+	if state == "" {
+		state = "open"
+	}
+	nodeID := fmt.Sprintf("gh:%s#%d", payload.Repository.FullName, payload.Issue.Number)
+	raw, _ := json.Marshal(payload.Issue)
+	return s.store.UpsertNode(ctx, core.Node{
+		ID:       nodeID,
+		Kind:     "issue",
+		Title:    payload.Issue.Title,
+		State:    state,
+		Owner:    payload.Issue.User.Login,
+		DataJSON: string(raw),
+	})
+}
+
+func (s *Server) ingestGitHubPullRequestWebhook(ctx context.Context, body []byte) error {
+	var payload struct {
+		Action      string `json:"action"`
+		PullRequest struct {
+			ID      int64  `json:"id"`
+			Number  int    `json:"number"`
+			Title   string `json:"title"`
+			State   string `json:"state"`
+			Draft   bool   `json:"draft"`
+			HTMLURL string `json:"html_url"`
+			User    struct {
+				Login string `json:"login"`
+			} `json:"user"`
+		} `json:"pull_request"`
+		Repository struct {
+			FullName string `json:"full_name"`
+		} `json:"repository"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return err
+	}
+	if payload.PullRequest.Number == 0 || payload.Repository.FullName == "" {
+		return nil
+	}
+	state := payload.PullRequest.State
+	if state == "" {
+		state = "open"
+	}
+	nodeID := fmt.Sprintf("gh:%s!%d", payload.Repository.FullName, payload.PullRequest.Number)
+	raw, _ := json.Marshal(payload.PullRequest)
+	return s.store.UpsertNode(ctx, core.Node{
+		ID:       nodeID,
+		Kind:     "pull_request",
+		Title:    payload.PullRequest.Title,
+		State:    state,
+		Owner:    payload.PullRequest.User.Login,
+		DataJSON: string(raw),
+	})
 }
