@@ -841,38 +841,62 @@ func (s *Server) handleGitHubProjects(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleOverrides(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
-		return
-	}
 	account, ok := s.requireAccount(w, r)
 	if !ok {
 		return
 	}
-	var in struct {
-		OwnerType string          `json:"owner_type"`
-		OwnerID   string          `json:"owner_id"`
-		Data      json.RawMessage `json:"data"`
+	switch r.Method {
+	case http.MethodGet:
+		nodeID := r.URL.Query().Get("node_id")
+		if nodeID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "node_id is required"})
+			return
+		}
+		override, err := s.store.GetPersonalOverride(r.Context(), account.ID, "node", nodeID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"override": override})
+	case http.MethodPost:
+		var in struct {
+			OwnerType string          `json:"owner_type"`
+			OwnerID   string          `json:"owner_id"`
+			Data      json.RawMessage `json:"data"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		if len(in.Data) == 0 {
+			in.Data = json.RawMessage(`{}`)
+		}
+		override, err := s.store.UpsertPersonalOverride(r.Context(), core.PersonalOverride{
+			AccountID: account.ID,
+			OwnerType: in.OwnerType,
+			OwnerID:   in.OwnerID,
+			DataJSON:  string(in.Data),
+		})
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"override": override})
+	case http.MethodDelete:
+		nodeID := r.URL.Query().Get("node_id")
+		if nodeID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "node_id is required"})
+			return
+		}
+		if err := s.store.DeletePersonalOverride(r.Context(), account.ID, "node", nodeID); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	default:
+		w.Header().Set("Allow", "GET, POST, DELETE")
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 	}
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-		return
-	}
-	if len(in.Data) == 0 {
-		in.Data = json.RawMessage(`{}`)
-	}
-	override, err := s.store.UpsertPersonalOverride(r.Context(), core.PersonalOverride{
-		AccountID: account.ID,
-		OwnerType: in.OwnerType,
-		OwnerID:   in.OwnerID,
-		DataJSON:  string(in.Data),
-	})
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"override": override})
 }
 
 func (s *Server) accountForRequest(r *http.Request) (core.Account, bool, error) {

@@ -381,6 +381,29 @@ func (s *Store) ListWorkspacesForAccount(ctx context.Context, accountID string) 
 	return workspaces, rows.Err()
 }
 
+func (s *Store) GetPersonalOverride(ctx context.Context, accountID, ownerType, ownerID string) (PersonalOverride, error) {
+	var override PersonalOverride
+	var updated string
+	err := s.db.QueryRowContext(ctx, `SELECT id, account_id, owner_type, owner_id, data_json, updated_at
+		FROM personal_overrides WHERE account_id = ? AND owner_type = ? AND owner_id = ?`,
+		accountID, ownerType, ownerID).
+		Scan(&override.ID, &override.AccountID, &override.OwnerType, &override.OwnerID, &override.DataJSON, &updated)
+	if errors.Is(err, sql.ErrNoRows) {
+		return PersonalOverride{}, nil
+	}
+	if err != nil {
+		return PersonalOverride{}, err
+	}
+	override.UpdatedAt = parseTime(updated)
+	return override, nil
+}
+
+func (s *Store) DeletePersonalOverride(ctx context.Context, accountID, ownerType, ownerID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM personal_overrides WHERE account_id = ? AND owner_type = ? AND owner_id = ?`,
+		accountID, ownerType, ownerID)
+	return err
+}
+
 func randomToken(bytes int) (string, error) {
 	buf := make([]byte, bytes)
 	if _, err := rand.Read(buf); err != nil {
