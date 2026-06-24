@@ -1702,6 +1702,7 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 		LinkDeletes []struct {
 			EdgeID string `json:"edge_id"`
 		} `json:"link_deletes"`
+		BaseUpdatedAt string `json:"base_updated_at"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -1710,6 +1711,19 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 	boardID := strings.TrimSpace(in.BoardID)
 	if boardID == "" {
 		boardID = core.DefaultBoardID
+	}
+	if strings.TrimSpace(in.BaseUpdatedAt) != "" {
+		serverUpdatedAt, err := s.store.BoardUpdatedAt(r.Context(), boardID)
+		if err == nil {
+			baseTime, parseErr := time.Parse(time.RFC3339, in.BaseUpdatedAt)
+			if parseErr == nil && serverUpdatedAt.After(baseTime) {
+				writeJSON(w, http.StatusConflict, map[string]any{
+					"error":             "conflict",
+					"server_updated_at": serverUpdatedAt.UTC().Format(time.RFC3339),
+				})
+				return
+			}
+		}
 	}
 	total := len(in.Creates) + len(in.Updates) + len(in.Deletes) + len(in.LinkCreates) + len(in.LinkDeletes)
 	if total > 100 {

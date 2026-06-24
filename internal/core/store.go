@@ -1564,6 +1564,16 @@ func sortBriefItems(items []BriefItem) {
 	})
 }
 
+// BoardUpdatedAt returns the updated_at timestamp of the given board.
+func (s *Store) BoardUpdatedAt(ctx context.Context, boardID string) (time.Time, error) {
+	var updated string
+	err := s.db.QueryRowContext(ctx, `SELECT updated_at FROM boards WHERE id = ?`, boardID).Scan(&updated)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return parseTime(updated), nil
+}
+
 // WithTx runs fn inside a single SQLite transaction, rolling back on error.
 func (s *Store) WithTx(ctx context.Context, fn func(context.Context, *sql.Tx) error) error {
 	tx, err := s.db.BeginTx(ctx, nil)

@@ -117,6 +117,7 @@ const state = {
   syncIndicator: 'idle',
   linkingFrom: null,
   linkingKind: 'blocked_by',
+  boardLastLoadedAt: null,
 };
 
 function emptyExport() {
@@ -427,6 +428,7 @@ async function loadBackendBoard() {
       state.selectedNodeID = '';
       writeURLNode('');
     }
+    state.boardLastLoadedAt = new Date().toISOString();
     setSyncIndicator('done');
     dom.status.textContent = 'stateful backend graph';
   } catch (err) {
@@ -5275,7 +5277,7 @@ async function applySourcePatch() {
     const res = await fetch('./api/board-source/apply', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ board_id: boardID, dry_run: true, ...patch }),
+      body: JSON.stringify({ board_id: boardID, dry_run: true, base_updated_at: state.boardLastLoadedAt || '', ...patch }),
     });
     if (!res.ok) throw new Error(await responseErrorMessage(res));
     renderSourcePatchModal(patch, async () => {
@@ -5283,7 +5285,7 @@ async function applySourcePatch() {
         const res2 = await fetch('./api/board-source/apply', {
           method: 'POST', credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ board_id: boardID, dry_run: false, ...patch }),
+          body: JSON.stringify({ board_id: boardID, dry_run: false, base_updated_at: state.boardLastLoadedAt || '', ...patch }),
         });
         if (!res2.ok) throw new Error(await responseErrorMessage(res2));
         state.sourceDirty = false;
