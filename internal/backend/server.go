@@ -61,6 +61,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/github/repos", s.handleGitHubRepos)
 	mux.HandleFunc("/api/github/webhook", s.handleGitHubWebhook)
 	mux.HandleFunc("/api/github/create-issue", s.handleCreateGitHubIssue)
+	mux.HandleFunc("/api/board-source/apply", s.handleBoardSourceApply)
 	mux.HandleFunc("/api/overrides", s.handleOverrides)
 	mux.HandleFunc("/api/auth/github/start", s.handleGitHubStart)
 	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
@@ -1439,6 +1440,133 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 		_, _ = s.store.AddEdge(r.Context(), boardID, strings.TrimSpace(in.NodeID), node.ID, "addresses", "user", map[string]any{"source": "github-create-issue"})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"url": issueURL, "number": issueNumber, "node": node})
+}
+
+func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	if _, ok := s.requireAccount(w, r); !ok {
+		return
+	}
+	var in struct {
+		BoardID string `json:"board_id"`
+		DryRun  bool   `json:"dry_run"`
+		Creates []struct {
+			Kind        string   `json:"kind"`
+			Title       string   `json:"title"`
+			Status      string   `json:"status"`
+			Owner       string   `json:"owner"`
+			Description string   `json:"description"`
+			TimeHorizon string   `json:"time_horizon"`
+			Priority    string   `json:"priority"`
+			Labels      []string `json:"labels"`
+		} `json:"creates"`
+		Updates []struct {
+			NodeID      string `json:"node_id"`
+			Title       string `json:"title"`
+			Status      string `json:"status"`
+			Owner       string `json:"owner"`
+			Description string `json:"description"`
+		} `json:"updates"`
+		Deletes []struct {
+			NodeID string `json:"node_id"`
+		} `json:"deletes"`
+		LinkCreates []struct {
+			FromID string `json:"from_id"`
+			ToID   string `json:"to_id"`
+			Kind   string `json:"kind"`
+			Notes  string `json:"notes"`
+		} `json:"link_creates"`
+		LinkDeletes []struct {
+			EdgeID string `json:"edge_id"`
+		} `json:"link_deletes"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	boardID := strings.TrimSpace(in.BoardID)
+	if boardID == "" {
+		boardID = core.DefaultBoardID
+	}
+	total := len(in.Creates) + len(in.Updates) + len(in.Deletes) + len(in.LinkCreates) + len(in.LinkDeletes)
+	if total > 100 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "too many operations (max 100)"})
+		return
+	}
+	var errs []string
+	for _, c := range in.Creates {
+		if strings.TrimSpace(c.Title) == "" {
+			errs = append(errs, "create: title is required")
+		}
+	}
+	if len(errs) > 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"errors": errs})
+		return
+	}
+	summary := map[string]int{
+		"created":       len(in.Creates),
+		"updated":       len(in.Updates),
+		"deleted":       len(in.Deletes),
+		"links_added":   len(in.LinkCreates),
+		"links_removed": len(in.LinkDeletes),
+	}
+	if in.DryRun {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
+		return
+	}
+	for _, c := range in.Creates {
+		title := strings.TrimSpace(c.Title)
+		kind := strings.TrimSpace(c.Kind)
+		if kind == "" {
+			kind = "task"
+		}
+		_, _ = s.store.CreateStrategyNode(r.Context(), boardID, kind, title, c.Status, c.Owner, c.Description, c.TimeHorizon, c.Priority, c.Labels)
+	}
+	for _, u := range in.Updates {
+		nodeID := strings.TrimSpace(u.NodeID)
+		if nodeID == "" {
+			continue
+		}
+		title := u.Title
+		status := u.Status
+		owner := u.Owner
+		description := u.Description
+		_, _ = s.store.UpdateNodeFields(r.Context(), nodeID, core.NodeFieldUpdate{
+			Title:       &title,
+			Status:      &status,
+			Owner:       &owner,
+			Description: &description,
+		})
+	}
+	for _, d := range in.Deletes {
+		nodeID := strings.TrimSpace(d.NodeID)
+		if nodeID == "" {
+			continue
+		}
+		_ = s.store.ArchiveNode(r.Context(), nodeID)
+	}
+	for _, lc := range in.LinkCreates {
+		from := strings.TrimSpace(lc.FromID)
+		to := strings.TrimSpace(lc.ToID)
+		kind := strings.TrimSpace(lc.Kind)
+		if kind == "" {
+			kind = "blocked_by"
+		}
+		if from != "" && to != "" {
+			_, _ = s.store.AddEdge(r.Context(), boardID, from, to, kind, "user", map[string]any{"note": lc.Notes})
+		}
+	}
+	for _, ld := range in.LinkDeletes {
+		edgeID := strings.TrimSpace(ld.EdgeID)
+		if edgeID != "" {
+			_ = s.store.DeleteEdge(r.Context(), edgeID)
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

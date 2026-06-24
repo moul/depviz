@@ -295,6 +295,7 @@ function wireEvents() {
   document.getElementById('resetPreviewBtn')?.addEventListener('click', () => {
     resetStatefulSourcePreview();
   });
+  document.getElementById('applySourceBtn')?.addEventListener('click', applySourcePatch);
   document.getElementById('commandPalette')?.addEventListener('click', (e) => {
     if (e.target.classList.contains('paletteBackdrop')) closePalette();
   });
@@ -4889,6 +4890,120 @@ function renderSourceDirtyIndicator() {
   const diffText = diff ? `+${diff.added} nodes  -${diff.removed}  ${diff.edgeDiff >= 0 ? '+' : ''}${diff.edgeDiff} edges` : '';
   const summaryEl = document.getElementById('sourceDiffSummary');
   if (summaryEl) summaryEl.textContent = diffText;
+}
+
+function computeSourcePatch(baseNodes, baseEdges, editedNodes, editedEdges) {
+  const baseNodeMap = new Map((baseNodes || []).map((n) => [n.id, n]));
+  const editedNodeMap = new Map((editedNodes || []).map((n) => [n.id, n]));
+  const baseEdgeMap = new Map((baseEdges || []).map((e) => [edgeSelectionID(e), e]));
+  const editedEdgeMap = new Map((editedEdges || []).map((e) => [edgeSelectionID(e), e]));
+  const creates = [];
+  const updates = [];
+  const deletes = [];
+  const link_creates = [];
+  const link_deletes = [];
+  for (const [id, node] of editedNodeMap) {
+    if (!baseNodeMap.has(id)) {
+      if (isLocal(node)) {
+        creates.push({ kind: node.kind, title: node.title, status: node.state, owner: node.owner, description: nodeData(node).description || '', time_horizon: nodeData(node).time_horizon || '', priority: nodeData(node).priority || '', labels: nodeData(node).labels || [] });
+      }
+    } else {
+      const base = baseNodeMap.get(id);
+      if (isLocal(node) && (node.title !== base.title || node.state !== base.state || node.owner !== base.owner)) {
+        updates.push({ node_id: id, title: node.title, status: node.state, owner: node.owner, description: nodeData(node).description || '' });
+      }
+    }
+  }
+  for (const [id, node] of baseNodeMap) {
+    if (!editedNodeMap.has(id) && isLocal(node)) {
+      deletes.push({ node_id: id });
+    }
+  }
+  for (const [id, edge] of editedEdgeMap) {
+    if (!baseEdgeMap.has(id)) {
+      link_creates.push({ from_id: edge.from_id, to_id: edge.to_id, kind: edge.kind, notes: '' });
+    }
+  }
+  for (const [id, edge] of baseEdgeMap) {
+    if (!editedEdgeMap.has(id) && (edge.authority === 'local' || edge.authority === 'user')) {
+      link_deletes.push({ edge_id: id });
+    }
+  }
+  return { creates, updates, deletes, link_creates, link_deletes };
+}
+
+function renderSourcePatchModal(patch, onApply) {
+  const existing = document.getElementById('sourcePatchModal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'sourcePatchModal';
+  modal.className = 'patchModal';
+  const totalOps = patch.creates.length + patch.updates.length + patch.deletes.length + patch.link_creates.length + patch.link_deletes.length;
+  modal.innerHTML = `<div class="patchBackdrop"></div>
+  <div class="patchBox">
+    <h3>Preview changes</h3>
+    <div class="patchSummary">
+      ${patch.creates.length ? `<div class="patchSection creates">Creates: ${patch.creates.length} item${patch.creates.length !== 1 ? 's' : ''}</div>` : ''}
+      ${patch.updates.length ? `<div class="patchSection updates">Updates: ${patch.updates.length} item${patch.updates.length !== 1 ? 's' : ''}</div>` : ''}
+      ${patch.deletes.length ? `<div class="patchSection deletes danger">Removes: ${patch.deletes.length} item${patch.deletes.length !== 1 ? 's' : ''}</div>` : ''}
+      ${patch.link_creates.length ? `<div class="patchSection link_creates">Links added: ${patch.link_creates.length}</div>` : ''}
+      ${patch.link_deletes.length ? `<div class="patchSection link_deletes danger">Links removed: ${patch.link_deletes.length}</div>` : ''}
+      ${totalOps === 0 ? '<div class="patchSection">No changes detected</div>' : ''}
+    </div>
+    <div class="patchDetails">
+      ${patch.creates.map((c) => `<div>+ ${esc(c.kind)}: ${esc(c.title)}</div>`).join('')}
+      ${patch.updates.map((u) => `<div>~ ${esc(u.node_id)}: ${esc(u.title)}</div>`).join('')}
+      ${patch.deletes.map((d) => `<div>- ${esc(d.node_id)}</div>`).join('')}
+      ${patch.link_creates.map((l) => `<div>+ link: ${esc(l.from_id)} → ${esc(l.to_id)}</div>`).join('')}
+      ${patch.link_deletes.map((l) => `<div>- link: ${esc(l.edge_id)}</div>`).join('')}
+    </div>
+    <div class="patchActions">
+      <button class="primaryAction" id="confirmApplyBtn">Apply</button>
+      <button id="cancelApplyBtn">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('cancelApplyBtn').addEventListener('click', () => modal.remove());
+  modal.querySelector('.patchBackdrop').addEventListener('click', () => modal.remove());
+  document.getElementById('confirmApplyBtn').addEventListener('click', () => {
+    modal.remove();
+    if (onApply) onApply();
+  });
+}
+
+async function applySourcePatch() {
+  if (!state.sourceDirty || state.mode !== 'stateful') return;
+  const baseSnap = state.sourceSnapshot?.snapshot || { nodes: [], edges: [] };
+  const currSnap = state.data?.snapshot || { nodes: [], edges: [] };
+  const patch = computeSourcePatch(baseSnap.nodes, baseSnap.edges, currSnap.nodes, currSnap.edges);
+  const boardID = state.currentBoardID || 'default';
+  try {
+    const res = await fetch('./api/board-source/apply', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board_id: boardID, dry_run: true, ...patch }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    renderSourcePatchModal(patch, async () => {
+      try {
+        const res2 = await fetch('./api/board-source/apply', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ board_id: boardID, dry_run: false, ...patch }),
+        });
+        if (!res2.ok) throw new Error(await responseErrorMessage(res2));
+        state.sourceDirty = false;
+        await loadBackendBoard();
+        dom.status.textContent = 'changes applied';
+      } catch (err) {
+        dom.error.textContent = err.message;
+        dom.status.textContent = 'apply failed';
+      }
+    });
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'preview failed';
+  }
 }
 
 boot();
