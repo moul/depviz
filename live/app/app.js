@@ -141,6 +141,8 @@ async function boot() {
   setView(readURLView(), { persist: false, renderNow: false });
   state.currentBoardID = readURLBoard() || state.currentBoardID;
   readURLFilters();
+  const urlNode = readURLNode();
+  if (urlNode) state.selectedNodeID = urlNode;
   state.graphDriver = readURLDriver();
   if (dom.graphDriver) dom.graphDriver.value = state.graphDriver;
   const hashed = readHash();
@@ -395,6 +397,10 @@ async function loadBackendBoard() {
     const res = await fetch(`./api/export?board=${board}`, { credentials: 'same-origin' });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     state.data = normalizeExport(await res.json());
+    if (state.selectedNodeID && !nodeByID(state.selectedNodeID)) {
+      state.selectedNodeID = '';
+      writeURLNode('');
+    }
     setSyncIndicator('done');
     dom.status.textContent = 'stateful backend graph';
   } catch (err) {
@@ -3020,6 +3026,7 @@ function handleEmptyBoardAction(target) {
 function selectNode(nodeID) {
   if (!nodeByID(nodeID)) return;
   state.selectedNodeID = nodeID;
+  writeURLNode(nodeID);
   state.selectedEdgeID = '';
   render();
   dom.status.textContent = 'item selected';
@@ -3324,6 +3331,7 @@ function handleItemInspectorClick(event) {
   if (button.dataset.itemAction === 'close') {
     state.selectedNodeID = '';
     state.inspectorEditMode = false;
+    writeURLNode('');
     render();
     return;
   }
@@ -3857,6 +3865,17 @@ function writeURLBoard(boardID) {
   const url = new URL(location.href);
   if (!boardID || boardID === 'default') url.searchParams.delete('board');
   else url.searchParams.set('board', boardID);
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function readURLNode() {
+  return new URLSearchParams(location.search).get('node') || '';
+}
+
+function writeURLNode(nodeID) {
+  const url = new URL(location.href);
+  if (!nodeID) url.searchParams.delete('node');
+  else url.searchParams.set('node', nodeID);
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
