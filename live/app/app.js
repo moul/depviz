@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.16-dev';
+const assetVersion = 'v4.1.17-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -990,7 +990,10 @@ async function refreshBackendSession() {
 
 function refreshBackendAuthUI() {
   const session = state.backendSession || {};
-  dom.backendGithubLogin.classList.toggle('hidden', !session.available || session.authenticated || !session.github_oauth_configured);
+  const showLogin = session.available && !session.authenticated;
+  dom.backendGithubLogin.classList.toggle('hidden', !showLogin);
+  dom.backendGithubLogin.disabled = showLogin && !session.github_oauth_configured;
+  dom.backendGithubLogin.textContent = session.github_oauth_configured ? 'Sign in' : 'GitHub auth missing';
   dom.backendLogout.classList.toggle('hidden', !session.available || !session.authenticated);
   dom.backendAuthState.classList.toggle('hidden', !session.available);
   syncModeVisibility();
@@ -1005,11 +1008,16 @@ function refreshBackendAuthUI() {
     renderUserPanel();
     return;
   }
-  dom.backendAuthState.textContent = session.github_oauth_configured ? `${provider}: signed out` : 'DepViz: local';
+  dom.backendAuthState.textContent = session.github_oauth_configured ? `${provider}: signed out` : 'GitHub auth: not configured';
   renderUserPanel();
 }
 
 function signInWithBackendGitHub() {
+  if (!state.backendSession.github_oauth_configured) {
+    dom.status.textContent = 'github auth is not configured';
+    dom.error.textContent = 'Set DEPVIZ_GITHUB_CLIENT_ID and DEPVIZ_GITHUB_CLIENT_SECRET on the backend service.';
+    return;
+  }
   const returnTo = `${location.pathname}${location.search}${location.hash}`;
   location.href = `./api/auth/github/start?return_to=${encodeURIComponent(returnTo)}`;
 }
@@ -2156,6 +2164,10 @@ function renderFilterChips() {
 }
 
 function render() {
+  if (state.mode === 'stateful' && !state.backendSession.authenticated) {
+    renderStatefulSignedOut();
+    return;
+  }
   const { snapshot, brief } = state.data;
   const nodes = visibleNodes(snapshot.nodes);
   const graphSelection = graphVisibleNodeSelection(snapshot, nodes);
@@ -2179,6 +2191,41 @@ function render() {
   if (state.view === 'graph') renderGraph(snapshot, graphSelection.nodes, graphSelection.hidden);
   if (state.view === 'table') renderTable(nodes);
   if (state.view === 'kanban') renderKanbanView();
+}
+
+function renderStatefulSignedOut() {
+  const session = state.backendSession || {};
+  dom.shell.classList.remove('emptyBoard');
+  dom.boardTitle.textContent = 'Stateful DepViz';
+  dom.boardMeta.textContent = session.github_oauth_configured
+    ? 'Sign in to load your persisted boards and GitHub-backed graph.'
+    : 'Backend is running, but GitHub OAuth is not configured yet.';
+  dom.stats.innerHTML = '';
+  dom.suggestions.innerHTML = '';
+  dom.graphFocus.innerHTML = '';
+  dom.edgeInspector.classList.add('hidden');
+  dom.itemInspector.classList.add('hidden');
+  dom.brief.classList.remove('hidden');
+  dom.graph.classList.add('hidden');
+  dom.table.classList.add('hidden');
+  if (dom.kanban) dom.kanban.classList.add('hidden');
+  const loginButton = session.github_oauth_configured
+    ? '<button type="button" class="primaryAction" data-auth-action="signin">Sign in with GitHub</button>'
+    : '<button type="button" class="primaryAction" data-auth-action="signin" disabled>GitHub OAuth missing</button>';
+  const configHint = session.github_oauth_configured
+    ? 'GitHub will return here after authorization and DepViz will load your saved views.'
+    : 'Set DEPVIZ_GITHUB_CLIENT_ID and DEPVIZ_GITHUB_CLIENT_SECRET on the depviz-live service, then restart it.';
+  dom.brief.innerHTML = `<section class="authGate">
+    <div>
+      <span class="emptyBoardKicker">Stateful workspace</span>
+      <h3>${session.github_oauth_configured ? 'Connect your GitHub account' : 'GitHub OAuth is not configured'}</h3>
+      <p>${esc(configHint)}</p>
+    </div>
+    <div class="emptyBoardActions">
+      ${loginButton}
+      <button type="button" data-auth-action="stateless">Use stateless mode</button>
+    </div>
+  </section>`;
 }
 
 function renderStats(counts, snapshot) {
@@ -2993,12 +3040,28 @@ function handleNodePickClick(event) {
 }
 
 function handleBriefClick(event) {
+  const authAction = event.target.closest('[data-auth-action]');
+  if (authAction) {
+    handleAuthGateAction(authAction);
+    return;
+  }
   const emptyAction = event.target.closest('[data-empty-action]');
   if (emptyAction) {
     handleEmptyBoardAction(emptyAction);
     return;
   }
   handleNodePickClick(event);
+}
+
+function handleAuthGateAction(target) {
+  const action = target.dataset.authAction || '';
+  if (action === 'signin') {
+    signInWithBackendGitHub();
+    return;
+  }
+  if (action === 'stateless') {
+    setMode('stateless', { renderNow: true });
+  }
 }
 
 function handleEmptyBoardAction(target) {

@@ -951,7 +951,8 @@ textarea::selection {
   gap: 8px;
 }
 
-.emptyBoardPanel {
+.emptyBoardPanel,
+.authGate {
   display: grid;
   gap: 16px;
   border: 1px solid var(--line);
@@ -959,6 +960,13 @@ textarea::selection {
   background: #ffffff;
   padding: 18px;
   box-shadow: var(--shadow);
+}
+
+.authGate {
+  max-width: 720px;
+  margin: 8vh auto 0;
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
 }
 
 .emptyBoardKicker {
@@ -976,14 +984,16 @@ textarea::selection {
   white-space: nowrap;
 }
 
-.emptyBoardPanel h3 {
+.emptyBoardPanel h3,
+.authGate h3 {
   margin: 0;
   color: #0f172a;
   font-size: 22px;
   line-height: 1.15;
 }
 
-.emptyBoardPanel p {
+.emptyBoardPanel p,
+.authGate p {
   max-width: 560px;
   margin: 6px 0 0;
   color: var(--muted);

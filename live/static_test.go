@@ -277,6 +277,9 @@ func TestLiveAssetsExposeStatefulMode(t *testing.T) {
 		{"stateful source generator", string(app), `snapshotToFlow`},
 		{"stateful source dirty style", string(style), `.shell.sourceDirty .editorWrap`},
 		{"stateful source stays visible", string(style), `.shell.statefulMode .inputPane`},
+		{"stateful auth gate", string(app), `renderStatefulSignedOut`},
+		{"stateful auth action", string(app), `data-auth-action="signin"`},
+		{"stateful auth style", string(style), `.authGate`},
 	} {
 		if !strings.Contains(tc.body, tc.want) {
 			t.Fatalf("%s: missing %q", tc.name, tc.want)
