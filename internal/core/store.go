@@ -1563,3 +1563,16 @@ func sortBriefItems(items []BriefItem) {
 		return items[i].ID < items[j].ID
 	})
 }
+
+// WithTx runs fn inside a single SQLite transaction, rolling back on error.
+func (s *Store) WithTx(ctx context.Context, fn func(context.Context, *sql.Tx) error) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := fn(ctx, tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}

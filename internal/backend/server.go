@@ -3,6 +3,7 @@ package backend
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1788,68 +1789,69 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
 		return
 	}
-	for _, c := range in.Creates {
-		title := strings.TrimSpace(c.Title)
-		kind := strings.TrimSpace(c.Kind)
-		if kind == "" {
-			kind = "task"
-		}
-		if _, err := s.store.CreateStrategyNode(r.Context(), boardID, kind, title, c.Status, c.Owner, c.Description, c.TimeHorizon, c.Priority, c.Labels); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "create failed: " + err.Error()})
-			return
-		}
-	}
-	for _, u := range in.Updates {
-		nodeID := strings.TrimSpace(u.NodeID)
-		if nodeID == "" {
-			continue
-		}
-		title := u.Title
-		status := u.Status
-		owner := u.Owner
-		description := u.Description
-		if _, err := s.store.UpdateNodeFields(r.Context(), nodeID, core.NodeFieldUpdate{
-			Title:       &title,
-			Status:      &status,
-			Owner:       &owner,
-			Description: &description,
-		}); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "update failed: " + err.Error()})
-			return
-		}
-	}
-	for _, d := range in.Deletes {
-		nodeID := strings.TrimSpace(d.NodeID)
-		if nodeID == "" {
-			continue
-		}
-		if err := s.store.ArchiveNode(r.Context(), nodeID); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "delete failed: " + err.Error()})
-			return
-		}
-	}
-	for _, lc := range in.LinkCreates {
-		from := strings.TrimSpace(lc.FromID)
-		to := strings.TrimSpace(lc.ToID)
-		kind := strings.TrimSpace(lc.Kind)
-		if kind == "" {
-			kind = "blocked_by"
-		}
-		if from != "" && to != "" {
-			if _, err := s.store.AddEdge(r.Context(), boardID, from, to, kind, "user", map[string]any{"note": lc.Notes}); err != nil {
-				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "link create failed: " + err.Error()})
-				return
+	if err := s.store.WithTx(r.Context(), func(ctx context.Context, _ *sql.Tx) error {
+		for _, c := range in.Creates {
+			title := strings.TrimSpace(c.Title)
+			kind := strings.TrimSpace(c.Kind)
+			if kind == "" {
+				kind = "task"
+			}
+			if _, err := s.store.CreateStrategyNode(ctx, boardID, kind, title, c.Status, c.Owner, c.Description, c.TimeHorizon, c.Priority, c.Labels); err != nil {
+				return fmt.Errorf("create failed: %w", err)
 			}
 		}
-	}
-	for _, ld := range in.LinkDeletes {
-		edgeID := strings.TrimSpace(ld.EdgeID)
-		if edgeID != "" {
-			if err := s.store.DeleteEdge(r.Context(), edgeID); err != nil {
-				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "link delete failed: " + err.Error()})
-				return
+		for _, u := range in.Updates {
+			nodeID := strings.TrimSpace(u.NodeID)
+			if nodeID == "" {
+				continue
+			}
+			title := u.Title
+			status := u.Status
+			owner := u.Owner
+			description := u.Description
+			if _, err := s.store.UpdateNodeFields(ctx, nodeID, core.NodeFieldUpdate{
+				Title:       &title,
+				Status:      &status,
+				Owner:       &owner,
+				Description: &description,
+			}); err != nil {
+				return fmt.Errorf("update failed: %w", err)
 			}
 		}
+		for _, d := range in.Deletes {
+			nodeID := strings.TrimSpace(d.NodeID)
+			if nodeID == "" {
+				continue
+			}
+			if err := s.store.ArchiveNode(ctx, nodeID); err != nil {
+				return fmt.Errorf("delete failed: %w", err)
+			}
+		}
+		for _, lc := range in.LinkCreates {
+			from := strings.TrimSpace(lc.FromID)
+			to := strings.TrimSpace(lc.ToID)
+			kind := strings.TrimSpace(lc.Kind)
+			if kind == "" {
+				kind = "blocked_by"
+			}
+			if from != "" && to != "" {
+				if _, err := s.store.AddEdge(ctx, boardID, from, to, kind, "user", map[string]any{"note": lc.Notes}); err != nil {
+					return fmt.Errorf("link create failed: %w", err)
+				}
+			}
+		}
+		for _, ld := range in.LinkDeletes {
+			edgeID := strings.TrimSpace(ld.EdgeID)
+			if edgeID != "" {
+				if err := s.store.DeleteEdge(ctx, edgeID); err != nil {
+					return fmt.Errorf("link delete failed: %w", err)
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
 }
