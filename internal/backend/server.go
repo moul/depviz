@@ -1532,7 +1532,18 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 	_ = json.NewDecoder(resp.Body).Decode(&ghResult)
 	if resp.StatusCode >= 300 {
 		errMsg, _ := ghResult["message"].(string)
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: " + errMsg})
+		switch resp.StatusCode {
+		case 401:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: unauthorized - token may be expired or invalid"})
+		case 403:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: forbidden - token lacks write permission for this repository"})
+		case 404:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: repository not found or no access"})
+		case 429:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: rate limit exceeded"})
+		default:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: " + errMsg})
+		}
 		return
 	}
 	issueURL, _ := ghResult["html_url"].(string)
@@ -1626,7 +1637,18 @@ func (s *Server) handleUpdateGitHubIssue(w http.ResponseWriter, r *http.Request)
 	_ = json.NewDecoder(resp.Body).Decode(&ghResult)
 	if resp.StatusCode >= 300 {
 		errMsg, _ := ghResult["message"].(string)
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: " + errMsg})
+		switch resp.StatusCode {
+		case 401:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: unauthorized - token may be expired or invalid"})
+		case 403:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: forbidden - token lacks write permission for this repository"})
+		case 404:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: repository not found or no access"})
+		case 429:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: rate limit exceeded"})
+		default:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: " + errMsg})
+		}
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "issue": ghResult})
@@ -1681,7 +1703,18 @@ func (s *Server) handleCreateGitHubComment(w http.ResponseWriter, r *http.Reques
 	_ = json.NewDecoder(resp.Body).Decode(&ghResult)
 	if resp.StatusCode >= 300 {
 		errMsg, _ := ghResult["message"].(string)
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: " + errMsg})
+		switch resp.StatusCode {
+		case 401:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: unauthorized - token may be expired or invalid"})
+		case 403:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: forbidden - token lacks write permission for this repository"})
+		case 404:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: repository not found or no access"})
+		case 429:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: rate limit exceeded"})
+		default:
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: " + errMsg})
+		}
 		return
 	}
 	commentURL, _ := ghResult["html_url"].(string)
