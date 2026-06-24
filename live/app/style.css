@@ -951,22 +951,27 @@ textarea::selection {
   gap: 8px;
 }
 
-.emptyBoardPanel,
-.authGate {
-  display: grid;
-  gap: 16px;
-  border: 1px solid var(--line);
+.emptyBoardPanel {
+	display: grid;
+	gap: 16px;
+	border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
   padding: 18px;
-  box-shadow: var(--shadow);
+	box-shadow: var(--shadow);
 }
 
 .authGate {
-  max-width: 720px;
-  margin: 8vh auto 0;
-  border-color: #bfdbfe;
-  background: linear-gradient(180deg, #ffffff, #f8fbff);
+	display: grid;
+	gap: 16px;
+	border: 1px solid #bfdbfe;
+	border-radius: 8px;
+	padding: 18px;
+	box-shadow: var(--shadow);
+	max-width: 720px;
+	margin: 8vh auto 0;
+	background: linear-gradient(180deg, #ffffff, #f8fbff);
+	text-align: center;
 }
 
 .emptyBoardKicker {
@@ -2607,22 +2612,7 @@ button.dangerAction:hover {
 .archivedNode span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* --- UX backlog 709: auth gate and onboarding --- */
-.authGate {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 48px 24px;
-  text-align: center;
-  background: var(--surface, #f9fafb);
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  margin: 24px auto;
-  max-width: 480px;
-}
 .authGate h2 { font-size: 18px; margin: 0; }
-.authGate p { font-size: 13px; color: var(--muted); margin: 0; max-width: 320px; }
 .authGate .envVars { font-family: monospace; font-size: 12px; background: #f3f4f6; padding: 8px 12px; border-radius: 6px; text-align: left; }
 .onboardingChecklist { padding: 12px; border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; }
 .onboardingChecklist h3 { margin: 0 0 8px; font-size: 13px; }
@@ -2669,7 +2659,6 @@ button.dangerAction:hover {
 .syncIdle { color: var(--muted); }
 .syncSyncing { color: #f59e0b; animation: blink 0.8s infinite; }
 .syncDone { color: var(--green, #16a34a); }
-.syncFailed { color: var(--red); }
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 .boardSyncError { display: block; font-size: 11px; color: var(--red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
