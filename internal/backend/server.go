@@ -61,6 +61,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/github/repos", s.handleGitHubRepos)
 	mux.HandleFunc("/api/github/webhook", s.handleGitHubWebhook)
 	mux.HandleFunc("/api/github/create-issue", s.handleCreateGitHubIssue)
+	mux.HandleFunc("/api/github/update-issue", s.handleUpdateGitHubIssue)
+	mux.HandleFunc("/api/github/comment", s.handleCreateGitHubComment)
+	mux.HandleFunc("/api/board-source/apply", s.handleBoardSourceApply)
+	mux.HandleFunc("/api/suggestions/dismiss", s.handleDismissSuggestion)
+	mux.HandleFunc("/api/board-sync-logs", s.handleBoardSyncLogs)
+	mux.HandleFunc("/api/board-views", s.handleBoardViews)
 	mux.HandleFunc("/api/overrides", s.handleOverrides)
 	mux.HandleFunc("/api/auth/github/start", s.handleGitHubStart)
 	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
@@ -96,7 +102,70 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
+	format := r.URL.Query().Get("format")
+	if format == "flow" {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, snapshotToFlowText(payload))
+		return
+	}
 	writeJSON(w, http.StatusOK, payload)
+}
+
+func snapshotToFlowText(payload any) string {
+	data, _ := json.Marshal(payload)
+	var export struct {
+		Snapshot struct {
+			Board struct {
+				Name string `json:"name"`
+				ID   string `json:"id"`
+			} `json:"board"`
+			Nodes []struct {
+				ID    string `json:"id"`
+				Kind  string `json:"kind"`
+				Title string `json:"title"`
+				State string `json:"state"`
+				Owner string `json:"owner"`
+			} `json:"nodes"`
+			Edges []struct {
+				FromID    string `json:"from_id"`
+				ToID      string `json:"to_id"`
+				Kind      string `json:"kind"`
+				Authority string `json:"authority"`
+			} `json:"edges"`
+		} `json:"snapshot"`
+	}
+	if err := json.Unmarshal(data, &export); err != nil {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("board %q\n", export.Snapshot.Board.Name))
+	for _, n := range export.Snapshot.Nodes {
+		if strings.HasPrefix(n.ID, "gh:") {
+			continue
+		}
+		sb.WriteString(fmt.Sprintf("%s %s", n.Kind, strings.ReplaceAll(n.ID, n.Kind+":", "")))
+		if n.Title != "" && n.Title != n.ID {
+			sb.WriteString(fmt.Sprintf(" %q", n.Title))
+		}
+		if n.State != "" && n.State != "open" {
+			sb.WriteString(fmt.Sprintf(" [%s]", n.State))
+		}
+		sb.WriteString("\n")
+	}
+	for _, e := range export.Snapshot.Edges {
+		if e.Authority == "local" || e.Authority == "user" {
+			verb := e.Kind
+			if e.Kind == "blocked_by" {
+				verb = "depends on"
+			}
+			if e.Kind == "relates_to" {
+				verb = "relates to"
+			}
+			sb.WriteString(fmt.Sprintf("%s %s %s\n", e.FromID, verb, e.ToID))
+		}
+	}
+	return sb.String()
 }
 
 func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
@@ -1375,11 +1444,15 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var in struct {
-		BoardID string `json:"board_id"`
-		NodeID  string `json:"node_id"`
-		Repo    string `json:"repo"`
-		Title   string `json:"title"`
-		Body    string `json:"body"`
+		BoardID      string   `json:"board_id"`
+		NodeID       string   `json:"node_id"`
+		Repo         string   `json:"repo"`
+		Title        string   `json:"title"`
+		Body         string   `json:"body"`
+		Labels       []string `json:"labels"`
+		Assignees    []string `json:"assignees"`
+		Milestone    int      `json:"milestone"`
+		ArchiveLocal bool     `json:"archive_local"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -1399,7 +1472,17 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no github token available; sign in first"})
 		return
 	}
-	payload, _ := json.Marshal(map[string]string{"title": in.Title, "body": in.Body})
+	issueBody := map[string]any{"title": in.Title, "body": in.Body}
+	if len(in.Labels) > 0 {
+		issueBody["labels"] = in.Labels
+	}
+	if len(in.Assignees) > 0 {
+		issueBody["assignees"] = in.Assignees
+	}
+	if in.Milestone > 0 {
+		issueBody["milestone"] = in.Milestone
+	}
+	payload, _ := json.Marshal(issueBody)
 	apiURL := "https://api.github.com/repos/" + parts[0] + "/" + parts[1] + "/issues"
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, apiURL, bytes.NewReader(payload))
 	if err != nil {
@@ -1438,7 +1521,487 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 	if strings.TrimSpace(in.NodeID) != "" {
 		_, _ = s.store.AddEdge(r.Context(), boardID, strings.TrimSpace(in.NodeID), node.ID, "addresses", "user", map[string]any{"source": "github-create-issue"})
 	}
+	if in.ArchiveLocal && strings.TrimSpace(in.NodeID) != "" {
+		_ = s.store.ArchiveNode(r.Context(), strings.TrimSpace(in.NodeID))
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"url": issueURL, "number": issueNumber, "node": node})
+}
+
+func (s *Server) handleUpdateGitHubIssue(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	var in struct {
+		Repo        string   `json:"repo"`
+		IssueNumber int      `json:"issue_number"`
+		Title       string   `json:"title"`
+		Body        string   `json:"body"`
+		State       string   `json:"state"`
+		Labels      []string `json:"labels"`
+		Assignees   []string `json:"assignees"`
+		Milestone   int      `json:"milestone"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	if in.Repo == "" || in.IssueNumber == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "repo and issue_number are required"})
+		return
+	}
+	token, _, err := s.githubTokenForBoardSync(r.Context(), account.ID, core.Board{})
+	if err != nil || token == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no github token available; sign in first"})
+		return
+	}
+	patchBody := map[string]any{}
+	if in.Title != "" {
+		patchBody["title"] = in.Title
+	}
+	if in.Body != "" {
+		patchBody["body"] = in.Body
+	}
+	if in.State != "" {
+		patchBody["state"] = in.State
+	}
+	if len(in.Labels) > 0 {
+		patchBody["labels"] = in.Labels
+	}
+	if len(in.Assignees) > 0 {
+		patchBody["assignees"] = in.Assignees
+	}
+	payload, _ := json.Marshal(patchBody)
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues/%d", in.Repo, in.IssueNumber)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodPatch, apiURL, bytes.NewReader(payload))
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+	var ghResult map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&ghResult)
+	if resp.StatusCode >= 300 {
+		errMsg, _ := ghResult["message"].(string)
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: " + errMsg})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "issue": ghResult})
+}
+
+func (s *Server) handleCreateGitHubComment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	var in struct {
+		Repo        string `json:"repo"`
+		IssueNumber int    `json:"issue_number"`
+		Body        string `json:"body"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	if in.Repo == "" || in.IssueNumber == 0 || strings.TrimSpace(in.Body) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "repo, issue_number, and body are required"})
+		return
+	}
+	token, _, err := s.githubTokenForBoardSync(r.Context(), account.ID, core.Board{})
+	if err != nil || token == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no github token available; sign in first"})
+		return
+	}
+	payload, _ := json.Marshal(map[string]string{"body": in.Body})
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues/%d/comments", in.Repo, in.IssueNumber)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, apiURL, bytes.NewReader(payload))
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+	var ghResult map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&ghResult)
+	if resp.StatusCode >= 300 {
+		errMsg, _ := ghResult["message"].(string)
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: " + errMsg})
+		return
+	}
+	commentURL, _ := ghResult["html_url"].(string)
+	commentID := fmt.Sprint(ghResult["id"])
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "url": commentURL, "id": commentID})
+}
+
+func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	if _, ok := s.requireAccount(w, r); !ok {
+		return
+	}
+	var in struct {
+		BoardID string `json:"board_id"`
+		DryRun  bool   `json:"dry_run"`
+		Creates []struct {
+			Kind        string   `json:"kind"`
+			Title       string   `json:"title"`
+			Status      string   `json:"status"`
+			Owner       string   `json:"owner"`
+			Description string   `json:"description"`
+			TimeHorizon string   `json:"time_horizon"`
+			Priority    string   `json:"priority"`
+			Labels      []string `json:"labels"`
+		} `json:"creates"`
+		Updates []struct {
+			NodeID      string `json:"node_id"`
+			Title       string `json:"title"`
+			Status      string `json:"status"`
+			Owner       string `json:"owner"`
+			Description string `json:"description"`
+		} `json:"updates"`
+		Deletes []struct {
+			NodeID string `json:"node_id"`
+		} `json:"deletes"`
+		LinkCreates []struct {
+			FromID string `json:"from_id"`
+			ToID   string `json:"to_id"`
+			Kind   string `json:"kind"`
+			Notes  string `json:"notes"`
+		} `json:"link_creates"`
+		LinkDeletes []struct {
+			EdgeID string `json:"edge_id"`
+		} `json:"link_deletes"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	boardID := strings.TrimSpace(in.BoardID)
+	if boardID == "" {
+		boardID = core.DefaultBoardID
+	}
+	total := len(in.Creates) + len(in.Updates) + len(in.Deletes) + len(in.LinkCreates) + len(in.LinkDeletes)
+	if total > 100 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "too many operations (max 100)"})
+		return
+	}
+	var errs []string
+	for _, c := range in.Creates {
+		if strings.TrimSpace(c.Title) == "" {
+			errs = append(errs, "create: title is required")
+		}
+	}
+	snap, err := s.store.Snapshot(r.Context(), boardID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	nodes := map[string]bool{}
+	for _, node := range snap.Nodes {
+		nodes[node.ID] = true
+	}
+	edges := map[string]bool{}
+	for _, edge := range snap.Edges {
+		edges[edgeSelectionID(edge)] = true
+	}
+	for _, u := range in.Updates {
+		nodeID := strings.TrimSpace(u.NodeID)
+		if nodeID == "" {
+			errs = append(errs, "update: node_id is required")
+			continue
+		}
+		if !nodes[nodeID] {
+			errs = append(errs, "update: node not found: "+nodeID)
+		}
+		if strings.TrimSpace(u.Title) == "" {
+			errs = append(errs, "update: title is required for "+nodeID)
+		}
+		if strings.TrimSpace(u.Status) == "" {
+			errs = append(errs, "update: status is required for "+nodeID)
+		}
+	}
+	for _, d := range in.Deletes {
+		nodeID := strings.TrimSpace(d.NodeID)
+		if nodeID == "" {
+			errs = append(errs, "delete: node_id is required")
+			continue
+		}
+		if !nodes[nodeID] {
+			errs = append(errs, "delete: node not found: "+nodeID)
+		}
+		if !isLocalBoardNodeID(nodeID) {
+			errs = append(errs, "delete: refusing to remove GitHub-backed node: "+nodeID)
+		}
+	}
+	for _, ld := range in.LinkDeletes {
+		edgeID := strings.TrimSpace(ld.EdgeID)
+		if edgeID == "" {
+			errs = append(errs, "link delete: edge_id is required")
+			continue
+		}
+		if !edges[edgeID] {
+			errs = append(errs, "link delete: edge not found: "+edgeID)
+		}
+	}
+	if len(errs) > 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"errors": errs})
+		return
+	}
+	summary := map[string]int{
+		"created":       len(in.Creates),
+		"updated":       len(in.Updates),
+		"deleted":       len(in.Deletes),
+		"links_added":   len(in.LinkCreates),
+		"links_removed": len(in.LinkDeletes),
+	}
+	if in.DryRun {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
+		return
+	}
+	for _, c := range in.Creates {
+		title := strings.TrimSpace(c.Title)
+		kind := strings.TrimSpace(c.Kind)
+		if kind == "" {
+			kind = "task"
+		}
+		if _, err := s.store.CreateStrategyNode(r.Context(), boardID, kind, title, c.Status, c.Owner, c.Description, c.TimeHorizon, c.Priority, c.Labels); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "create failed: " + err.Error()})
+			return
+		}
+	}
+	for _, u := range in.Updates {
+		nodeID := strings.TrimSpace(u.NodeID)
+		if nodeID == "" {
+			continue
+		}
+		title := u.Title
+		status := u.Status
+		owner := u.Owner
+		description := u.Description
+		if _, err := s.store.UpdateNodeFields(r.Context(), nodeID, core.NodeFieldUpdate{
+			Title:       &title,
+			Status:      &status,
+			Owner:       &owner,
+			Description: &description,
+		}); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "update failed: " + err.Error()})
+			return
+		}
+	}
+	for _, d := range in.Deletes {
+		nodeID := strings.TrimSpace(d.NodeID)
+		if nodeID == "" {
+			continue
+		}
+		if err := s.store.ArchiveNode(r.Context(), nodeID); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "delete failed: " + err.Error()})
+			return
+		}
+	}
+	for _, lc := range in.LinkCreates {
+		from := strings.TrimSpace(lc.FromID)
+		to := strings.TrimSpace(lc.ToID)
+		kind := strings.TrimSpace(lc.Kind)
+		if kind == "" {
+			kind = "blocked_by"
+		}
+		if from != "" && to != "" {
+			if _, err := s.store.AddEdge(r.Context(), boardID, from, to, kind, "user", map[string]any{"note": lc.Notes}); err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "link create failed: " + err.Error()})
+				return
+			}
+		}
+	}
+	for _, ld := range in.LinkDeletes {
+		edgeID := strings.TrimSpace(ld.EdgeID)
+		if edgeID != "" {
+			if err := s.store.DeleteEdge(r.Context(), edgeID); err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "link delete failed: " + err.Error()})
+				return
+			}
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
+}
+
+func (s *Server) handleBoardViews(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAccount(w, r); !ok {
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		boardID := r.URL.Query().Get("board_id")
+		if boardID == "" {
+			boardID = core.DefaultBoardID
+		}
+		views, err := s.store.ListBoardViews(r.Context(), boardID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		if views == nil {
+			views = []core.BoardView{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"views": views})
+	case http.MethodPost:
+		var in struct {
+			BoardID string         `json:"board_id"`
+			Name    string         `json:"name"`
+			Config  map[string]any `json:"config"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		if strings.TrimSpace(in.Name) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			return
+		}
+		boardID := strings.TrimSpace(in.BoardID)
+		if boardID == "" {
+			boardID = core.DefaultBoardID
+		}
+		view, err := s.store.SaveBoardView(r.Context(), boardID, in.Name, in.Config)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"view": view})
+	case http.MethodDelete:
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})
+			return
+		}
+		if err := s.store.DeleteBoardView(r.Context(), id); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	default:
+		w.Header().Set("Allow", "GET, POST, DELETE")
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+	}
+}
+
+func (s *Server) handleBoardSyncLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	if _, ok := s.requireAccount(w, r); !ok {
+		return
+	}
+	boardID := r.URL.Query().Get("board_id")
+	if boardID == "" {
+		boardID = core.DefaultBoardID
+	}
+	logs, err := s.store.GetSyncLogs(r.Context(), boardID, 20)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if logs == nil {
+		logs = []core.SyncLog{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"logs": logs})
+}
+
+func (s *Server) handleDismissSuggestion(w http.ResponseWriter, r *http.Request) {
+	account, ok := s.requireAccount(w, r)
+	if !ok {
+		return
+	}
+	switch r.Method {
+	case http.MethodPost:
+		var in struct {
+			EdgeID  string `json:"edge_id"`
+			BoardID string `json:"board_id"`
+			Restore bool   `json:"restore"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		boardID := strings.TrimSpace(in.BoardID)
+		if boardID == "" {
+			boardID = core.DefaultBoardID
+		}
+		edgeID := strings.TrimSpace(in.EdgeID)
+		if edgeID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "edge_id is required"})
+			return
+		}
+		if in.Restore {
+			if err := s.store.RestoreSuggestion(r.Context(), account.ID, boardID, edgeID); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+				return
+			}
+		} else {
+			if err := s.store.DismissSuggestion(r.Context(), account.ID, boardID, edgeID); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+				return
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	default:
+		w.Header().Set("Allow", http.MethodPost)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+	}
+}
+
+func edgeSelectionID(edge core.Edge) string {
+	if edge.ID != "" {
+		return edge.ID
+	}
+	kind := strings.ToLower(strings.TrimSpace(edge.Kind))
+	if kind == "blocked_by" || kind == "depends_on" || kind == "depends" || kind == "after" {
+		return "blocking:" + edge.FromID + "->" + edge.ToID
+	}
+	if kind == "blocks" || kind == "unblocks" || kind == "precedes" {
+		return "blocking:" + edge.ToID + "->" + edge.FromID
+	}
+	return kind + ":" + edge.FromID + "->" + edge.ToID
+}
+
+func isLocalBoardNodeID(nodeID string) bool {
+	for _, prefix := range []string{"note:", "task:", "strategy:", "initiative:", "bet:", "project:", "workstream:", "risk:", "decision:", "question:", "metric:"} {
+		if strings.HasPrefix(nodeID, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

@@ -192,7 +192,13 @@ function wireEvents() {
   document.getElementById('sampleBtn').addEventListener('click', loadSample);
   dom.resetSource.addEventListener('click', resetStatefulSourcePreview);
   document.getElementById('shareBtn').addEventListener('click', shareLink);
-  document.getElementById('exportBtn').addEventListener('click', exportJSON);
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const fmt = prompt('Export format: json, flow, md', 'json');
+    if (!fmt) return;
+    if (fmt === 'flow') exportFlow();
+    else if (fmt === 'md') exportMarkdown();
+    else exportJSON();
+  });
   document.getElementById('fileInput').addEventListener('change', readFile);
   dom.connectGithub.addEventListener('click', connectGitHub);
   dom.backendGithubLogin.addEventListener('click', signInWithBackendGitHub);
@@ -294,6 +300,11 @@ function wireEvents() {
   document.getElementById('bulkImportForm')?.addEventListener('submit', handleBulkImport);
   document.getElementById('resetPreviewBtn')?.addEventListener('click', () => {
     resetStatefulSourcePreview();
+  });
+  document.getElementById('applySourceBtn')?.addEventListener('click', applySourcePatch);
+  document.getElementById('saveCurrentViewBtn')?.addEventListener('click', () => {
+    const name = prompt('Name for this saved view:');
+    if (name) saveCurrentView(name.trim());
   });
   document.getElementById('commandPalette')?.addEventListener('click', (e) => {
     if (e.target.classList.contains('paletteBackdrop')) closePalette();
@@ -826,6 +837,7 @@ function renderManagePanel() {
   renderWorkspaceSuggestions();
   if (state.mode === 'stateful' && state.backendSession.authenticated) {
     loadArchivedNodes();
+    loadSavedViews();
   }
 }
 
@@ -947,7 +959,19 @@ function renderDebugPanel() {
     <div><dt>Mode</dt><dd>${esc(state.mode)}</dd></div>
   </dl>
   ${selectedNodeJSON ? `<details><summary>Selected node data <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedNodeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedNodeJSON)}</pre></details>` : ''}
-  ${selectedEdgeJSON ? `<details><summary>Selected edge <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedEdgeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedEdgeJSON)}</pre></details>` : ''}`;
+  ${selectedEdgeJSON ? `<details><summary>Selected edge <button type="button" onclick="navigator.clipboard.writeText(${JSON.stringify(selectedEdgeJSON)}).catch(()=>{})">Copy JSON</button></summary><pre>${esc(selectedEdgeJSON)}</pre></details>` : ''}
+  <div class="debugGitHubSetup">
+    <h4>GitHub App Setup</h4>
+    <dl>
+      <div><dt>Webhook URL <button type="button" onclick="navigator.clipboard.writeText('${esc(`${location.origin}/api/github/webhook`)}').catch(()=>{})">Copy</button></dt><dd><code>${esc(`${location.origin}/api/github/webhook`)}</code></dd></div>
+      <div><dt>OAuth callback URL <button type="button" onclick="navigator.clipboard.writeText('${esc(`${location.origin}/api/auth/github/callback`)}').catch(()=>{})">Copy</button></dt><dd><code>${esc(`${location.origin}/api/auth/github/callback`)}</code></dd></div>
+    </dl>
+    <div class="debugChecklist">
+      <div class="checkItem ${session.github_oauth_configured ? 'done' : ''}">OAuth app configured ${session.github_oauth_configured ? '✅' : '❌'}</div>
+      <div class="checkItem ${session.github_app_configured ? 'done' : ''}">GitHub App configured ${session.github_app_configured ? '✅' : '❌'}</div>
+      <div class="checkItem ${session.github_webhook_configured ? 'done' : ''}">Webhook receiving ${session.github_webhook_configured ? '✅' : '❌'}</div>
+    </div>
+  </div>`;
 }
 
 function renderSyncPanel() {
@@ -977,8 +1001,37 @@ function renderSyncPanel() {
   </dl>
   <div class="syncActions">
     <button type="button" id="syncFromPanelBtn">Sync now</button>
+  </div>
+  <div class="syncLogsSection">
+    <h4>Sync history</h4>
+    <div id="syncLogsList" class="syncLogsList"></div>
   </div>`;
   document.getElementById('syncFromPanelBtn')?.addEventListener('click', syncCurrentBoard);
+  loadSyncLogs();
+}
+
+async function loadSyncLogs() {
+  const el = document.getElementById('syncLogsList');
+  if (!el) return;
+  try {
+    const board = encodeURIComponent(state.currentBoardID || 'default');
+    const res = await fetch(`./api/board-sync-logs?board_id=${board}`, { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const logs = Array.isArray(data.logs) ? data.logs : [];
+    if (!logs.length) { el.innerHTML = '<div class="emptyState">No sync history yet</div>'; return; }
+    el.innerHTML = logs.map((log) => `<div class="syncLogEntry ${log.status === 'ok' ? 'syncLogOk' : 'syncLogFailed'}">
+      <div class="syncLogHead">
+        <strong>${esc(log.status)}</strong>
+        <span>${esc(log.mode || 'unknown')}</span>
+        <span>${esc(log.started_at ? new Date(log.started_at).toLocaleString() : '')}</span>
+      </div>
+      <div class="syncLogMeta">
+        ${log.items_synced ? `${log.items_synced} items · ` : ''}${log.edges_synced ? `${log.edges_synced} links · ` : ''}${log.rate_limit_remaining ? `${log.rate_limit_remaining} API calls remaining` : ''}
+      </div>
+      ${log.error ? `<div class="syncLogError">${esc(log.error)}</div>` : ''}
+    </div>`).join('');
+  } catch (_) {}
 }
 
 function currentBoard() {
@@ -2555,6 +2608,7 @@ function renderGraph(snapshot, nodes, hidden = {}) {
     pairs: 'Grouped by dependency direction. Blocked items on left, blockers on right.',
     focus: 'Select an item to see its neighbors and dependency chain.',
     backlog: 'Items not yet linked to anything. Use to triage and connect.',
+    cluster: 'Items grouped by label, repo, or kind.',
   };
   const hintEl = document.getElementById('graphDriverHint');
   if (hintEl) hintEl.textContent = hints[state.graphDriver] || '';
@@ -2569,6 +2623,10 @@ function renderGraph(snapshot, nodes, hidden = {}) {
   }
   if (state.graphDriver === 'backlog') {
     renderGraphBacklog(snapshot, nodes, hidden);
+    return;
+  }
+  if (state.graphDriver === 'cluster') {
+    renderGraphCluster(snapshot, nodes);
     return;
   }
   const hiddenConnected = Number(hidden.connected || 0);
@@ -2792,6 +2850,27 @@ function renderGraphBacklog(snapshot, nodes, hidden = {}) {
   dom.graphCanvas.innerHTML = `<div class="graphBacklog">
     ${nodes.sort(graphNodeSort).slice(0, 80).map((node) => renderGraphPairNode(node, 'Unlinked')).join('')}
   </div>`;
+}
+
+function renderGraphCluster(snapshot, nodes) {
+  if (dom.graphConnectedToggle) { dom.graphConnectedToggle.textContent = 'N/A'; dom.graphConnectedToggle.disabled = true; }
+  if (dom.graphUnlinkedToggle) { dom.graphUnlinkedToggle.textContent = 'N/A'; dom.graphUnlinkedToggle.disabled = true; }
+  state.graphLayout = { width: 900, height: 620 };
+  dom.graphZoomLabel.textContent = 'cluster';
+  if (!nodes.length) { dom.graphCanvas.innerHTML = '<div class="graphEmpty">No visible items for cluster view.</div>'; return; }
+  const groups = {};
+  for (const n of nodes) {
+    const nd = nodeData(n);
+    const gh = parseGitHubNodeID(n.id);
+    const key = (Array.isArray(nd.labels) && nd.labels[0]) || (gh && gh.repo) || n.kind || 'other';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(n);
+  }
+  dom.graphCanvas.innerHTML = `<div class="graphClusters">${Object.entries(groups).map(([key, gnodes]) => `
+    <div class="clusterGroup">
+      <div class="clusterGroupLabel">${esc(key)}</div>
+      <div class="clusterGroupCards">${gnodes.map((n) => renderGraphPairNode(n, 'Card')).join('')}</div>
+    </div>`).join('')}</div>`;
 }
 
 function graphPairGroups(snapshot, visible) {
@@ -3478,9 +3557,28 @@ function renderItemInspector(snapshot) {
           <input type="text" name="repo" placeholder="owner/repo" required>
           <input type="text" name="title" value="${esc(node.title || '')}" required>
           <textarea name="body" rows="2" placeholder="Description (optional)">${esc(data.description || '')}</textarea>
+          <input type="text" name="labels" placeholder="Labels (comma-separated, optional)">
+          <input type="text" name="assignees" placeholder="Assignees (comma-separated logins, optional)">
+          <label class="inspectorCheckbox"><input type="checkbox" name="archive_local"> Archive local node after creating issue</label>
           <button type="submit" class="primaryAction">Create issue</button>
         </form>
       </details>
+    </div>` : '';
+  const githubStateSection = !local && github && state.backendSession.authenticated ? `
+    <div class="inspectorGitHubActions">
+      <div class="inspectorSectionLabel">GitHub Actions</div>
+      ${node.state === 'open' || node.state === 'active' || node.state === 'draft' ? `<button type="button" data-item-action="close-github-issue">Close issue</button>` : `<button type="button" data-item-action="reopen-github-issue">Reopen issue</button>`}
+    </div>` : '';
+  const commentSection = !local && github && state.backendSession.authenticated ? `
+    <div class="inspectorCommentCompose">
+      <div class="inspectorSectionLabel">Add comment</div>
+      <textarea id="inspectorCommentBody" rows="3" placeholder="Add a comment..."></textarea>
+      <button type="button" data-item-action="submit-comment">Comment</button>
+    </div>` : '';
+  const overrideNotes = !local && state.backendSession.authenticated ? `
+    <div class="inspectorOverrideNotes">
+      <div class="inspectorSectionLabel">Personal notes</div>
+      <textarea id="inspectorPersonalNotes" rows="2" placeholder="Private notes about this item..."></textarea>
     </div>` : '';
   const linkCreateSection = `<div class="inspectorLinkCreate">
     <select id="inspectorLinkKind">
@@ -3511,6 +3609,9 @@ function renderItemInspector(snapshot) {
     ${editFormSection}
     ${actionsSection}
     ${createGHIssueSection}
+    ${githubStateSection}
+    ${commentSection}
+    ${overrideNotes}
     ${linkCreateSection}
     <div class="inspectorSection inspectorLinks">
       ${outgoing.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocks / Out</div>${renderInspectorLinks('Out', outgoing)}</div>` : ''}
@@ -3532,7 +3633,25 @@ function renderItemInspector(snapshot) {
     createGHForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const fd = new FormData(createGHForm);
-      createGitHubIssueFromNode(node.id, fd.get('repo'), fd.get('title'), fd.get('body'));
+      const labelsStr = fd.get('labels') || '';
+      const assigneesStr = fd.get('assignees') || '';
+      const archiveLocal = fd.get('archive_local') === 'on';
+      const lbls = labelsStr ? labelsStr.split(',').map((l) => l.trim()).filter(Boolean) : [];
+      const asgns = assigneesStr ? assigneesStr.split(',').map((a) => a.trim()).filter(Boolean) : [];
+      createGitHubIssueFromNode(node.id, fd.get('repo'), fd.get('title'), fd.get('body'), lbls, asgns, archiveLocal);
+    });
+  }
+  const notesEl = document.getElementById('inspectorPersonalNotes');
+  if (notesEl) {
+    notesEl.addEventListener('blur', () => {
+      const val = notesEl.value.trim();
+      if (state.mode === 'stateful' && state.backendSession.authenticated) {
+        fetch('./api/overrides', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ owner_type: 'node', owner_id: state.selectedNodeID, data: { notes: val } }),
+        }).catch(() => {});
+      }
     });
   }
 }
@@ -3597,6 +3716,22 @@ function handleItemInspectorClick(event) {
     dom.newLinkTo.value = node.id;
     setWorkspaceTab('actions');
     dom.newLinkFrom.focus();
+  }
+  if (button.dataset.itemAction === 'submit-comment') {
+    const gh = parseGitHubNodeID(state.selectedNodeID);
+    if (!gh) return;
+    const bodyEl = document.getElementById('inspectorCommentBody');
+    const commentBody = bodyEl ? bodyEl.value.trim() : '';
+    if (!commentBody) return;
+    submitGitHubComment(gh.repo, Number(gh.number), commentBody);
+    return;
+  }
+  if (button.dataset.itemAction === 'close-github-issue' || button.dataset.itemAction === 'reopen-github-issue') {
+    const gh = parseGitHubNodeID(state.selectedNodeID);
+    if (!gh) return;
+    const newState = button.dataset.itemAction === 'close-github-issue' ? 'closed' : 'open';
+    closeOrReopenGitHubIssue(gh.repo, Number(gh.number), newState);
+    return;
   }
   if (button.dataset.itemAction === 'create-link-from-inspector') {
     const kindEl = document.getElementById('inspectorLinkKind');
@@ -3796,11 +3931,20 @@ function scrollSelectedNodeIntoView() {
   node.scrollIntoView({ block: 'center', inline: 'center' });
 }
 
-function dismissSuggestedEdge(edgeID) {
+async function dismissSuggestedEdge(edgeID) {
   state.dismissedSuggestionIDs.add(edgeID);
   if (state.selectedEdgeID === edgeID) state.selectedEdgeID = '';
   render();
-  dom.status.textContent = 'suggested relation hidden for this session';
+  dom.status.textContent = 'suggested relation hidden';
+  if (state.mode === 'stateful' && state.backendSession.authenticated) {
+    try {
+      await fetch('./api/suggestions/dismiss', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ edge_id: edgeID, board_id: state.currentBoardID || 'default' }),
+      });
+    } catch (_) {}
+  }
 }
 
 async function promoteSuggestedEdge(edgeID) {
@@ -4132,7 +4276,7 @@ function writeURLFilters() {
 
 function readURLDriver() {
   const driver = new URLSearchParams(location.search).get('driver') || 'pairs';
-  return ['pairs', 'focus', 'backlog'].includes(driver) ? driver : 'pairs';
+  return ['pairs', 'focus', 'backlog', 'cluster'].includes(driver) ? driver : 'pairs';
 }
 
 function writeURLDriver(driver) {
@@ -4172,6 +4316,50 @@ function exportJSON() {
   const link = document.createElement('a');
   link.href = url;
   link.download = 'depviz-live.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportFlow() {
+  const snap = state.data?.snapshot || {};
+  const nodes = snap.nodes || [];
+  const edges = snap.edges || [];
+  const boardName = snap.board?.name || 'Board';
+  const lines = [`board ${JSON.stringify(boardName)}`];
+  for (const n of nodes) {
+    if (n.id && n.id.startsWith('gh:')) continue;
+    let line = `${n.kind || 'task'} ${n.id}`;
+    if (n.title && n.title !== n.id) line += ` ${JSON.stringify(n.title)}`;
+    if (n.state && n.state !== 'open') line += ` [${n.state}]`;
+    lines.push(line);
+  }
+  for (const e of edges) {
+    if (e.authority === 'local' || e.authority === 'user') {
+      let verb = e.kind === 'blocked_by' ? 'depends on' : e.kind === 'relates_to' ? 'relates to' : e.kind;
+      lines.push(`${e.from_id} ${verb} ${e.to_id}`);
+    }
+  }
+  const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'depviz-board.depviz';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportMarkdown() {
+  const nodes = state.data?.snapshot?.nodes || [];
+  const lines = ['# DepViz Board Export', '', '## Items', ''];
+  for (const n of nodes) {
+    const done = isClosed(n);
+    lines.push(`- [${done ? 'x' : ' '}] ${n.title || n.id} (${n.kind}, ${n.state})`);
+  }
+  const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'depviz-board.md';
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -4760,6 +4948,77 @@ async function loadArchivedNodes() {
   } catch (_) {}
 }
 
+async function loadSavedViews() {
+  const el = document.getElementById('savedViewsList');
+  if (!el || !state.backendSession.authenticated) return;
+  try {
+    const board = encodeURIComponent(state.currentBoardID || 'default');
+    const res = await fetch(`./api/board-views?board_id=${board}`, { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const views = Array.isArray(data.views) ? data.views : [];
+    if (!views.length) { el.innerHTML = '<div class="emptyState">No saved filters yet</div>'; return; }
+    el.innerHTML = views.map((v) => {
+      let cfg = {};
+      try { cfg = JSON.parse(v.config_json || '{}'); } catch (_) {}
+      const desc = [cfg.driver, cfg.view, cfg.filter_text].filter(Boolean).join(' · ');
+      return `<div class="savedViewItem">
+        <div>
+          <strong>${esc(v.name)}</strong>
+          ${desc ? `<span class="savedViewDesc">${esc(desc)}</span>` : ''}
+        </div>
+        <div class="savedViewActions">
+          <button type="button" data-apply-view-id="${esc(v.id)}" data-apply-view-config="${esc(v.config_json)}">Apply</button>
+          <button type="button" data-delete-view-id="${esc(v.id)}">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('[data-apply-view-id]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        try {
+          const cfg = JSON.parse(btn.dataset.applyViewConfig || '{}');
+          if (cfg.driver) { state.graphDriver = cfg.driver; if (dom.graphDriver) dom.graphDriver.value = cfg.driver; }
+          if (cfg.view) setView(cfg.view, { persist: true, renderNow: false });
+          if (cfg.filter_text !== undefined) { state.filter = cfg.filter_text; if (dom.filter) dom.filter.value = cfg.filter_text; }
+          render();
+          const nameEl = btn.closest('.savedViewItem')?.querySelector('strong');
+          dom.status.textContent = `view "${nameEl ? nameEl.textContent : cfg.driver || ''}" applied`;
+        } catch (_) {}
+      });
+    });
+    el.querySelectorAll('[data-delete-view-id]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await fetch(`./api/board-views?id=${encodeURIComponent(btn.dataset.deleteViewId)}`, { method: 'DELETE', credentials: 'same-origin' });
+        loadSavedViews();
+      });
+    });
+  } catch (_) {}
+}
+
+async function saveCurrentView(name) {
+  const config = {
+    driver: state.graphDriver,
+    view: state.view,
+    filter_text: state.filter,
+    active_chips: Array.from(state.activeChipFilters),
+    show_closed: state.showClosed,
+    show_external: state.showExternal,
+    show_local: state.showLocal,
+  };
+  try {
+    const res = await fetch('./api/board-views', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board_id: state.currentBoardID || 'default', name, config }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    dom.status.textContent = `view "${name}" saved`;
+    loadSavedViews();
+  } catch (err) {
+    dom.error.textContent = err.message;
+  }
+}
+
 function resolveNodeByRef(ref) {
   const nodes = state.data.snapshot.nodes || [];
   const trimmed = ref.trim();
@@ -4786,12 +5045,12 @@ async function addBoardLinkDirect(from, kind, to) {
   }
 }
 
-async function createGitHubIssueFromNode(nodeID, repo, title, body) {
+async function createGitHubIssueFromNode(nodeID, repo, title, body, labels = [], assignees = [], archiveLocal = false) {
 	try {
 		const res = await fetch('./api/github/create-issue', {
 			method: 'POST', credentials: 'same-origin',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: nodeID, repo, title, body }),
+			body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: nodeID, repo, title, body, labels, assignees, archive_local: archiveLocal }),
 		});
 		if (!res.ok) throw new Error(await responseErrorMessage(res));
 		const data = await res.json();
@@ -4802,6 +5061,42 @@ async function createGitHubIssueFromNode(nodeID, repo, title, body) {
 	} catch (err) {
 		dom.error.textContent = err.message;
 	}
+}
+
+async function closeOrReopenGitHubIssue(repo, issueNumber, issueState) {
+  try {
+    const res = await fetch('./api/github/update-issue', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repo, issue_number: issueNumber, state: issueState }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    dom.status.textContent = issueState === 'closed' ? 'issue closed' : 'issue reopened';
+    await loadBackendBoard();
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'github update failed';
+  }
+}
+
+async function submitGitHubComment(repo, issueNumber, body) {
+  try {
+    const res = await fetch('./api/github/comment', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repo, issue_number: issueNumber, body }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    const data = await res.json();
+    dom.status.textContent = 'comment posted';
+    if (data.url) {
+      const el = document.getElementById('inspectorCommentBody');
+      if (el) el.value = '';
+    }
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'comment failed';
+  }
 }
 
 function setSyncIndicator(status) {
@@ -4889,6 +5184,120 @@ function renderSourceDirtyIndicator() {
   const diffText = diff ? `+${diff.added} nodes  -${diff.removed}  ${diff.edgeDiff >= 0 ? '+' : ''}${diff.edgeDiff} edges` : '';
   const summaryEl = document.getElementById('sourceDiffSummary');
   if (summaryEl) summaryEl.textContent = diffText;
+}
+
+function computeSourcePatch(baseNodes, baseEdges, editedNodes, editedEdges) {
+  const baseNodeMap = new Map((baseNodes || []).map((n) => [n.id, n]));
+  const editedNodeMap = new Map((editedNodes || []).map((n) => [n.id, n]));
+  const baseEdgeMap = new Map((baseEdges || []).map((e) => [edgeSelectionID(e), e]));
+  const editedEdgeMap = new Map((editedEdges || []).map((e) => [edgeSelectionID(e), e]));
+  const creates = [];
+  const updates = [];
+  const deletes = [];
+  const link_creates = [];
+  const link_deletes = [];
+  for (const [id, node] of editedNodeMap) {
+    if (!baseNodeMap.has(id)) {
+      if (isLocal(node)) {
+        creates.push({ kind: node.kind, title: node.title, status: node.state, owner: node.owner, description: nodeData(node).description || '', time_horizon: nodeData(node).time_horizon || '', priority: nodeData(node).priority || '', labels: nodeData(node).labels || [] });
+      }
+    } else {
+      const base = baseNodeMap.get(id);
+      if (isLocal(node) && (node.title !== base.title || node.state !== base.state || node.owner !== base.owner)) {
+        updates.push({ node_id: id, title: node.title, status: node.state, owner: node.owner, description: nodeData(node).description || '' });
+      }
+    }
+  }
+  for (const [id, node] of baseNodeMap) {
+    if (!editedNodeMap.has(id) && isLocal(node)) {
+      deletes.push({ node_id: id });
+    }
+  }
+  for (const [id, edge] of editedEdgeMap) {
+    if (!baseEdgeMap.has(id)) {
+      link_creates.push({ from_id: edge.from_id, to_id: edge.to_id, kind: edge.kind, notes: '' });
+    }
+  }
+  for (const [id, edge] of baseEdgeMap) {
+    if (!editedEdgeMap.has(id) && (edge.authority === 'local' || edge.authority === 'user')) {
+      link_deletes.push({ edge_id: id });
+    }
+  }
+  return { creates, updates, deletes, link_creates, link_deletes };
+}
+
+function renderSourcePatchModal(patch, onApply) {
+  const existing = document.getElementById('sourcePatchModal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'sourcePatchModal';
+  modal.className = 'patchModal';
+  const totalOps = patch.creates.length + patch.updates.length + patch.deletes.length + patch.link_creates.length + patch.link_deletes.length;
+  modal.innerHTML = `<div class="patchBackdrop"></div>
+  <div class="patchBox">
+    <h3>Preview changes</h3>
+    <div class="patchSummary">
+      ${patch.creates.length ? `<div class="patchSection creates">Creates: ${patch.creates.length} item${patch.creates.length !== 1 ? 's' : ''}</div>` : ''}
+      ${patch.updates.length ? `<div class="patchSection updates">Updates: ${patch.updates.length} item${patch.updates.length !== 1 ? 's' : ''}</div>` : ''}
+      ${patch.deletes.length ? `<div class="patchSection deletes danger">Removes: ${patch.deletes.length} item${patch.deletes.length !== 1 ? 's' : ''}</div>` : ''}
+      ${patch.link_creates.length ? `<div class="patchSection link_creates">Links added: ${patch.link_creates.length}</div>` : ''}
+      ${patch.link_deletes.length ? `<div class="patchSection link_deletes danger">Links removed: ${patch.link_deletes.length}</div>` : ''}
+      ${totalOps === 0 ? '<div class="patchSection">No changes detected</div>' : ''}
+    </div>
+    <div class="patchDetails">
+      ${patch.creates.map((c) => `<div>+ ${esc(c.kind)}: ${esc(c.title)}</div>`).join('')}
+      ${patch.updates.map((u) => `<div>~ ${esc(u.node_id)}: ${esc(u.title)}</div>`).join('')}
+      ${patch.deletes.map((d) => `<div>- ${esc(d.node_id)}</div>`).join('')}
+      ${patch.link_creates.map((l) => `<div>+ link: ${esc(l.from_id)} → ${esc(l.to_id)}</div>`).join('')}
+      ${patch.link_deletes.map((l) => `<div>- link: ${esc(l.edge_id)}</div>`).join('')}
+    </div>
+    <div class="patchActions">
+      <button class="primaryAction" id="confirmApplyBtn">Apply</button>
+      <button id="cancelApplyBtn">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('cancelApplyBtn').addEventListener('click', () => modal.remove());
+  modal.querySelector('.patchBackdrop').addEventListener('click', () => modal.remove());
+  document.getElementById('confirmApplyBtn').addEventListener('click', () => {
+    modal.remove();
+    if (onApply) onApply();
+  });
+}
+
+async function applySourcePatch() {
+  if (!state.sourceDirty || state.mode !== 'stateful') return;
+  const baseSnap = state.sourceSnapshot?.snapshot || { nodes: [], edges: [] };
+  const currSnap = state.data?.snapshot || { nodes: [], edges: [] };
+  const patch = computeSourcePatch(baseSnap.nodes, baseSnap.edges, currSnap.nodes, currSnap.edges);
+  const boardID = state.currentBoardID || 'default';
+  try {
+    const res = await fetch('./api/board-source/apply', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board_id: boardID, dry_run: true, ...patch }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    renderSourcePatchModal(patch, async () => {
+      try {
+        const res2 = await fetch('./api/board-source/apply', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ board_id: boardID, dry_run: false, ...patch }),
+        });
+        if (!res2.ok) throw new Error(await responseErrorMessage(res2));
+        state.sourceDirty = false;
+        await loadBackendBoard();
+        dom.status.textContent = 'changes applied';
+      } catch (err) {
+        dom.error.textContent = err.message;
+        dom.status.textContent = 'apply failed';
+      }
+    });
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'preview failed';
+  }
 }
 
 boot();

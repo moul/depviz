@@ -62,6 +62,8 @@ func run(ctx context.Context, args []string) error {
 		return runSync(ctx, dbPath, args)
 	case "live":
 		return runLive(ctx, args)
+	case "backup":
+		return runBackup(ctx, dbPath, args)
 	case "server":
 		return runServer(ctx, dbPath, args)
 	default:
@@ -320,6 +322,33 @@ func runLive(ctx context.Context, args []string) error {
 	return http.ListenAndServe(*addr, http.FileServer(http.FS(live.AppFS())))
 }
 
+func runBackup(ctx context.Context, dbPath string, args []string) error {
+	fs := flag.NewFlagSet("backup", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	outDir := fs.String("out", "backups", "output directory for backup files")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if _, err := os.Stat(dbPath); err != nil {
+		return fmt.Errorf("database not found at %s", dbPath)
+	}
+	ts := time.Now().UTC().Format("20060102T150405Z")
+	outFile := filepath.Join(*outDir, "state-"+ts+"-manual.db")
+	if err := os.MkdirAll(*outDir, 0o755); err != nil {
+		return err
+	}
+	s, err := core.OpenStore(ctx, dbPath)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	if err := s.Backup(ctx, outFile); err != nil {
+		return err
+	}
+	fmt.Printf("backup written to: %s\n", outFile)
+	return nil
+}
+
 func runServer(ctx context.Context, dbPath string, args []string) error {
 	fs := flag.NewFlagSet("server", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -370,6 +399,7 @@ Usage:
   depviz gen html --board default --view graph --out dist/depviz.html
   depviz gen json --board default --out dist/depviz.json
   depviz live --addr 127.0.0.1:8686
+  depviz backup [--out backups]
   depviz server --addr 127.0.0.1:8766 --base-url https://depviz.moul.io
 
 Environment:

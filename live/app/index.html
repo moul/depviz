@@ -75,7 +75,7 @@
         <span class="sourceDirtyPill">Unsaved preview</span>
         <span id="sourceDiffSummary"></span>
         <button id="resetPreviewBtn" type="button">Reset</button>
-        <button type="button" disabled title="Coming soon">Save</button>
+        <button type="button" id="applySourceBtn" class="statefulOnly" title="Apply source changes">Apply</button>
       </div>
     </section>
 
@@ -136,6 +136,11 @@
               <summary>Archived nodes</summary>
               <div id="archivedNodesList"></div>
             </details>
+            <div class="savedViews">
+              <h4>Saved filters</h4>
+              <div id="savedViewsList" class="savedViewsList"></div>
+              <button id="saveCurrentViewBtn" type="button">Save current filter</button>
+            </div>
           </section>
 
           <section id="workspaceActions" class="workspaceTab hidden">
@@ -295,6 +300,7 @@
                   <option value="pairs">Relation pairs — dependency clusters</option>
                   <option value="focus">Focus item — neighborhood view</option>
                   <option value="backlog">Backlog lanes — unlinked items</option>
+                  <option value="cluster">Cluster by label/repo</option>
                 </select>
                 <div id="graphDriverHint" class="graphDriverHint"></div>
                 <button type="button" data-graph-action="fit">Fit</button>

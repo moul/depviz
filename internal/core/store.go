@@ -73,6 +73,17 @@ func (s *Store) Path() string {
 	return s.path
 }
 
+func (s *Store) Backup(ctx context.Context, outPath string) error {
+	if strings.TrimSpace(outPath) == "" {
+		return errors.New("backup output path is required")
+	}
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return err
+	}
+	_, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, outPath)
+	return err
+}
+
 func (s *Store) Migrate(ctx context.Context) error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS sources (
@@ -247,6 +258,33 @@ func (s *Store) Migrate(ctx context.Context) error {
 	}
 	// Additive migrations (ALTER TABLE — idempotent via ignored errors)
 	_, _ = s.db.ExecContext(ctx, `ALTER TABLE nodes ADD COLUMN archived_at TEXT`)
+	_, _ = s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS dismissed_suggestions (
+		account_id TEXT NOT NULL,
+		board_id TEXT NOT NULL,
+		edge_id TEXT NOT NULL,
+		dismissed_at TEXT NOT NULL,
+		PRIMARY KEY (account_id, board_id, edge_id)
+	)`)
+	_, _ = s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS sync_logs (
+		id TEXT PRIMARY KEY,
+		board_id TEXT NOT NULL,
+		started_at TEXT NOT NULL,
+		completed_at TEXT NOT NULL DEFAULT '',
+		status TEXT NOT NULL,
+		items_synced INTEGER NOT NULL DEFAULT 0,
+		edges_synced INTEGER NOT NULL DEFAULT 0,
+		mode TEXT NOT NULL DEFAULT '',
+		error TEXT NOT NULL DEFAULT '',
+		rate_limit_remaining INTEGER NOT NULL DEFAULT 0,
+		rate_limit_reset TEXT NOT NULL DEFAULT ''
+	)`)
+	_, _ = s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS board_views (
+		id TEXT PRIMARY KEY,
+		board_id TEXT NOT NULL,
+		name TEXT NOT NULL,
+		config_json TEXT NOT NULL DEFAULT '{}',
+		created_at TEXT NOT NULL
+	)`)
 	return nil
 }
 
@@ -1365,6 +1403,127 @@ func sourceURL(sourceID string) string {
 		return "https://github.com/" + strings.TrimPrefix(sourceID, "github:")
 	}
 	return ""
+}
+
+type BoardView struct {
+	ID         string `json:"id"`
+	BoardID    string `json:"board_id"`
+	Name       string `json:"name"`
+	ConfigJSON string `json:"config_json"`
+	CreatedAt  string `json:"created_at"`
+}
+
+func (s *Store) SaveBoardView(ctx context.Context, boardID, name string, config map[string]any) (BoardView, error) {
+	id := fmt.Sprintf("view-%d", time.Now().UnixNano())
+	now := formatTime(nowUTC())
+	configJSON, _ := json.Marshal(config)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO board_views(id, board_id, name, config_json, created_at) VALUES(?, ?, ?, ?, ?)`,
+		id, boardID, name, string(configJSON), now)
+	if err != nil {
+		return BoardView{}, err
+	}
+	return BoardView{ID: id, BoardID: boardID, Name: name, ConfigJSON: string(configJSON), CreatedAt: now}, nil
+}
+
+func (s *Store) ListBoardViews(ctx context.Context, boardID string) ([]BoardView, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, board_id, name, config_json, created_at FROM board_views WHERE board_id=? ORDER BY created_at DESC`, boardID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []BoardView
+	for rows.Next() {
+		var v BoardView
+		if err := rows.Scan(&v.ID, &v.BoardID, &v.Name, &v.ConfigJSON, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) DeleteBoardView(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM board_views WHERE id=?`, id)
+	return err
+}
+
+type SyncLog struct {
+	ID                 string `json:"id"`
+	BoardID            string `json:"board_id"`
+	StartedAt          string `json:"started_at"`
+	CompletedAt        string `json:"completed_at"`
+	Status             string `json:"status"`
+	ItemsSynced        int    `json:"items_synced"`
+	EdgesSynced        int    `json:"edges_synced"`
+	Mode               string `json:"mode"`
+	Error              string `json:"error"`
+	RateLimitRemaining int    `json:"rate_limit_remaining"`
+	RateLimitReset     string `json:"rate_limit_reset"`
+}
+
+func (s *Store) AddSyncLog(ctx context.Context, log SyncLog) error {
+	if log.ID == "" {
+		log.ID = fmt.Sprintf("sync-%d", time.Now().UnixNano())
+	}
+	if log.StartedAt == "" {
+		log.StartedAt = formatTime(nowUTC())
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT OR REPLACE INTO sync_logs(id, board_id, started_at, completed_at, status, items_synced, edges_synced, mode, error, rate_limit_remaining, rate_limit_reset)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		log.ID, log.BoardID, log.StartedAt, log.CompletedAt, log.Status, log.ItemsSynced, log.EdgesSynced, log.Mode, log.Error, log.RateLimitRemaining, log.RateLimitReset)
+	return err
+}
+
+func (s *Store) GetSyncLogs(ctx context.Context, boardID string, limit int) ([]SyncLog, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT id, board_id, started_at, completed_at, status, items_synced, edges_synced, mode, error, rate_limit_remaining, rate_limit_reset FROM sync_logs WHERE board_id=? ORDER BY started_at DESC LIMIT ?`, boardID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SyncLog
+	for rows.Next() {
+		var l SyncLog
+		if err := rows.Scan(&l.ID, &l.BoardID, &l.StartedAt, &l.CompletedAt, &l.Status, &l.ItemsSynced, &l.EdgesSynced, &l.Mode, &l.Error, &l.RateLimitRemaining, &l.RateLimitReset); err != nil {
+			return nil, err
+		}
+		out = append(out, l)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) DismissSuggestion(ctx context.Context, accountID, boardID, edgeID string) error {
+	now := formatTime(nowUTC())
+	_, err := s.db.ExecContext(ctx, `INSERT INTO dismissed_suggestions(account_id, board_id, edge_id, dismissed_at)
+		VALUES(?, ?, ?, ?)
+		ON CONFLICT(account_id, board_id, edge_id) DO UPDATE SET dismissed_at=excluded.dismissed_at`,
+		accountID, boardID, edgeID, now)
+	return err
+}
+
+func (s *Store) RestoreSuggestion(ctx context.Context, accountID, boardID, edgeID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM dismissed_suggestions WHERE account_id=? AND board_id=? AND edge_id=?`,
+		accountID, boardID, edgeID)
+	return err
+}
+
+func (s *Store) ListDismissedSuggestions(ctx context.Context, accountID, boardID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT edge_id FROM dismissed_suggestions WHERE account_id=? AND board_id=?`, accountID, boardID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
 }
 
 func formatTime(t time.Time) string {
