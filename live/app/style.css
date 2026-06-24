@@ -212,7 +212,7 @@ button:disabled {
 }
 
 .shell.statefulMode {
-  grid-template-columns: minmax(300px, 28vw) 1fr;
+  grid-template-columns: minmax(240px, 22vw) 1fr;
 }
 
 .shell.statefulMode .inputPane {
@@ -810,7 +810,6 @@ textarea::selection {
 }
 
 .filterChips {
-  grid-area: chips;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -841,7 +840,6 @@ textarea::selection {
 }
 
 .keyHints {
-  grid-area: hints;
   align-self: center;
   overflow: hidden;
   color: var(--muted);
@@ -906,17 +904,13 @@ textarea::selection {
 }
 
 .canvasTools {
-  display: grid;
-  grid-template-columns: minmax(300px, 0.9fr) minmax(320px, 1fr) minmax(390px, 0.95fr);
-  grid-template-areas:
-    "filters chips stats"
-    "hints chips stats";
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .filters {
-  grid-area: filters;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -947,14 +941,16 @@ textarea::selection {
 }
 
 .stats {
-  grid-area: stats;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(68px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 5px;
 }
 
 .stat {
   display: grid;
+  flex: 1 1 60px;
+  min-width: 60px;
+  max-width: 90px;
   min-height: 38px;
   border: 1px solid var(--line-soft);
   border-radius: 7px;
@@ -2591,7 +2587,6 @@ button.dangerAction:hover {
     min-height: 280px;
   }
 
-  .stats,
   .briefGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2636,7 +2631,6 @@ button.dangerAction:hover {
     grid-template-columns: 1fr;
   }
 
-  .canvasTools,
   .contentGrid {
     grid-template-columns: 1fr;
   }
