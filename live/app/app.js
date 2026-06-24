@@ -105,6 +105,8 @@ const state = {
   inspectorEditMode: false,
   undoStack: [],
   boardFilter: '',
+  sourceDirty: false,
+  sourceSnapshot: null,
 };
 
 function emptyExport() {
@@ -263,6 +265,10 @@ function wireEvents() {
     }
   });
   document.getElementById('bulkImportForm')?.addEventListener('submit', handleBulkImport);
+  document.getElementById('resetPreviewBtn')?.addEventListener('click', () => {
+    state.sourceDirty = false;
+    renderSourceDirtyIndicator();
+  });
 }
 
 async function loadSample() {
@@ -4370,6 +4376,27 @@ async function loadArchivedNodes() {
       });
     });
   } catch (_) {}
+}
+
+function computeSourceDiff(base, current) {
+  const baseNodes = new Set((base?.snapshot?.nodes || []).map((n) => n.id));
+  const currNodes = new Set((current?.snapshot?.nodes || []).map((n) => n.id));
+  const added = [...currNodes].filter((id) => !baseNodes.has(id)).length;
+  const removed = [...baseNodes].filter((id) => !currNodes.has(id)).length;
+  const baseEdges = (base?.snapshot?.edges || []).length;
+  const currEdges = (current?.snapshot?.edges || []).length;
+  const edgeDiff = currEdges - baseEdges;
+  return { added, removed, edgeDiff };
+}
+function renderSourceDirtyIndicator() {
+  const el = document.getElementById('sourcePreviewMeta');
+  if (!el) return;
+  if (!state.sourceDirty) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const diff = state.sourceSnapshot ? computeSourceDiff(state.sourceSnapshot, state.data) : null;
+  const diffText = diff ? `+${diff.added} nodes  -${diff.removed}  ${diff.edgeDiff >= 0 ? '+' : ''}${diff.edgeDiff} edges` : '';
+  const summaryEl = document.getElementById('sourceDiffSummary');
+  if (summaryEl) summaryEl.textContent = diffText;
 }
 
 boot();

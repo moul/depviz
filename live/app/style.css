@@ -2599,3 +2599,7 @@ button.dangerAction:hover {
 
 /* --- UX backlog 709: board filter --- */
 #boardFilterInput { width: 100%; box-sizing: border-box; margin-bottom: 6px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 12px; }
+
+/* --- UX backlog 709: source dirty indicator --- */
+.sourcePreviewMeta { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-size: 12px; }
+.sourceDirtyPill { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 4px; padding: 1px 6px; font-size: 11px; font-weight: 600; }
