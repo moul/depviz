@@ -3569,6 +3569,11 @@ function renderItemInspector(snapshot) {
       <textarea id="inspectorCommentBody" rows="3" placeholder="Add a comment..."></textarea>
       <button type="button" data-item-action="submit-comment">Comment</button>
     </div>` : '';
+  const overrideNotes = !local && state.backendSession.authenticated ? `
+    <div class="inspectorOverrideNotes">
+      <div class="inspectorSectionLabel">Personal notes</div>
+      <textarea id="inspectorPersonalNotes" rows="2" placeholder="Private notes about this item..."></textarea>
+    </div>` : '';
   const linkCreateSection = `<div class="inspectorLinkCreate">
     <select id="inspectorLinkKind">
       <option value="blocked_by">depends on</option>
@@ -3600,6 +3605,7 @@ function renderItemInspector(snapshot) {
     ${createGHIssueSection}
     ${githubStateSection}
     ${commentSection}
+    ${overrideNotes}
     ${linkCreateSection}
     <div class="inspectorSection inspectorLinks">
       ${outgoing.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocks / Out</div>${renderInspectorLinks('Out', outgoing)}</div>` : ''}
@@ -3627,6 +3633,19 @@ function renderItemInspector(snapshot) {
       const lbls = labelsStr ? labelsStr.split(',').map((l) => l.trim()).filter(Boolean) : [];
       const asgns = assigneesStr ? assigneesStr.split(',').map((a) => a.trim()).filter(Boolean) : [];
       createGitHubIssueFromNode(node.id, fd.get('repo'), fd.get('title'), fd.get('body'), lbls, asgns, archiveLocal);
+    });
+  }
+  const notesEl = document.getElementById('inspectorPersonalNotes');
+  if (notesEl) {
+    notesEl.addEventListener('blur', () => {
+      const val = notesEl.value.trim();
+      if (state.mode === 'stateful' && state.backendSession.authenticated) {
+        fetch('./api/overrides', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ owner_type: 'node', owner_id: state.selectedNodeID, data: { notes: val } }),
+        }).catch(() => {});
+      }
     });
   }
 }
