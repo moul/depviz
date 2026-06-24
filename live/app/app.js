@@ -107,6 +107,9 @@ const state = {
   boardFilter: '',
   sourceDirty: false,
   sourceSnapshot: null,
+  paletteOpen: false,
+  paletteQuery: '',
+  paletteSelected: 0,
 };
 
 function emptyExport() {
@@ -233,6 +236,15 @@ function wireEvents() {
   }
   document.addEventListener('keydown', handleGraphKeydown);
   document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      if (state.paletteOpen) closePalette(); else openPalette();
+      return;
+    }
+    if (e.key === 'Escape' && state.paletteOpen) {
+      closePalette();
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
       e.preventDefault();
       undoLastOp();
@@ -268,6 +280,24 @@ function wireEvents() {
   document.getElementById('resetPreviewBtn')?.addEventListener('click', () => {
     state.sourceDirty = false;
     renderSourceDirtyIndicator();
+  });
+  document.getElementById('commandPalette')?.addEventListener('click', (e) => {
+    if (e.target.classList.contains('paletteBackdrop')) closePalette();
+  });
+  const paletteInput = document.getElementById('paletteInput');
+  paletteInput?.addEventListener('input', (e) => {
+    state.paletteQuery = e.target.value;
+    state.paletteSelected = 0;
+    renderPalette();
+  });
+  paletteInput?.addEventListener('keydown', (e) => {
+    const q = (state.paletteQuery || '').toLowerCase();
+    const cmds = paletteCommands().filter((c) => !q || c.label.toLowerCase().includes(q) || (c.hint || '').toLowerCase().includes(q));
+    const visible = cmds.slice(0, 12);
+    if (e.key === 'ArrowDown') { e.preventDefault(); state.paletteSelected = Math.min(state.paletteSelected + 1, visible.length - 1); renderPalette(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); state.paletteSelected = Math.max(state.paletteSelected - 1, 0); renderPalette(); }
+    if (e.key === 'Enter') { e.preventDefault(); if (visible[state.paletteSelected]) { visible[state.paletteSelected].action(); closePalette(); } }
+    if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
   });
 }
 
@@ -4384,6 +4414,62 @@ async function loadArchivedNodes() {
       });
     });
   } catch (_) {}
+}
+
+function paletteCommands() {
+  return [
+    { id: 'new-item', label: 'New item', hint: 'Create a new node', action: () => { setWorkspaceTab('actions'); setTimeout(() => (dom.newItemTitle || dom.newItemRef)?.focus(), 50); } },
+    { id: 'new-link', label: 'New link', hint: 'Create a new link', action: () => { setWorkspaceTab('actions'); setTimeout(() => dom.newLinkFrom?.focus(), 50); } },
+    { id: 'view-graph', label: 'Switch to Relations view', action: () => setView('graph') },
+    { id: 'view-brief', label: 'Switch to Overview', action: () => setView('brief') },
+    { id: 'view-table', label: 'Switch to Table', action: () => setView('table') },
+    { id: 'view-kanban', label: 'Switch to Board', action: () => setView('kanban') },
+    { id: 'sync', label: 'Sync board', hint: 'Re-sync from GitHub', action: () => syncCurrentBoard() },
+    { id: 'export', label: 'Export JSON', action: () => exportJSON() },
+    { id: 'search', label: 'Search / filter', action: () => dom.filter?.focus() },
+    ...(state.boards || []).map((b) => ({
+      id: 'board-' + b.id,
+      label: 'Switch to: ' + (b.name || b.id),
+      hint: b.scope_query || '',
+      action: () => { state.currentBoardID = b.id; writeURLBoard(b.id); loadBackendBoard(); },
+    })),
+  ];
+}
+
+function openPalette() {
+  state.paletteOpen = true;
+  state.paletteQuery = '';
+  state.paletteSelected = 0;
+  document.getElementById('commandPalette')?.classList.remove('hidden');
+  const input = document.getElementById('paletteInput');
+  if (input) { input.value = ''; input.focus(); }
+  renderPalette();
+}
+
+function closePalette() {
+  state.paletteOpen = false;
+  document.getElementById('commandPalette')?.classList.add('hidden');
+}
+
+function renderPalette() {
+  const q = (state.paletteQuery || '').toLowerCase();
+  const cmds = paletteCommands().filter((c) =>
+    !q || c.label.toLowerCase().includes(q) || (c.hint || '').toLowerCase().includes(q)
+  );
+  const el = document.getElementById('paletteResults');
+  if (!el) return;
+  const visible = cmds.slice(0, 12);
+  el.innerHTML = visible.map((c, i) => `
+    <div class="paletteItem ${i === state.paletteSelected ? 'selected' : ''}" data-palette-index="${i}" role="option">
+      <span class="paletteLabel">${esc(c.label)}</span>
+      ${c.hint ? `<span class="paletteHint">${esc(c.hint)}</span>` : ''}
+    </div>`).join('');
+  el.querySelectorAll('[data-palette-index]').forEach((item) => {
+    item.addEventListener('click', () => {
+      const idx = Number(item.dataset.paletteIndex);
+      if (visible[idx]) { visible[idx].action(); closePalette(); }
+    });
+  });
 }
 
 function computeSourceDiff(base, current) {

@@ -2603,3 +2603,15 @@ button.dangerAction:hover {
 /* --- UX backlog 709: source dirty indicator --- */
 .sourcePreviewMeta { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-size: 12px; }
 .sourceDirtyPill { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 4px; padding: 1px 6px; font-size: 11px; font-weight: 600; }
+
+/* --- UX backlog 709: command palette --- */
+.commandPalette { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; }
+.commandPalette.hidden { display: none; }
+.paletteBackdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); }
+.paletteBox { position: relative; z-index: 1; background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: 480px; max-width: 95vw; overflow: hidden; }
+#paletteInput { width: 100%; box-sizing: border-box; border: none; border-bottom: 1px solid var(--line); padding: 14px 16px; font-size: 15px; outline: none; }
+.paletteResults { max-height: 320px; overflow-y: auto; }
+.paletteItem { padding: 10px 16px; cursor: pointer; display: flex; align-items: baseline; gap: 10px; }
+.paletteItem:hover, .paletteItem.selected { background: var(--accent-faint, #e0e7ff); }
+.paletteLabel { font-size: 13px; font-weight: 500; }
+.paletteHint { font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

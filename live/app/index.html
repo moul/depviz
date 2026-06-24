@@ -40,6 +40,14 @@
   </header>
 
   <main id="shell" class="shell">
+
+  <div id="commandPalette" class="commandPalette hidden" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="paletteBackdrop"></div>
+    <div class="paletteBox">
+      <input id="paletteInput" type="text" autocomplete="off" placeholder="Type a command..." aria-label="Command search">
+      <div id="paletteResults" class="paletteResults" role="listbox"></div>
+    </div>
+  </div>
     <section class="inputPane" aria-label="Input">
       <div class="paneHeader">
         <h1>Input</h1>
