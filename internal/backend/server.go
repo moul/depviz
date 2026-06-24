@@ -66,6 +66,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/board-source/apply", s.handleBoardSourceApply)
 	mux.HandleFunc("/api/suggestions/dismiss", s.handleDismissSuggestion)
 	mux.HandleFunc("/api/board-sync-logs", s.handleBoardSyncLogs)
+	mux.HandleFunc("/api/board-views", s.handleBoardViews)
 	mux.HandleFunc("/api/overrides", s.handleOverrides)
 	mux.HandleFunc("/api/auth/github/start", s.handleGitHubStart)
 	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
@@ -1721,6 +1722,66 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
+}
+
+func (s *Server) handleBoardViews(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAccount(w, r); !ok {
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		boardID := r.URL.Query().Get("board_id")
+		if boardID == "" {
+			boardID = core.DefaultBoardID
+		}
+		views, err := s.store.ListBoardViews(r.Context(), boardID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		if views == nil {
+			views = []core.BoardView{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"views": views})
+	case http.MethodPost:
+		var in struct {
+			BoardID string         `json:"board_id"`
+			Name    string         `json:"name"`
+			Config  map[string]any `json:"config"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		if strings.TrimSpace(in.Name) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			return
+		}
+		boardID := strings.TrimSpace(in.BoardID)
+		if boardID == "" {
+			boardID = core.DefaultBoardID
+		}
+		view, err := s.store.SaveBoardView(r.Context(), boardID, in.Name, in.Config)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"view": view})
+	case http.MethodDelete:
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})
+			return
+		}
+		if err := s.store.DeleteBoardView(r.Context(), id); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	default:
+		w.Header().Set("Allow", "GET, POST, DELETE")
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+	}
 }
 
 func (s *Server) handleBoardSyncLogs(w http.ResponseWriter, r *http.Request) {

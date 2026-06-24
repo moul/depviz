@@ -296,6 +296,10 @@ function wireEvents() {
     resetStatefulSourcePreview();
   });
   document.getElementById('applySourceBtn')?.addEventListener('click', applySourcePatch);
+  document.getElementById('saveCurrentViewBtn')?.addEventListener('click', () => {
+    const name = prompt('Name for this saved view:');
+    if (name) saveCurrentView(name.trim());
+  });
   document.getElementById('commandPalette')?.addEventListener('click', (e) => {
     if (e.target.classList.contains('paletteBackdrop')) closePalette();
   });
@@ -827,6 +831,7 @@ function renderManagePanel() {
   renderWorkspaceSuggestions();
   if (state.mode === 'stateful' && state.backendSession.authenticated) {
     loadArchivedNodes();
+    loadSavedViews();
   }
 }
 
@@ -4872,6 +4877,77 @@ async function loadArchivedNodes() {
       });
     });
   } catch (_) {}
+}
+
+async function loadSavedViews() {
+  const el = document.getElementById('savedViewsList');
+  if (!el || !state.backendSession.authenticated) return;
+  try {
+    const board = encodeURIComponent(state.currentBoardID || 'default');
+    const res = await fetch(`./api/board-views?board_id=${board}`, { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const views = Array.isArray(data.views) ? data.views : [];
+    if (!views.length) { el.innerHTML = '<div class="emptyState">No saved filters yet</div>'; return; }
+    el.innerHTML = views.map((v) => {
+      let cfg = {};
+      try { cfg = JSON.parse(v.config_json || '{}'); } catch (_) {}
+      const desc = [cfg.driver, cfg.view, cfg.filter_text].filter(Boolean).join(' · ');
+      return `<div class="savedViewItem">
+        <div>
+          <strong>${esc(v.name)}</strong>
+          ${desc ? `<span class="savedViewDesc">${esc(desc)}</span>` : ''}
+        </div>
+        <div class="savedViewActions">
+          <button type="button" data-apply-view-id="${esc(v.id)}" data-apply-view-config="${esc(v.config_json)}">Apply</button>
+          <button type="button" data-delete-view-id="${esc(v.id)}">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('[data-apply-view-id]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        try {
+          const cfg = JSON.parse(btn.dataset.applyViewConfig || '{}');
+          if (cfg.driver) { state.graphDriver = cfg.driver; if (dom.graphDriver) dom.graphDriver.value = cfg.driver; }
+          if (cfg.view) setView(cfg.view, { persist: true, renderNow: false });
+          if (cfg.filter_text !== undefined) { state.filter = cfg.filter_text; if (dom.filter) dom.filter.value = cfg.filter_text; }
+          render();
+          const nameEl = btn.closest('.savedViewItem')?.querySelector('strong');
+          dom.status.textContent = `view "${nameEl ? nameEl.textContent : cfg.driver || ''}" applied`;
+        } catch (_) {}
+      });
+    });
+    el.querySelectorAll('[data-delete-view-id]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await fetch(`./api/board-views?id=${encodeURIComponent(btn.dataset.deleteViewId)}`, { method: 'DELETE', credentials: 'same-origin' });
+        loadSavedViews();
+      });
+    });
+  } catch (_) {}
+}
+
+async function saveCurrentView(name) {
+  const config = {
+    driver: state.graphDriver,
+    view: state.view,
+    filter_text: state.filter,
+    active_chips: Array.from(state.activeChipFilters),
+    show_closed: state.showClosed,
+    show_external: state.showExternal,
+    show_local: state.showLocal,
+  };
+  try {
+    const res = await fetch('./api/board-views', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board_id: state.currentBoardID || 'default', name, config }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    dom.status.textContent = `view "${name}" saved`;
+    loadSavedViews();
+  } catch (err) {
+    dom.error.textContent = err.message;
+  }
 }
 
 function resolveNodeByRef(ref) {

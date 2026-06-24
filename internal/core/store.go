@@ -267,6 +267,13 @@ func (s *Store) Migrate(ctx context.Context) error {
 		rate_limit_remaining INTEGER NOT NULL DEFAULT 0,
 		rate_limit_reset TEXT NOT NULL DEFAULT ''
 	)`)
+	_, _ = s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS board_views (
+		id TEXT PRIMARY KEY,
+		board_id TEXT NOT NULL,
+		name TEXT NOT NULL,
+		config_json TEXT NOT NULL DEFAULT '{}',
+		created_at TEXT NOT NULL
+	)`)
 	return nil
 }
 
@@ -1385,6 +1392,48 @@ func sourceURL(sourceID string) string {
 		return "https://github.com/" + strings.TrimPrefix(sourceID, "github:")
 	}
 	return ""
+}
+
+type BoardView struct {
+	ID         string `json:"id"`
+	BoardID    string `json:"board_id"`
+	Name       string `json:"name"`
+	ConfigJSON string `json:"config_json"`
+	CreatedAt  string `json:"created_at"`
+}
+
+func (s *Store) SaveBoardView(ctx context.Context, boardID, name string, config map[string]any) (BoardView, error) {
+	id := fmt.Sprintf("view-%d", time.Now().UnixNano())
+	now := formatTime(nowUTC())
+	configJSON, _ := json.Marshal(config)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO board_views(id, board_id, name, config_json, created_at) VALUES(?, ?, ?, ?, ?)`,
+		id, boardID, name, string(configJSON), now)
+	if err != nil {
+		return BoardView{}, err
+	}
+	return BoardView{ID: id, BoardID: boardID, Name: name, ConfigJSON: string(configJSON), CreatedAt: now}, nil
+}
+
+func (s *Store) ListBoardViews(ctx context.Context, boardID string) ([]BoardView, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, board_id, name, config_json, created_at FROM board_views WHERE board_id=? ORDER BY created_at DESC`, boardID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []BoardView
+	for rows.Next() {
+		var v BoardView
+		if err := rows.Scan(&v.ID, &v.BoardID, &v.Name, &v.ConfigJSON, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) DeleteBoardView(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM board_views WHERE id=?`, id)
+	return err
 }
 
 type SyncLog struct {

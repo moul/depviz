@@ -2687,3 +2687,9 @@ button.dangerAction:hover {
 .graphCanvas.compact .nodeCard { padding: 4px 8px; }
 .graphCanvas.compact .nodeSignals { display: none; }
 .graphCanvas.compact .nodeTitle { font-size: 11px; }
+
+/* --- cockpit-next-711: saved views --- */
+.savedViews { margin-top: 16px; }
+.savedViewItem { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line-soft, var(--line)); }
+.savedViewDesc { display: block; font-size: 11px; color: var(--muted); }
+.savedViewActions { display: flex; gap: 4px; }
