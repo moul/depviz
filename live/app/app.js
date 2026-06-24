@@ -2597,6 +2597,7 @@ function renderGraph(snapshot, nodes, hidden = {}) {
     pairs: 'Grouped by dependency direction. Blocked items on left, blockers on right.',
     focus: 'Select an item to see its neighbors and dependency chain.',
     backlog: 'Items not yet linked to anything. Use to triage and connect.',
+    cluster: 'Items grouped by label, repo, or kind.',
   };
   const hintEl = document.getElementById('graphDriverHint');
   if (hintEl) hintEl.textContent = hints[state.graphDriver] || '';
@@ -2611,6 +2612,10 @@ function renderGraph(snapshot, nodes, hidden = {}) {
   }
   if (state.graphDriver === 'backlog') {
     renderGraphBacklog(snapshot, nodes, hidden);
+    return;
+  }
+  if (state.graphDriver === 'cluster') {
+    renderGraphCluster(snapshot, nodes);
     return;
   }
   const hiddenConnected = Number(hidden.connected || 0);
@@ -2834,6 +2839,27 @@ function renderGraphBacklog(snapshot, nodes, hidden = {}) {
   dom.graphCanvas.innerHTML = `<div class="graphBacklog">
     ${nodes.sort(graphNodeSort).slice(0, 80).map((node) => renderGraphPairNode(node, 'Unlinked')).join('')}
   </div>`;
+}
+
+function renderGraphCluster(snapshot, nodes) {
+  if (dom.graphConnectedToggle) { dom.graphConnectedToggle.textContent = 'N/A'; dom.graphConnectedToggle.disabled = true; }
+  if (dom.graphUnlinkedToggle) { dom.graphUnlinkedToggle.textContent = 'N/A'; dom.graphUnlinkedToggle.disabled = true; }
+  state.graphLayout = { width: 900, height: 620 };
+  dom.graphZoomLabel.textContent = 'cluster';
+  if (!nodes.length) { dom.graphCanvas.innerHTML = '<div class="graphEmpty">No visible items for cluster view.</div>'; return; }
+  const groups = {};
+  for (const n of nodes) {
+    const nd = nodeData(n);
+    const gh = parseGitHubNodeID(n.id);
+    const key = (Array.isArray(nd.labels) && nd.labels[0]) || (gh && gh.repo) || n.kind || 'other';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(n);
+  }
+  dom.graphCanvas.innerHTML = `<div class="graphClusters">${Object.entries(groups).map(([key, gnodes]) => `
+    <div class="clusterGroup">
+      <div class="clusterGroupLabel">${esc(key)}</div>
+      <div class="clusterGroupCards">${gnodes.map((n) => renderGraphPairNode(n, 'Card')).join('')}</div>
+    </div>`).join('')}</div>`;
 }
 
 function graphPairGroups(snapshot, visible) {
@@ -4220,7 +4246,7 @@ function writeURLFilters() {
 
 function readURLDriver() {
   const driver = new URLSearchParams(location.search).get('driver') || 'pairs';
-  return ['pairs', 'focus', 'backlog'].includes(driver) ? driver : 'pairs';
+  return ['pairs', 'focus', 'backlog', 'cluster'].includes(driver) ? driver : 'pairs';
 }
 
 function writeURLDriver(driver) {

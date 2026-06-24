@@ -266,7 +266,7 @@ func TestLiveAssetsExposeStatefulMode(t *testing.T) {
 		{"stateful suggestion promotion", string(app), `suggested relation saved`},
 		{"status filter chips", string(app), `statusCounts`},
 		{"chip url encoding", string(app), `formatChipFilterParam`},
-		{"graph driver whitelist", string(app), `['pairs', 'focus', 'backlog']`},
+		{"graph driver whitelist", string(app), `['pairs', 'focus', 'backlog', 'cluster']`},
 		{"github presets", string(index), `id="githubPresetList"`},
 		{"add item form", string(index), `id="addBoardItemForm"`},
 		{"add link form", string(index), `id="addBoardLinkForm"`},

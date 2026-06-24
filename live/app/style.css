@@ -2678,3 +2678,12 @@ button.dangerAction:hover {
 .patchSection.danger { background: #fee2e2; color: #991b1b; }
 .patchDetails { font-size: 12px; max-height: 200px; overflow-y: auto; margin-bottom: 16px; }
 .patchActions { display: flex; gap: 8px; }
+
+/* --- cockpit-next-711: cluster driver --- */
+.graphClusters { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+.clusterGroup { border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.clusterGroupLabel { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.clusterGroupCards { display: flex; flex-wrap: wrap; gap: 4px; }
+.graphCanvas.compact .nodeCard { padding: 4px 8px; }
+.graphCanvas.compact .nodeSignals { display: none; }
+.graphCanvas.compact .nodeTitle { font-size: 11px; }
