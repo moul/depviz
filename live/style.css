@@ -1011,6 +1011,44 @@ textarea::selection {
   gap: 8px;
 }
 
+.starterActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.starterActions h4 {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #0f172a;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.starterActions button {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  border-radius: 7px;
+  padding: 9px 10px;
+}
+
+.starterActions button strong {
+  color: #111827;
+  font-size: 12px;
+}
+
+.starterActions button span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.starterCompact {
+  width: 100%;
+  grid-template-columns: 1fr;
+}
+
 .briefSection {
   overflow: hidden;
   border: 1px solid var(--line-soft);
