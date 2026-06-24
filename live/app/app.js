@@ -104,6 +104,7 @@ const state = {
   data: emptyExport(),
   inspectorEditMode: false,
   undoStack: [],
+  boardFilter: '',
 };
 
 function emptyExport() {
@@ -191,6 +192,10 @@ function wireEvents() {
   dom.addBoardLinkForm.addEventListener('submit', addBoardLink);
   dom.syncBoard.addEventListener('click', syncCurrentBoard);
   dom.boardList.addEventListener('click', handleBoardListClick);
+  document.getElementById('boardFilterInput')?.addEventListener('input', (e) => {
+    state.boardFilter = e.target.value.toLowerCase();
+    renderManagePanel();
+  });
   dom.githubPresetList.addEventListener('click', handlePresetClick);
   dom.pasteGithubToken.addEventListener('click', pasteGitHubToken);
   dom.forgetGithubToken.addEventListener('click', forgetGitHubToken);
@@ -670,8 +675,15 @@ function renderManagePanel() {
   if (!state.boards.length) {
     dom.boardList.innerHTML = '<div class="emptyState">No saved views yet</div>';
   } else {
-    const usefulBoards = state.boards.filter((board) => !isDraftBoard(board) || board.id === state.currentBoardID);
-    const draftBoards = state.boards.filter((board) => isDraftBoard(board) && board.id !== state.currentBoardID);
+    const filterQuery = state.boardFilter || '';
+    const filteredBoards = filterQuery
+      ? state.boards.filter((b) => {
+          const hay = [b.name || '', b.scope_query || '', b.description || ''].join(' ').toLowerCase();
+          return hay.includes(filterQuery);
+        })
+      : state.boards;
+    const usefulBoards = filteredBoards.filter((board) => !isDraftBoard(board) || board.id === state.currentBoardID);
+    const draftBoards = filteredBoards.filter((board) => isDraftBoard(board) && board.id !== state.currentBoardID);
     const boardButtons = usefulBoards.map(renderBoardListButton).join('');
     const draftList = draftBoards.length
       ? `<details class="draftGroup"><summary>Draft views <strong>${draftBoards.length}</strong></summary>${draftBoards.map(renderBoardListButton).join('')}</details>`

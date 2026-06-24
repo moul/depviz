@@ -2596,3 +2596,6 @@ button.dangerAction:hover {
 .onboardingChecklist ol { margin: 0; padding-left: 18px; }
 .checkItem { font-size: 12px; padding: 3px 0; color: var(--muted); }
 .checkItem.done { color: var(--green, #16a34a); text-decoration: line-through; }
+
+/* --- UX backlog 709: board filter --- */
+#boardFilterInput { width: 100%; box-sizing: border-box; margin-bottom: 6px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 12px; }
