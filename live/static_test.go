@@ -366,6 +366,55 @@ func TestLiveAssetsExposeGitHubDiagnostics(t *testing.T) {
 	}
 }
 
+func TestLiveAssetsExposeHardening713Features(t *testing.T) {
+	fsys := AppFS()
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	index, err := fs.ReadFile(fsys, "index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	storeGo, err := os.ReadFile("../internal/core/store.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverGo, err := os.ReadFile("../internal/backend/server.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mainGo, err := os.ReadFile("../cmd/depviz/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	docsFile, err := os.ReadFile("../docs/meta-repo-strategy.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"WithTx helper", string(storeGo), `func (s *Store) WithTx(`},
+		{"BoardUpdatedAt helper", string(storeGo), `func (s *Store) BoardUpdatedAt(`},
+		{"workspaces route", string(serverGo), `/api/workspaces`},
+		{"base_updated_at in server", string(serverGo), `base_updated_at`},
+		{"schema_migrations table", string(storeGo), `schema_migrations`},
+		{"requireBoardAccess helper", string(serverGo), `func (s *Server) requireBoardAccess(`},
+		{"restore command", string(mainGo), `case "restore"`},
+		{"timedRender in app", string(app), `function timedRender(`},
+		{"renderTimings in app", string(app), `renderTimings`},
+		{"workspaceSwitcher in index", string(index), `workspaceSwitcher`},
+		{"meta-repo docs exist", string(docsFile), `Meta-Repo Strategy`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
+
 func TestLiveAssetsExposeCockpitNext711Features(t *testing.T) {
 	fsys := AppFS()
 	app, err := fs.ReadFile(fsys, "app.js")

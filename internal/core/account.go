@@ -357,6 +357,53 @@ func (s *Store) UpsertGitHubCache(ctx context.Context, accountID, repo, refID, p
 	return err
 }
 
+func (s *Store) ListWorkspacesForAccount(ctx context.Context, accountID string) ([]Workspace, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT w.id, w.provider, w.external_id, w.kind, w.name, w.url, w.data_json, w.created_at, w.updated_at
+		FROM workspaces w
+		JOIN workspace_memberships m ON m.workspace_id = w.id
+		WHERE m.account_id = ?
+		ORDER BY w.updated_at DESC`, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var workspaces []Workspace
+	for rows.Next() {
+		var ws Workspace
+		var created, updated string
+		if err := rows.Scan(&ws.ID, &ws.Provider, &ws.ExternalID, &ws.Kind, &ws.Name, &ws.URL, &ws.DataJSON, &created, &updated); err != nil {
+			return nil, err
+		}
+		ws.CreatedAt = parseTime(created)
+		ws.UpdatedAt = parseTime(updated)
+		workspaces = append(workspaces, ws)
+	}
+	return workspaces, rows.Err()
+}
+
+func (s *Store) GetPersonalOverride(ctx context.Context, accountID, ownerType, ownerID string) (PersonalOverride, error) {
+	var override PersonalOverride
+	var updated string
+	err := s.db.QueryRowContext(ctx, `SELECT id, account_id, owner_type, owner_id, data_json, updated_at
+		FROM personal_overrides WHERE account_id = ? AND owner_type = ? AND owner_id = ?`,
+		accountID, ownerType, ownerID).
+		Scan(&override.ID, &override.AccountID, &override.OwnerType, &override.OwnerID, &override.DataJSON, &updated)
+	if errors.Is(err, sql.ErrNoRows) {
+		return PersonalOverride{}, nil
+	}
+	if err != nil {
+		return PersonalOverride{}, err
+	}
+	override.UpdatedAt = parseTime(updated)
+	return override, nil
+}
+
+func (s *Store) DeletePersonalOverride(ctx context.Context, accountID, ownerType, ownerID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM personal_overrides WHERE account_id = ? AND owner_type = ? AND owner_id = ?`,
+		accountID, ownerType, ownerID)
+	return err
+}
+
 func randomToken(bytes int) (string, error) {
 	buf := make([]byte, bytes)
 	if _, err := rand.Read(buf); err != nil {

@@ -1869,6 +1869,40 @@ textarea::selection {
   color: #6d28d9;
 }
 
+.avatarChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.avatarChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f0f4ff;
+  border: 1px solid #c7d7fd;
+  border-radius: 999px;
+  padding: 1px 6px 1px 2px;
+  font-size: 10px;
+  color: #3b4fc8;
+  max-width: 120px;
+  overflow: hidden;
+}
+
+.avatarChip img {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.avatarFallback {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .graphInner {
   position: relative;
   min-width: 900px;

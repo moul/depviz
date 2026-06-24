@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -64,6 +65,8 @@ func run(ctx context.Context, args []string) error {
 		return runLive(ctx, args)
 	case "backup":
 		return runBackup(ctx, dbPath, args)
+	case "restore":
+		return runRestore(ctx, dbPath, args)
 	case "server":
 		return runServer(ctx, dbPath, args)
 	default:
@@ -349,6 +352,65 @@ func runBackup(ctx context.Context, dbPath string, args []string) error {
 	return nil
 }
 
+func runRestore(ctx context.Context, dbPath string, args []string) error {
+	_ = ctx
+	fs := flag.NewFlagSet("restore", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	from := fs.String("from", "", "path to backup database")
+	force := fs.Bool("force", false, "actually perform the restore")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *from == "" {
+		return errors.New("--from is required")
+	}
+	if !*force {
+		fmt.Printf("dry run: would restore %s -> %s\n", *from, dbPath)
+		fmt.Println("use --force to actually restore")
+		return nil
+	}
+	src, err := os.Open(*from)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+		return err
+	}
+	ts := time.Now().UTC().Format("20060102T150405Z")
+	backupPath := dbPath + ".before-restore-" + ts
+	tmpPath := dbPath + ".restore-tmp-" + ts
+	dst, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(dst, src); err != nil {
+		_ = dst.Close()
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	if err := dst.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	if _, err := os.Stat(dbPath); err == nil {
+		if err := os.Rename(dbPath, backupPath); err != nil {
+			_ = os.Remove(tmpPath)
+			return fmt.Errorf("could not backup current db: %w", err)
+		}
+		fmt.Printf("current db backed up to: %s\n", backupPath)
+	}
+	if err := os.Rename(tmpPath, dbPath); err != nil {
+		if _, statErr := os.Stat(backupPath); statErr == nil {
+			_ = os.Rename(backupPath, dbPath)
+		}
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("could not install restored db: %w", err)
+	}
+	fmt.Printf("restored %s -> %s\n", *from, dbPath)
+	return nil
+}
+
 func runServer(ctx context.Context, dbPath string, args []string) error {
 	fs := flag.NewFlagSet("server", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -400,6 +462,7 @@ Usage:
   depviz gen json --board default --out dist/depviz.json
   depviz live --addr 127.0.0.1:8686
   depviz backup [--out backups]
+  depviz restore --from <backup.db> [--force]
   depviz server --addr 127.0.0.1:8766 --base-url https://depviz.moul.io
 
 Environment:
