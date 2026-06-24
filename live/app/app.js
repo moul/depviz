@@ -3491,6 +3491,12 @@ function renderItemInspector(snapshot) {
       <div class="inspectorSectionLabel">GitHub Actions</div>
       ${node.state === 'open' || node.state === 'active' || node.state === 'draft' ? `<button type="button" data-item-action="close-github-issue">Close issue</button>` : `<button type="button" data-item-action="reopen-github-issue">Reopen issue</button>`}
     </div>` : '';
+  const commentSection = !local && github && state.backendSession.authenticated ? `
+    <div class="inspectorCommentCompose">
+      <div class="inspectorSectionLabel">Add comment</div>
+      <textarea id="inspectorCommentBody" rows="3" placeholder="Add a comment..."></textarea>
+      <button type="button" data-item-action="submit-comment">Comment</button>
+    </div>` : '';
   const linkCreateSection = `<div class="inspectorLinkCreate">
     <select id="inspectorLinkKind">
       <option value="blocked_by">depends on</option>
@@ -3521,6 +3527,7 @@ function renderItemInspector(snapshot) {
     ${actionsSection}
     ${createGHIssueSection}
     ${githubStateSection}
+    ${commentSection}
     ${linkCreateSection}
     <div class="inspectorSection inspectorLinks">
       ${outgoing.length ? `<div class="inspectorLinkGroup"><div class="linkGroupLabel">Blocks / Out</div>${renderInspectorLinks('Out', outgoing)}</div>` : ''}
@@ -3612,6 +3619,15 @@ function handleItemInspectorClick(event) {
     dom.newLinkTo.value = node.id;
     setWorkspaceTab('actions');
     dom.newLinkFrom.focus();
+  }
+  if (button.dataset.itemAction === 'submit-comment') {
+    const gh = parseGitHubNodeID(state.selectedNodeID);
+    if (!gh) return;
+    const bodyEl = document.getElementById('inspectorCommentBody');
+    const commentBody = bodyEl ? bodyEl.value.trim() : '';
+    if (!commentBody) return;
+    submitGitHubComment(gh.repo, Number(gh.number), commentBody);
+    return;
   }
   if (button.dataset.itemAction === 'close-github-issue' || button.dataset.itemAction === 'reopen-github-issue') {
     const gh = parseGitHubNodeID(state.selectedNodeID);
@@ -4839,6 +4855,26 @@ async function closeOrReopenGitHubIssue(repo, issueNumber, issueState) {
   } catch (err) {
     dom.error.textContent = err.message;
     dom.status.textContent = 'github update failed';
+  }
+}
+
+async function submitGitHubComment(repo, issueNumber, body) {
+  try {
+    const res = await fetch('./api/github/comment', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repo, issue_number: issueNumber, body }),
+    });
+    if (!res.ok) throw new Error(await responseErrorMessage(res));
+    const data = await res.json();
+    dom.status.textContent = 'comment posted';
+    if (data.url) {
+      const el = document.getElementById('inspectorCommentBody');
+      if (el) el.value = '';
+    }
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'comment failed';
   }
 }
 
