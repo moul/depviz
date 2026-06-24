@@ -35,6 +35,48 @@ type NodeFieldUpdate struct {
 	Labels      *[]string
 }
 
+type BoardSourcePatch struct {
+	Creates     []BoardSourceCreate
+	Updates     []BoardSourceUpdate
+	Deletes     []BoardSourceDelete
+	LinkCreates []BoardSourceLinkCreate
+	LinkDeletes []BoardSourceLinkDelete
+}
+
+type BoardSourceCreate struct {
+	Kind        string
+	Title       string
+	Status      string
+	Owner       string
+	Description string
+	TimeHorizon string
+	Priority    string
+	Labels      []string
+}
+
+type BoardSourceUpdate struct {
+	NodeID      string
+	Title       string
+	Status      string
+	Owner       string
+	Description string
+}
+
+type BoardSourceDelete struct {
+	NodeID string
+}
+
+type BoardSourceLinkCreate struct {
+	FromID string
+	ToID   string
+	Kind   string
+	Notes  string
+}
+
+type BoardSourceLinkDelete struct {
+	EdgeID string
+}
+
 func OpenStore(ctx context.Context, path string) (*Store, error) {
 	if path == "" {
 		path = DefaultDBPath
@@ -780,6 +822,392 @@ func (s *Store) AddTaskToBoard(ctx context.Context, boardID, title string) (Node
 		return Node{}, err
 	}
 	return n, nil
+}
+
+// ApplyBoardSourcePatch applies user-authored board source edits atomically.
+func (s *Store) ApplyBoardSourcePatch(ctx context.Context, boardID string, patch BoardSourcePatch) error {
+	if boardID == "" {
+		boardID = DefaultBoardID
+	}
+	return s.WithTx(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		return (&boardSourcePatchApplier{ctx: ctx, tx: tx, boardID: boardID}).apply(patch)
+	})
+}
+
+type boardSourcePatchApplier struct {
+	ctx     context.Context
+	tx      *sql.Tx
+	boardID string
+}
+
+func (a *boardSourcePatchApplier) apply(patch BoardSourcePatch) error {
+	if err := a.ensureBoard(); err != nil {
+		return err
+	}
+	for _, c := range patch.Creates {
+		if err := a.applyCreate(c); err != nil {
+			return err
+		}
+	}
+	for _, u := range patch.Updates {
+		if err := a.applyUpdate(u); err != nil {
+			return err
+		}
+	}
+	for _, d := range patch.Deletes {
+		if err := a.applyDelete(d); err != nil {
+			return err
+		}
+	}
+	for _, lc := range patch.LinkCreates {
+		if err := a.applyLinkCreate(lc); err != nil {
+			return err
+		}
+	}
+	for _, ld := range patch.LinkDeletes {
+		if err := a.applyLinkDelete(ld); err != nil {
+			return err
+		}
+	}
+	_, err := a.tx.ExecContext(a.ctx, `UPDATE boards SET updated_at = ? WHERE id = ?`, formatTime(nowUTC()), a.boardID)
+	return err
+}
+
+func (a *boardSourcePatchApplier) ensureBoard() error {
+	var count int
+	if err := a.tx.QueryRowContext(a.ctx, `SELECT COUNT(*) FROM boards WHERE id = ?`, a.boardID).Scan(&count); err != nil {
+		return err
+	}
+	if count == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (a *boardSourcePatchApplier) applyCreate(c BoardSourceCreate) error {
+	kind := normalizeStrategyKind(c.Kind)
+	title := strings.TrimSpace(c.Title)
+	if title == "" {
+		return errors.New("title is required")
+	}
+	status := normalizeStrategyStatus(kind, c.Status)
+	owner := strings.TrimSpace(c.Owner)
+	id, err := a.availableNodeID(kind + ":" + slug(title))
+	if err != nil {
+		return err
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"source":       "local",
+		"kind":         kind,
+		"text":         title,
+		"description":  strings.TrimSpace(c.Description),
+		"owner":        owner,
+		"time_horizon": c.TimeHorizon,
+		"priority":     c.Priority,
+		"labels":       c.Labels,
+		"created_at":   formatTime(nowUTC()),
+	})
+	n := Node{ID: id, Kind: kind, Title: title, State: status, Owner: owner, DataJSON: string(payload), UpdatedAt: nowUTC()}
+	if err := a.upsertNode(n); err != nil {
+		return err
+	}
+	if err := a.upsertSourceRef(n.ID, LocalSourceID, n.ID, ""); err != nil {
+		return err
+	}
+	role := "card"
+	if kind == "note" {
+		role = "note"
+	}
+	if err := a.addNodeToBoard(n.ID, role, "local"); err != nil {
+		return err
+	}
+	evPayload, _ := json.Marshal(n)
+	return a.recordEvent("depviz.strategy_node.v1", n.ID, evPayload)
+}
+
+func (a *boardSourcePatchApplier) applyUpdate(u BoardSourceUpdate) error {
+	nodeID := strings.TrimSpace(u.NodeID)
+	if nodeID == "" {
+		return nil
+	}
+	n, err := a.nodeByID(nodeID)
+	if err != nil {
+		return fmt.Errorf("node not found: %w", err)
+	}
+	title := strings.TrimSpace(u.Title)
+	if title == "" {
+		return errors.New("title is required")
+	}
+	status := strings.TrimSpace(strings.ToLower(u.Status))
+	if status == "" {
+		return errors.New("status is required")
+	}
+	n.Title = title
+	n.State = status
+	n.Owner = strings.TrimSpace(u.Owner)
+	n.DataJSON = patchNodeDataJSON(n.DataJSON, n.Owner, u.Description)
+	n.UpdatedAt = nowUTC()
+	if err := a.upsertNode(n); err != nil {
+		return err
+	}
+	evPayload, _ := json.Marshal(n)
+	return a.recordEvent("depviz.node_update.v1", n.ID, evPayload)
+}
+
+func (a *boardSourcePatchApplier) applyDelete(d BoardSourceDelete) error {
+	nodeID := strings.TrimSpace(d.NodeID)
+	if nodeID == "" {
+		return nil
+	}
+	if _, err := a.tx.ExecContext(a.ctx, `UPDATE nodes SET archived_at = ? WHERE id = ?`, formatTime(nowUTC()), nodeID); err != nil {
+		return err
+	}
+	payload, _ := json.Marshal(map[string]any{"node_id": nodeID})
+	return a.recordEvent("depviz.node_archive.v1", nodeID, payload)
+}
+
+func (a *boardSourcePatchApplier) applyLinkCreate(lc BoardSourceLinkCreate) error {
+	from := strings.TrimSpace(lc.FromID)
+	to := strings.TrimSpace(lc.ToID)
+	if from == "" || to == "" {
+		return nil
+	}
+	if err := a.ensureLinkEndpoint(from); err != nil {
+		return err
+	}
+	if err := a.ensureLinkEndpoint(to); err != nil {
+		return err
+	}
+	kind := strings.TrimSpace(lc.Kind)
+	if kind == "" {
+		kind = "blocked_by"
+	}
+	evidenceJSON := `{}`
+	if strings.TrimSpace(lc.Notes) != "" {
+		b, err := json.Marshal(map[string]any{"note": lc.Notes})
+		if err != nil {
+			return err
+		}
+		evidenceJSON = string(b)
+	}
+	e := Edge{
+		ID:           stableID("edge", a.boardID, from, to, kind),
+		FromID:       from,
+		ToID:         to,
+		Kind:         kind,
+		ScopeBoardID: a.boardID,
+		Confidence:   1,
+		Authority:    "user",
+		EvidenceJSON: evidenceJSON,
+		ObservedAt:   nowUTC(),
+	}
+	if err := a.upsertEdge(e); err != nil {
+		return err
+	}
+	payload, _ := json.Marshal(e)
+	return a.recordEvent("depviz.edge.v1", e.ID, payload)
+}
+
+func (a *boardSourcePatchApplier) applyLinkDelete(ld BoardSourceLinkDelete) error {
+	edgeID := strings.TrimSpace(ld.EdgeID)
+	if edgeID == "" {
+		return nil
+	}
+	res, err := a.tx.ExecContext(a.ctx, `DELETE FROM edges WHERE id = ?`, edgeID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return errors.New("edge not found")
+	}
+	payload, _ := json.Marshal(map[string]any{"edge_id": edgeID})
+	return a.recordEvent("depviz.edge_delete.v1", edgeID, payload)
+}
+
+func (a *boardSourcePatchApplier) ensureLinkEndpoint(nodeID string) error {
+	ok, err := a.boardItemExists(nodeID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("link endpoint must already be in board: %s", nodeID)
+	}
+	return nil
+}
+
+func (a *boardSourcePatchApplier) recordEvent(eventType, objectID string, payload []byte) error {
+	if !json.Valid(payload) {
+		return errors.New("event payload must be json")
+	}
+	_, err := a.tx.ExecContext(a.ctx, `INSERT INTO events(type, object_id, data_json, observed_at)
+		VALUES(?, ?, ?, ?)`, eventType, objectID, string(payload), formatTime(nowUTC()))
+	return err
+}
+
+func (a *boardSourcePatchApplier) nodeExists(nodeID string) (bool, error) {
+	var count int
+	if err := a.tx.QueryRowContext(a.ctx, `SELECT COUNT(*) FROM nodes WHERE id = ?`, nodeID).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (a *boardSourcePatchApplier) boardItemExists(nodeID string) (bool, error) {
+	var count int
+	if err := a.tx.QueryRowContext(a.ctx, `SELECT COUNT(*) FROM board_items WHERE board_id = ? AND node_id = ?`, a.boardID, nodeID).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (a *boardSourcePatchApplier) availableNodeID(base string) (string, error) {
+	base = strings.TrimSpace(base)
+	if base == "" {
+		base = "task:untitled"
+	}
+	for i := 0; i < 1000; i++ {
+		id := base
+		if i > 0 {
+			id = fmt.Sprintf("%s-%d", base, i+1)
+		}
+		exists, err := a.nodeExists(id)
+		if err != nil {
+			return "", err
+		}
+		if !exists {
+			return id, nil
+		}
+	}
+	return "", errors.New("could not allocate node id")
+}
+
+func (a *boardSourcePatchApplier) upsertNode(n Node) error {
+	if n.ID == "" {
+		return errors.New("node id is required")
+	}
+	if n.Kind == "" {
+		n.Kind = "task"
+	}
+	if n.Title == "" {
+		n.Title = n.ID
+	}
+	if n.State == "" {
+		n.State = "open"
+	}
+	if n.DataJSON == "" {
+		n.DataJSON = `{}`
+	}
+	if n.UpdatedAt.IsZero() {
+		n.UpdatedAt = nowUTC()
+	}
+	_, err := a.tx.ExecContext(a.ctx, `INSERT INTO nodes(id, kind, title, state, owner, data_json, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			kind=excluded.kind,
+			title=excluded.title,
+			state=excluded.state,
+			owner=excluded.owner,
+			data_json=excluded.data_json,
+			updated_at=excluded.updated_at`,
+		n.ID, n.Kind, n.Title, n.State, n.Owner, n.DataJSON, formatTime(n.UpdatedAt))
+	return err
+}
+
+func (a *boardSourcePatchApplier) upsertSourceRef(nodeID, sourceID, externalID, url string) error {
+	if sourceID == "" || externalID == "" {
+		return nil
+	}
+	id := stableID("ref", sourceID, externalID)
+	_, err := a.tx.ExecContext(a.ctx, `INSERT INTO source_refs(id, node_id, source_id, external_id, url, sync_cursor, last_seen_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(source_id, external_id) DO UPDATE SET
+			node_id=excluded.node_id,
+			url=excluded.url,
+			last_seen_at=excluded.last_seen_at`,
+		id, nodeID, sourceID, externalID, url, "", formatTime(nowUTC()))
+	return err
+}
+
+func (a *boardSourcePatchApplier) addNodeToBoard(nodeID, role, localState string) error {
+	if role == "" {
+		role = "card"
+	}
+	_, err := a.tx.ExecContext(a.ctx, `INSERT INTO board_items(board_id, node_id, role, local_state, sort_key, data_json, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(board_id, node_id) DO UPDATE SET
+			role=excluded.role,
+			local_state=CASE WHEN excluded.local_state != '' THEN excluded.local_state ELSE board_items.local_state END,
+			updated_at=excluded.updated_at`,
+		a.boardID, nodeID, role, localState, "", `{}`, formatTime(nowUTC()))
+	return err
+}
+
+func (a *boardSourcePatchApplier) nodeByID(nodeID string) (Node, error) {
+	var n Node
+	var updated string
+	err := a.tx.QueryRowContext(a.ctx, `SELECT id, kind, title, state, owner, data_json, updated_at FROM nodes WHERE id = ?`, nodeID).
+		Scan(&n.ID, &n.Kind, &n.Title, &n.State, &n.Owner, &n.DataJSON, &updated)
+	if err != nil {
+		return Node{}, err
+	}
+	n.UpdatedAt = parseTime(updated)
+	return n, nil
+}
+
+func (a *boardSourcePatchApplier) upsertEdge(e Edge) error {
+	_, err := a.tx.ExecContext(a.ctx, `INSERT INTO edges(id, from_id, to_id, kind, scope_board_id, confidence, authority, evidence_json, observed_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			kind=excluded.kind,
+			confidence=excluded.confidence,
+			authority=excluded.authority,
+			evidence_json=excluded.evidence_json,
+			observed_at=excluded.observed_at`,
+		e.ID, e.FromID, e.ToID, e.Kind, e.ScopeBoardID, e.Confidence, e.Authority, e.EvidenceJSON, formatTime(e.ObservedAt))
+	return err
+}
+
+func normalizeStrategyKind(kind string) string {
+	kind = strings.TrimSpace(strings.ToLower(kind))
+	switch kind {
+	case "strategy", "initiative", "bet", "project", "workstream", "risk", "decision", "question", "metric", "task", "note":
+		return kind
+	default:
+		return "task"
+	}
+}
+
+func normalizeStrategyStatus(kind, status string) string {
+	status = strings.TrimSpace(strings.ToLower(status))
+	if status != "" {
+		return status
+	}
+	if kind == "note" {
+		return "local"
+	}
+	return "draft"
+}
+
+func patchNodeDataJSON(dataJSON, owner, description string) string {
+	var data map[string]any
+	_ = json.Unmarshal([]byte(dataJSON), &data)
+	if data == nil {
+		data = map[string]any{}
+	}
+	description = strings.TrimSpace(description)
+	if description == "" {
+		delete(data, "description")
+	} else {
+		data["description"] = description
+	}
+	if owner == "" {
+		delete(data, "owner")
+	} else {
+		data["owner"] = owner
+	}
+	merged, _ := json.Marshal(data)
+	return string(merged)
 }
 
 // CreateStrategyNode creates a local non-GitHub planning node with an extended type.

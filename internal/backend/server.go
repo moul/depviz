@@ -3,7 +3,6 @@ package backend
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -921,8 +920,17 @@ func (s *Server) requireAccount(w http.ResponseWriter, r *http.Request) (core.Ac
 }
 
 func (s *Server) requireBoardAccess(w http.ResponseWriter, r *http.Request, boardID string, sess core.Account) bool {
-	// Basic check — for now just verify the board exists (full ownership model is future work)
-	// For now: always return true if authenticated (board access is open to any authenticated user)
+	if sess.ID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
+		return false
+	}
+	if strings.TrimSpace(boardID) == "" {
+		boardID = core.DefaultBoardID
+	}
+	if _, err := s.store.BoardUpdatedAt(r.Context(), boardID); err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "board not found"})
+		return false
+	}
 	return true
 }
 
@@ -1754,7 +1762,8 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
 	}
-	if _, ok := s.requireAccount(w, r); !ok {
+	account, ok := s.requireAccount(w, r)
+	if !ok {
 		return
 	}
 	var in struct {
@@ -1798,6 +1807,9 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 	boardID := strings.TrimSpace(in.BoardID)
 	if boardID == "" {
 		boardID = core.DefaultBoardID
+	}
+	if !s.requireBoardAccess(w, r, boardID, account) {
+		return
 	}
 	if strings.TrimSpace(in.BaseUpdatedAt) != "" {
 		serverUpdatedAt, err := s.store.BoardUpdatedAt(r.Context(), boardID)
@@ -1875,6 +1887,20 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 			errs = append(errs, "link delete: edge not found: "+edgeID)
 		}
 	}
+	for _, lc := range in.LinkCreates {
+		from := strings.TrimSpace(lc.FromID)
+		to := strings.TrimSpace(lc.ToID)
+		if from == "" || to == "" {
+			errs = append(errs, "link create: from_id and to_id are required")
+			continue
+		}
+		if !nodes[from] {
+			errs = append(errs, "link create: from node not found: "+from)
+		}
+		if !nodes[to] {
+			errs = append(errs, "link create: to node not found: "+to)
+		}
+	}
 	if len(errs) > 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"errors": errs})
 		return
@@ -1890,67 +1916,43 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
 		return
 	}
-	if err := s.store.WithTx(r.Context(), func(ctx context.Context, _ *sql.Tx) error {
-		for _, c := range in.Creates {
-			title := strings.TrimSpace(c.Title)
-			kind := strings.TrimSpace(c.Kind)
-			if kind == "" {
-				kind = "task"
-			}
-			if _, err := s.store.CreateStrategyNode(ctx, boardID, kind, title, c.Status, c.Owner, c.Description, c.TimeHorizon, c.Priority, c.Labels); err != nil {
-				return fmt.Errorf("create failed: %w", err)
-			}
-		}
-		for _, u := range in.Updates {
-			nodeID := strings.TrimSpace(u.NodeID)
-			if nodeID == "" {
-				continue
-			}
-			title := u.Title
-			status := u.Status
-			owner := u.Owner
-			description := u.Description
-			if _, err := s.store.UpdateNodeFields(ctx, nodeID, core.NodeFieldUpdate{
-				Title:       &title,
-				Status:      &status,
-				Owner:       &owner,
-				Description: &description,
-			}); err != nil {
-				return fmt.Errorf("update failed: %w", err)
-			}
-		}
-		for _, d := range in.Deletes {
-			nodeID := strings.TrimSpace(d.NodeID)
-			if nodeID == "" {
-				continue
-			}
-			if err := s.store.ArchiveNode(ctx, nodeID); err != nil {
-				return fmt.Errorf("delete failed: %w", err)
-			}
-		}
-		for _, lc := range in.LinkCreates {
-			from := strings.TrimSpace(lc.FromID)
-			to := strings.TrimSpace(lc.ToID)
-			kind := strings.TrimSpace(lc.Kind)
-			if kind == "" {
-				kind = "blocked_by"
-			}
-			if from != "" && to != "" {
-				if _, err := s.store.AddEdge(ctx, boardID, from, to, kind, "user", map[string]any{"note": lc.Notes}); err != nil {
-					return fmt.Errorf("link create failed: %w", err)
-				}
-			}
-		}
-		for _, ld := range in.LinkDeletes {
-			edgeID := strings.TrimSpace(ld.EdgeID)
-			if edgeID != "" {
-				if err := s.store.DeleteEdge(ctx, edgeID); err != nil {
-					return fmt.Errorf("link delete failed: %w", err)
-				}
-			}
-		}
-		return nil
-	}); err != nil {
+	patch := core.BoardSourcePatch{}
+	for _, c := range in.Creates {
+		patch.Creates = append(patch.Creates, core.BoardSourceCreate{
+			Kind:        c.Kind,
+			Title:       c.Title,
+			Status:      c.Status,
+			Owner:       c.Owner,
+			Description: c.Description,
+			TimeHorizon: c.TimeHorizon,
+			Priority:    c.Priority,
+			Labels:      c.Labels,
+		})
+	}
+	for _, u := range in.Updates {
+		patch.Updates = append(patch.Updates, core.BoardSourceUpdate{
+			NodeID:      u.NodeID,
+			Title:       u.Title,
+			Status:      u.Status,
+			Owner:       u.Owner,
+			Description: u.Description,
+		})
+	}
+	for _, d := range in.Deletes {
+		patch.Deletes = append(patch.Deletes, core.BoardSourceDelete{NodeID: d.NodeID})
+	}
+	for _, lc := range in.LinkCreates {
+		patch.LinkCreates = append(patch.LinkCreates, core.BoardSourceLinkCreate{
+			FromID: lc.FromID,
+			ToID:   lc.ToID,
+			Kind:   lc.Kind,
+			Notes:  lc.Notes,
+		})
+	}
+	for _, ld := range in.LinkDeletes {
+		patch.LinkDeletes = append(patch.LinkDeletes, core.BoardSourceLinkDelete{EdgeID: ld.EdgeID})
+	}
+	if err := s.store.ApplyBoardSourcePatch(r.Context(), boardID, patch); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}

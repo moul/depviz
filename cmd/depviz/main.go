@@ -369,28 +369,43 @@ func runRestore(ctx context.Context, dbPath string, args []string) error {
 		fmt.Println("use --force to actually restore")
 		return nil
 	}
-	// Backup current DB first
-	ts := time.Now().UTC().Format("20060102T150405Z")
-	backupPath := dbPath + ".before-restore-" + ts
-	if _, err := os.Stat(dbPath); err == nil {
-		if err := os.Rename(dbPath, backupPath); err != nil {
-			return fmt.Errorf("could not backup current db: %w", err)
-		}
-		fmt.Printf("current db backed up to: %s\n", backupPath)
-	}
-	// Copy backup to dbPath
 	src, err := os.Open(*from)
 	if err != nil {
 		return err
 	}
 	defer src.Close()
-	dst, err := os.Create(dbPath)
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+		return err
+	}
+	ts := time.Now().UTC().Format("20060102T150405Z")
+	backupPath := dbPath + ".before-restore-" + ts
+	tmpPath := dbPath + ".restore-tmp-" + ts
+	dst, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
 	if _, err := io.Copy(dst, src); err != nil {
+		_ = dst.Close()
+		_ = os.Remove(tmpPath)
 		return err
+	}
+	if err := dst.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	if _, err := os.Stat(dbPath); err == nil {
+		if err := os.Rename(dbPath, backupPath); err != nil {
+			_ = os.Remove(tmpPath)
+			return fmt.Errorf("could not backup current db: %w", err)
+		}
+		fmt.Printf("current db backed up to: %s\n", backupPath)
+	}
+	if err := os.Rename(tmpPath, dbPath); err != nil {
+		if _, statErr := os.Stat(backupPath); statErr == nil {
+			_ = os.Rename(backupPath, dbPath)
+		}
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("could not install restored db: %w", err)
 	}
 	fmt.Printf("restored %s -> %s\n", *from, dbPath)
 	return nil
