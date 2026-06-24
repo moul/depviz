@@ -7,7 +7,7 @@
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="icon" href="./favicon.png" type="image/png" sizes="64x64">
   <link rel="apple-touch-icon" href="./logo-512.png">
-  <link rel="stylesheet" href="./style.css?v=v4.1.22-dev">
+  <link rel="stylesheet" href="./style.css?v=v4.1.23-dev">
 </head>
 <body>
   <header class="topbar">
@@ -86,10 +86,10 @@
           <div class="meta" id="boardMeta"></div>
         </div>
         <div class="viewTabs" role="tablist" aria-label="View">
-          <button data-view="brief" type="button">Overview</button>
-          <button class="active" data-view="graph" type="button">Relations</button>
-          <button data-view="table" type="button">Table</button>
-          <button data-view="kanban" type="button">Board</button>
+          <button data-view="brief" type="button">📌 Overview</button>
+          <button class="active" data-view="graph" type="button">🔗 Relations</button>
+          <button data-view="table" type="button">📋 Table</button>
+          <button data-view="kanban" type="button">🧱 Board</button>
         </div>
       </div>
 
@@ -107,15 +107,15 @@
             <p id="workspaceSummary">Pick or create a view.</p>
           </div>
           <select id="workspaceSwitcher" aria-label="Workspace" class="statefulOnly"></select>
-          <button id="syncBoardBtn" type="button">Sync</button>
+          <button id="syncBoardBtn" type="button">↻ Sync</button>
         </div>
 
         <nav class="workspaceNav" aria-label="Stateful workspace">
-          <button class="active" data-workspace-tab="views" type="button">Views</button>
-          <button data-workspace-tab="actions" type="button">Actions</button>
-          <button data-workspace-tab="presets" type="button">Sources</button>
-          <button data-workspace-tab="suggestions" type="button">Links</button>
-          <button data-workspace-tab="sync" type="button">Sync</button>
+          <button class="active" data-workspace-tab="views" type="button">📋 Views</button>
+          <button data-workspace-tab="actions" type="button">✍️ Add</button>
+          <button data-workspace-tab="presets" type="button">🔎 Sources</button>
+          <button data-workspace-tab="suggestions" type="button">🔗 Links</button>
+          <button data-workspace-tab="sync" type="button">↻ Sync</button>
         </nav>
 
         <div class="workspaceBody">
@@ -152,6 +152,7 @@
               </div>
             </div>
             <form id="addBoardItemForm" class="quickAddForm">
+              <div class="formGroupTitle">✍️ Add item</div>
               <select id="newItemKind" aria-label="New item kind">
                 <option value="auto">Auto</option>
                 <option value="github">GitHub issue/PR</option>
@@ -205,6 +206,7 @@
             </form>
 
             <form id="addBoardLinkForm" class="quickLinkForm">
+              <div class="formGroupTitle">🔗 Add relation</div>
               <input id="newLinkFrom" type="text" autocomplete="off" placeholder="From: #691, title, or node id" aria-label="Link from item">
               <select id="newLinkKind" aria-label="Link kind">
                 <option value="blocked_by">depends on</option>
@@ -337,6 +339,6 @@
     </div>
     <button id="activityDismiss" class="activityDismiss" aria-label="Dismiss">×</button>
   </div>
-  <script src="./app.js?v=v4.1.22-dev"></script>
+  <script src="./app.js?v=v4.1.23-dev"></script>
 </body>
 </html>
