@@ -11,11 +11,118 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"moul.io/depviz/v4/internal/core"
 	"moul.io/depviz/v4/live"
 )
+
+// ActivityBus tracks in-flight and recently completed background operations.
+type ActivityBus struct {
+	mu         sync.Mutex
+	activities []*Activity
+	nextID     int
+}
+
+// Activity represents a single background operation.
+type Activity struct {
+	ID        string     `json:"id"`
+	Kind      string     `json:"kind"`
+	Label     string     `json:"label"`
+	Status    string     `json:"status"`
+	Done      int        `json:"done"`
+	Total     int        `json:"total"`
+	Detail    string     `json:"detail"`
+	StartedAt time.Time  `json:"started_at"`
+	EndedAt   *time.Time `json:"ended_at,omitempty"`
+	Error     string     `json:"error,omitempty"`
+}
+
+func (b *ActivityBus) Start(kind, label string) *Activity {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.nextID++
+	a := &Activity{
+		ID:        fmt.Sprintf("%d", b.nextID),
+		Kind:      kind,
+		Label:     label,
+		Status:    "running",
+		StartedAt: time.Now().UTC(),
+	}
+	b.activities = append(b.activities, a)
+	return a
+}
+
+func (b *ActivityBus) Update(a *Activity, done, total int, detail string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if a.Status != "running" {
+		return
+	}
+	if done > 0 {
+		a.Done = done
+	}
+	if total > 0 {
+		a.Total = total
+	}
+	if detail != "" {
+		a.Detail = detail
+	}
+}
+
+func (b *ActivityBus) Finish(a *Activity, done, total int, detail string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	now := time.Now().UTC()
+	a.Status = "done"
+	a.EndedAt = &now
+	if done > 0 {
+		a.Done = done
+	}
+	if total > 0 {
+		a.Total = total
+	}
+	if detail != "" {
+		a.Detail = detail
+	}
+}
+
+func (b *ActivityBus) Fail(a *Activity, errMsg string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	now := time.Now().UTC()
+	a.Status = "failed"
+	a.EndedAt = &now
+	a.Error = errMsg
+}
+
+func (b *ActivityBus) Active() []*Activity {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	cutoff := time.Now().UTC().Add(-8 * time.Second)
+	var out []*Activity
+	var kept []*Activity
+	for _, a := range b.activities {
+		if a.Status == "running" || (a.EndedAt != nil && a.EndedAt.After(cutoff)) {
+			out = append(out, a)
+			kept = append(kept, a)
+		}
+	}
+	b.activities = kept
+	return out
+}
+
+type ctxKeyActivity struct{}
+
+func withActivity(ctx context.Context, a *Activity) context.Context {
+	return context.WithValue(ctx, ctxKeyActivity{}, a)
+}
+
+func activityFromCtx(ctx context.Context) *Activity {
+	a, _ := ctx.Value(ctxKeyActivity{}).(*Activity)
+	return a
+}
 
 const sessionCookieName = "depviz_session"
 
@@ -31,9 +138,10 @@ type Config struct {
 }
 
 type Server struct {
-	cfg    Config
-	store  *core.Store
-	client *http.Client
+	cfg        Config
+	store      *core.Store
+	client     *http.Client
+	activities *ActivityBus
 }
 
 func NewServer(store *core.Store, cfg Config) *Server {
@@ -41,9 +149,10 @@ func NewServer(store *core.Store, cfg Config) *Server {
 		cfg.SessionTTL = 30 * 24 * time.Hour
 	}
 	return &Server{
-		cfg:    cfg,
-		store:  store,
-		client: http.DefaultClient,
+		cfg:        cfg,
+		store:      store,
+		client:     http.DefaultClient,
+		activities: &ActivityBus{},
 	}
 }
 
@@ -55,6 +164,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/boards", s.handleBoards)
 	mux.HandleFunc("/api/board-items", s.handleBoardItems)
 	mux.HandleFunc("/api/board-links", s.handleBoardLinks)
+	mux.HandleFunc("/api/activities", s.handleActivities)
 	mux.HandleFunc("/api/board-sync", s.handleBoardSync)
 	mux.HandleFunc("/api/github/orgs", s.handleGitHubOrgs)
 	mux.HandleFunc("/api/github/projects", s.handleGitHubProjects)
@@ -83,6 +193,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"github_app_configured":     s.githubAppConfigured(),
 		"github_webhook_configured": s.githubWebhookConfigured(),
 	})
+}
+
+func (s *Server) handleActivities(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-cache")
+	writeJSON(w, http.StatusOK, map[string]any{"activities": s.activities.Active()})
 }
 
 func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
@@ -546,23 +661,28 @@ func (s *Server) handleBoardSync(w http.ResponseWriter, r *http.Request) {
 		limit = 100
 	}
 	_ = s.store.RecordBoardSync(r.Context(), boardID, "running", map[string]any{"scope": snap.Board.ScopeQuery, "limit": limit})
+	act := s.activities.Start("sync", "Syncing "+boardScopeLabel(snap.Board))
 	token, tokenMode, err := s.githubTokenForBoardSync(r.Context(), account.ID, snap.Board)
 	if err != nil {
+		s.activities.Fail(act, err.Error())
 		_ = s.store.RecordBoardSync(r.Context(), boardID, "failed", map[string]any{"scope": snap.Board.ScopeQuery, "limit": limit, "error": err.Error()})
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return
 	}
-	count, edges, err := s.syncGitHubBoardScope(r.Context(), token, account.Login, boardID, snap.Board, limit)
+	syncCtx := withActivity(r.Context(), act)
+	count, edges, err := s.syncGitHubBoardScope(syncCtx, token, account.Login, boardID, snap.Board, limit)
 	if err != nil && canRetryGitHubPublicSync(err, tokenMode, snap.Board) {
-		count, edges, err = s.syncGitHubBoardScope(r.Context(), "", account.Login, boardID, snap.Board, limit)
+		count, edges, err = s.syncGitHubBoardScope(syncCtx, "", account.Login, boardID, snap.Board, limit)
 		tokenMode = "github-public-rest"
 	}
 	if err != nil {
 		err = friendlyGitHubSyncError(err, tokenMode, snap.Board.ScopeQuery)
+		s.activities.Fail(act, err.Error())
 		_ = s.store.RecordBoardSync(r.Context(), boardID, "failed", map[string]any{"scope": snap.Board.ScopeQuery, "limit": limit, "mode": tokenMode, "error": err.Error()})
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return
 	}
+	s.activities.Finish(act, count, 0, fmt.Sprintf("%d items, %d links", count, edges))
 	_ = s.store.RecordBoardSync(r.Context(), boardID, "ok", map[string]any{"scope": snap.Board.ScopeQuery, "limit": limit, "mode": tokenMode, "items": count, "links": edges})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "scope": snap.Board.ScopeQuery, "mode": tokenMode, "items": count, "links": edges})
 }
@@ -1126,6 +1246,9 @@ func (s *Server) syncGitHubRepoBoard(ctx context.Context, accessToken, boardID, 
 	}); err != nil {
 		return 0, 0, err
 	}
+	if a := activityFromCtx(ctx); a != nil {
+		s.activities.Update(a, 0, 0, "fetching "+repo)
+	}
 	var issues []githubIssueREST
 	path := fmt.Sprintf("/repos/%s/issues?state=all&sort=updated&direction=desc&per_page=%d", repo, limit)
 	if err := s.doGitHubREST(ctx, accessToken, path, &issues); err != nil {
@@ -1139,6 +1262,9 @@ func (s *Server) syncGitHubRepoBoard(ctx context.Context, accessToken, boardID, 
 			return count, edgeCount, err
 		}
 		count++
+		if a := activityFromCtx(ctx); a != nil {
+			s.activities.Update(a, count, len(issues), "")
+		}
 		for _, edge := range core.ExtractDependencyEdges(repo, node.ID, issue.Body) {
 			if _, err := s.store.AddEdgeWithConfidence(ctx, boardID, edge.From, edge.To, edge.Kind, "github-inferred", edge.Confidence, edge); err != nil {
 				return count, edgeCount, err
@@ -1220,6 +1346,9 @@ func (s *Server) syncGitHubBoardScope(ctx context.Context, accessToken, login, b
 }
 
 func (s *Server) syncGitHubOrgBoard(ctx context.Context, accessToken, boardID, owner string, limit int) (int, int, error) {
+	if a := activityFromCtx(ctx); a != nil {
+		s.activities.Update(a, 0, 0, "fetching repos for "+owner)
+	}
 	var repos []githubRepo
 	if err := s.doGitHubREST(ctx, accessToken, fmt.Sprintf("/orgs/%s/repos?sort=updated&direction=desc&per_page=20", owner), &repos); err != nil {
 		return 0, 0, err
@@ -1243,6 +1372,9 @@ func (s *Server) syncGitHubOrgBoard(ctx context.Context, accessToken, boardID, o
 		}
 		totalItems += items
 		totalLinks += links
+		if a := activityFromCtx(ctx); a != nil {
+			s.activities.Update(a, totalItems, 0, "")
+		}
 	}
 	return totalItems, totalLinks, nil
 }
@@ -1250,6 +1382,9 @@ func (s *Server) syncGitHubOrgBoard(ctx context.Context, accessToken, boardID, o
 func (s *Server) syncGitHubMyWorkBoard(ctx context.Context, accessToken, login, boardID string, limit int) (int, int, error) {
 	if login == "" {
 		return 0, 0, errors.New("github login is required for my-work sync")
+	}
+	if a := activityFromCtx(ctx); a != nil {
+		s.activities.Update(a, 0, 0, "fetching issues for "+login)
 	}
 	query := url.QueryEscape(fmt.Sprintf("involves:%s archived:false sort:updated-desc", login))
 	var payload struct {
@@ -1279,6 +1414,9 @@ func (s *Server) syncGitHubMyWorkBoard(ctx context.Context, accessToken, login, 
 			return count, edges, err
 		}
 		count++
+		if a := activityFromCtx(ctx); a != nil {
+			s.activities.Update(a, count, len(payload.Items), "")
+		}
 		for _, edge := range core.ExtractDependencyEdges(repo, node.ID, item.Body) {
 			if _, err := s.store.AddEdgeWithConfidence(ctx, boardID, edge.From, edge.To, edge.Kind, "github-inferred", edge.Confidence, edge); err != nil {
 				return count, edges, err
@@ -1580,9 +1718,11 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 		issueBody["milestone"] = in.Milestone
 	}
 	payload, _ := json.Marshal(issueBody)
+	act := s.activities.Start("github-write", "Creating GitHub issue")
 	apiURL := "https://api.github.com/repos/" + parts[0] + "/" + parts[1] + "/issues"
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, apiURL, bytes.NewReader(payload))
 	if err != nil {
+		s.activities.Fail(act, err.Error())
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
@@ -1592,6 +1732,7 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		s.activities.Fail(act, err.Error())
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return
 	}
@@ -1600,18 +1741,21 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 	_ = json.NewDecoder(resp.Body).Decode(&ghResult)
 	if resp.StatusCode >= 300 {
 		errMsg, _ := ghResult["message"].(string)
+		var friendlyErr string
 		switch resp.StatusCode {
 		case 401:
-			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: unauthorized - token may be expired or invalid"})
+			friendlyErr = "github: unauthorized - token may be expired or invalid"
 		case 403:
-			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: forbidden - token lacks write permission for this repository"})
+			friendlyErr = "github: forbidden - token lacks write permission for this repository"
 		case 404:
-			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: repository not found or no access"})
+			friendlyErr = "github: repository not found or no access"
 		case 429:
-			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: rate limit exceeded"})
+			friendlyErr = "github: rate limit exceeded"
 		default:
-			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github: " + errMsg})
+			friendlyErr = "github: " + errMsg
 		}
+		s.activities.Fail(act, friendlyErr)
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": friendlyErr})
 		return
 	}
 	issueURL, _ := ghResult["html_url"].(string)
@@ -1623,9 +1767,11 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 	}
 	node, err := s.store.AddGitHubRefToBoard(r.Context(), boardID, in.Repo, "#", issueNumber, in.Title)
 	if err != nil {
+		s.activities.Fail(act, "depviz import failed: "+err.Error())
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github issue created, but depviz import failed: " + err.Error()})
 		return
 	}
+	s.activities.Finish(act, 1, 1, "Created #"+issueNumber)
 	if strings.TrimSpace(in.NodeID) != "" {
 		_, _ = s.store.AddEdge(r.Context(), boardID, strings.TrimSpace(in.NodeID), node.ID, "addresses", "user", map[string]any{"source": "github-create-issue"})
 	}
@@ -1986,10 +2132,13 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 	for _, ld := range in.LinkDeletes {
 		patch.LinkDeletes = append(patch.LinkDeletes, core.BoardSourceLinkDelete{EdgeID: ld.EdgeID})
 	}
+	act := s.activities.Start("patch-apply", "Applying source patch")
 	if err := s.store.ApplyBoardSourcePatch(r.Context(), boardID, patch); err != nil {
+		s.activities.Fail(act, err.Error())
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
+	s.activities.Finish(act, total, total, fmt.Sprintf("%d ops applied", total))
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
 }
 
@@ -2260,6 +2409,22 @@ func boardPreset(board core.Board) string {
 		return strings.TrimSpace(cfg.Preset)
 	}
 	return ""
+}
+
+func boardScopeLabel(board core.Board) string {
+	if repo := repoForBoard(board); repo != "" {
+		return repo
+	}
+	if org := orgForBoard(board); org != "" {
+		return org
+	}
+	if board.ScopeQuery == "my-work" || boardPreset(board) == "my-work" {
+		return "my work"
+	}
+	if board.Name != "" {
+		return board.Name
+	}
+	return board.ScopeQuery
 }
 
 func parseGitHubRESTTime(value string) time.Time {

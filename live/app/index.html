@@ -327,6 +327,18 @@
   </main>
 
   <div id="linkModeIndicator" class="linkModeIndicator" aria-live="polite"></div>
+  <div id="activityFooter" class="activityFooter hidden" aria-live="polite">
+    <div class="activityProgress">
+      <div id="activityBar" class="activityBar"></div>
+    </div>
+    <div class="activityText">
+      <span id="activityLabel" class="activityLabel"></span>
+      <span id="activityDetail" class="activityDetail"></span>
+      <span id="activityCounts" class="activityCounts"></span>
+      <span id="activityExtra" class="activityExtra"></span>
+    </div>
+    <button id="activityDismiss" class="activityDismiss" aria-label="Dismiss">×</button>
+  </div>
   <script src="./app.js?v=v4.1.23-dev"></script>
 </body>
 </html>
