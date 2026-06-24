@@ -2,6 +2,7 @@ package live
 
 import (
 	"io/fs"
+	"os"
 	"strings"
 	"testing"
 )
@@ -358,6 +359,49 @@ func TestLiveAssetsExposeGitHubDiagnostics(t *testing.T) {
 		{"refresh failures", string(app), `state.githubFailures`},
 		{"placeholder guidance", string(app), `refresh GitHub or sync/export a wider scope`},
 		{"partial metadata", string(app), `partial GitHub metadata`},
+	} {
+		if !strings.Contains(tc.body, tc.want) {
+			t.Fatalf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
+
+func TestLiveAssetsExposeCockpitNext711Features(t *testing.T) {
+	fsys := AppFS()
+	app, err := fs.ReadFile(fsys, "app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	style, err := fs.ReadFile(fsys, "style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverGo, err := os.ReadFile("../internal/backend/server.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mainGo, err := os.ReadFile("../cmd/depviz/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"source-apply route", string(serverGo), `/api/board-source/apply`},
+		{"update-issue route", string(serverGo), `/api/github/update-issue`},
+		{"comment route", string(serverGo), `/api/github/comment`},
+		{"dismiss route", string(serverGo), `/api/suggestions/dismiss`},
+		{"board-views route", string(serverGo), `/api/board-views`},
+		{"patchModal css", string(style), `.patchModal`},
+		{"clusterGroup css", string(style), `.clusterGroup`},
+		{"savedViews css", string(style), `.savedViews`},
+		{"backup command", string(mainGo), `case "backup"`},
+		{"handleDismissSuggestion", string(serverGo), `handleDismissSuggestion`},
+		{"renderSourcePatchModal", string(app), `function renderSourcePatchModal(`},
+		{"computeSourcePatch", string(app), `function computeSourcePatch(`},
+		{"handleCreateGitHubComment", string(serverGo), `handleCreateGitHubComment`},
 	} {
 		if !strings.Contains(tc.body, tc.want) {
 			t.Fatalf("%s: missing %q", tc.name, tc.want)
