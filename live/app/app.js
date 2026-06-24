@@ -4989,9 +4989,10 @@ async function loadSavedViews() {
       let cfg = {};
       try { cfg = JSON.parse(v.config_json || '{}'); } catch (_) {}
       const desc = [cfg.driver, cfg.view, cfg.filter_text].filter(Boolean).join(' · ');
+      const visibilityBadge = v.visibility === 'shared' ? '<span class="savedViewBadge shared">Shared</span>' : '<span class="savedViewBadge personal">Personal</span>';
       return `<div class="savedViewItem">
         <div>
-          <strong>${esc(v.name)}</strong>
+          <strong>${esc(v.name)}</strong>${visibilityBadge}
           ${desc ? `<span class="savedViewDesc">${esc(desc)}</span>` : ''}
         </div>
         <div class="savedViewActions">

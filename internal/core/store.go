@@ -285,6 +285,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 		config_json TEXT NOT NULL DEFAULT '{}',
 		created_at TEXT NOT NULL
 	)`)
+	_, _ = s.db.ExecContext(ctx, `ALTER TABLE board_views ADD COLUMN visibility TEXT NOT NULL DEFAULT 'personal'`)
 	return nil
 }
 
@@ -1410,23 +1411,27 @@ type BoardView struct {
 	BoardID    string `json:"board_id"`
 	Name       string `json:"name"`
 	ConfigJSON string `json:"config_json"`
+	Visibility string `json:"visibility"`
 	CreatedAt  string `json:"created_at"`
 }
 
-func (s *Store) SaveBoardView(ctx context.Context, boardID, name string, config map[string]any) (BoardView, error) {
+func (s *Store) SaveBoardView(ctx context.Context, boardID, name, visibility string, config map[string]any) (BoardView, error) {
+	if visibility == "" {
+		visibility = "personal"
+	}
 	id := fmt.Sprintf("view-%d", time.Now().UnixNano())
 	now := formatTime(nowUTC())
 	configJSON, _ := json.Marshal(config)
-	_, err := s.db.ExecContext(ctx, `INSERT INTO board_views(id, board_id, name, config_json, created_at) VALUES(?, ?, ?, ?, ?)`,
-		id, boardID, name, string(configJSON), now)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO board_views(id, board_id, name, config_json, visibility, created_at) VALUES(?, ?, ?, ?, ?, ?)`,
+		id, boardID, name, string(configJSON), visibility, now)
 	if err != nil {
 		return BoardView{}, err
 	}
-	return BoardView{ID: id, BoardID: boardID, Name: name, ConfigJSON: string(configJSON), CreatedAt: now}, nil
+	return BoardView{ID: id, BoardID: boardID, Name: name, ConfigJSON: string(configJSON), Visibility: visibility, CreatedAt: now}, nil
 }
 
 func (s *Store) ListBoardViews(ctx context.Context, boardID string) ([]BoardView, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, board_id, name, config_json, created_at FROM board_views WHERE board_id=? ORDER BY created_at DESC`, boardID)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, board_id, name, config_json, COALESCE(visibility, 'personal'), created_at FROM board_views WHERE board_id=? ORDER BY created_at DESC`, boardID)
 	if err != nil {
 		return nil, err
 	}
@@ -1434,7 +1439,7 @@ func (s *Store) ListBoardViews(ctx context.Context, boardID string) ([]BoardView
 	var out []BoardView
 	for rows.Next() {
 		var v BoardView
-		if err := rows.Scan(&v.ID, &v.BoardID, &v.Name, &v.ConfigJSON, &v.CreatedAt); err != nil {
+		if err := rows.Scan(&v.ID, &v.BoardID, &v.Name, &v.ConfigJSON, &v.Visibility, &v.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, v)

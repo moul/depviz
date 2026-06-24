@@ -1978,9 +1978,10 @@ func (s *Server) handleBoardViews(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"views": views})
 	case http.MethodPost:
 		var in struct {
-			BoardID string         `json:"board_id"`
-			Name    string         `json:"name"`
-			Config  map[string]any `json:"config"`
+			BoardID    string         `json:"board_id"`
+			Name       string         `json:"name"`
+			Visibility string         `json:"visibility"`
+			Config     map[string]any `json:"config"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -1994,7 +1995,7 @@ func (s *Server) handleBoardViews(w http.ResponseWriter, r *http.Request) {
 		if boardID == "" {
 			boardID = core.DefaultBoardID
 		}
-		view, err := s.store.SaveBoardView(r.Context(), boardID, in.Name, in.Config)
+		view, err := s.store.SaveBoardView(r.Context(), boardID, in.Name, in.Visibility, in.Config)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
