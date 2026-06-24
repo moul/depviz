@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.21-dev';
+const assetVersion = 'v4.1.22-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -564,7 +564,7 @@ async function createBoardFromPreset(input) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) throw new Error(await responseErrorMessage(res));
   const payload = await res.json();
   const board = normalizeBoard(payload.board || {});
   state.currentBoardID = board.id || state.currentBoardID;
@@ -673,6 +673,11 @@ async function addBoardLink(event) {
 }
 
 function handleBoardListClick(event) {
+  const emptyAction = event.target.closest('[data-empty-action]');
+  if (emptyAction) {
+    handleEmptyBoardAction(emptyAction);
+    return;
+  }
   const btn = event.target.closest('[data-board-id]');
   if (!btn) return;
   state.currentBoardID = btn.dataset.boardId || 'default';
@@ -690,9 +695,9 @@ async function loadGitHubPresets() {
       fetch('./api/github/orgs', { credentials: 'same-origin' }),
       fetch('./api/github/projects', { credentials: 'same-origin' }),
     ]);
-    if (!reposRes.ok) throw new Error(`repos ${reposRes.status}`);
-    if (!orgsRes.ok) throw new Error(`orgs ${orgsRes.status}`);
-    if (!projectsRes.ok) throw new Error(`projects ${projectsRes.status}`);
+    if (!reposRes.ok) throw new Error(`repos: ${await responseErrorMessage(reposRes)}`);
+    if (!orgsRes.ok) throw new Error(`orgs: ${await responseErrorMessage(orgsRes)}`);
+    if (!projectsRes.ok) throw new Error(`projects: ${await responseErrorMessage(projectsRes)}`);
     const reposPayload = await reposRes.json();
     const orgsPayload = await orgsRes.json();
     const projectsPayload = await projectsRes.json();
@@ -828,7 +833,8 @@ async function readJSONResponse(res) {
   try {
     return JSON.parse(text);
   } catch (err) {
-    throw new Error(`expected JSON response, got ${summarizeResponseText(text)} (${err.message})`);
+    const contentType = res.headers.get('content-type') || 'unknown content-type';
+    throw new Error(`expected JSON from ${res.url || 'request'} (${res.status} ${res.statusText}, ${contentType}), got ${summarizeResponseText(text)} (${err.message})`);
   }
 }
 
@@ -845,7 +851,10 @@ function renderManagePanel() {
   if (!dom.boardList) return;
   renderWorkspaceSummary();
   if (!state.boards.length) {
-    dom.boardList.innerHTML = '<div class="emptyState">No saved views yet</div>';
+    dom.boardList.innerHTML = `<div class="emptyState compactStart">
+      <strong>No saved views yet</strong>
+      ${starterActionsHTML('compact')}
+    </div>`;
   } else {
     const filterQuery = state.boardFilter || '';
     const filteredBoards = filterQuery
@@ -2550,7 +2559,31 @@ function renderEmptyBoardBrief() {
       ${canSync ? '<button type="button" data-empty-action="sync">Sync source</button>' : ''}
       ${usefulBoard ? `<button type="button" data-empty-action="useful" data-board-id="${esc(usefulBoard.id)}">Open ${esc(usefulBoard.name || usefulBoard.id)}</button>` : ''}
     </div>
+    ${starterActionsHTML('full')}
   </section>`;
+}
+
+function starterActionsHTML(mode = 'full') {
+  const compact = mode === 'compact';
+  return `<div class="starterActions ${compact ? 'starterCompact' : ''}">
+    ${compact ? '' : '<h4>Start quickly</h4>'}
+    <button type="button" data-empty-action="repo-prompt">
+      <strong>Repo activity</strong>
+      <span>owner/repo, recent issues and PRs</span>
+    </button>
+    <button type="button" data-empty-action="my-work">
+      <strong>My Work</strong>
+      <span>assigned, authored, mentioned</span>
+    </button>
+    <button type="button" data-empty-action="sources">
+      <strong>Load repos</strong>
+      <span>choose from GitHub</span>
+    </button>
+    <button type="button" data-empty-action="blank">
+      <strong>Blank board</strong>
+      <span>manual strategy graph</span>
+    </button>
+  </div>`;
 }
 
 function githubDiagnosticItems(snapshot) {
@@ -3384,6 +3417,46 @@ function handleEmptyBoardAction(target) {
   }
   if (action === 'sync') {
     syncCurrentBoard();
+    return;
+  }
+  if (action === 'repo-prompt') {
+    const repo = window.prompt('GitHub repo to graph, e.g. gnolang/gno');
+    if (!repo || !repo.includes('/')) return;
+    const cleanRepo = repo.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/$/, '');
+    createBoardFromPreset({
+      name: cleanRepo,
+      description: `GitHub repo ${cleanRepo}`,
+      preset: 'repo',
+      provider: 'github',
+      owner: cleanRepo.split('/')[0],
+      repo: cleanRepo,
+    }).catch((err) => {
+      dom.status.textContent = 'repo starter failed';
+      dom.error.textContent = err.message;
+    });
+    return;
+  }
+  if (action === 'my-work') {
+    createBoardFromPreset({
+      name: 'My Work',
+      description: 'GitHub work involving me',
+      preset: 'my-work',
+      provider: 'github',
+    }).catch((err) => {
+      dom.status.textContent = 'my work starter failed';
+      dom.error.textContent = err.message;
+    });
+    return;
+  }
+  if (action === 'blank') {
+    createBoardFromPreset({
+      name: `Planning ${new Date().toISOString().slice(0, 10)}`,
+      description: 'Manual strategy graph',
+      preset: 'empty',
+    }).catch((err) => {
+      dom.status.textContent = 'blank starter failed';
+      dom.error.textContent = err.message;
+    });
     return;
   }
   if (action === 'useful' && target.dataset.boardId) {

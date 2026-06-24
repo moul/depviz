@@ -1300,10 +1300,10 @@ func (s *Server) doJSON(req *http.Request, out any) error {
 		return err
 	}
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return fmt.Errorf("%s: %s", res.Status, responseBodySummary(data))
+		return fmt.Errorf("%s %s: %s", res.Status, req.URL.Path, responseBodySummary(data))
 	}
 	if err := json.Unmarshal(data, out); err != nil {
-		return fmt.Errorf("expected JSON from %s, got %s: %w", req.URL.Host, responseBodySummary(data), err)
+		return fmt.Errorf("expected JSON from %s%s, got %s: %w", req.URL.Host, req.URL.Path, responseBodySummary(data), err)
 	}
 	return nil
 }
