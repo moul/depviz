@@ -65,6 +65,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/github/comment", s.handleCreateGitHubComment)
 	mux.HandleFunc("/api/board-source/apply", s.handleBoardSourceApply)
 	mux.HandleFunc("/api/suggestions/dismiss", s.handleDismissSuggestion)
+	mux.HandleFunc("/api/board-sync-logs", s.handleBoardSyncLogs)
 	mux.HandleFunc("/api/overrides", s.handleOverrides)
 	mux.HandleFunc("/api/auth/github/start", s.handleGitHubStart)
 	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
@@ -1720,6 +1721,30 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
+}
+
+func (s *Server) handleBoardSyncLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	if _, ok := s.requireAccount(w, r); !ok {
+		return
+	}
+	boardID := r.URL.Query().Get("board_id")
+	if boardID == "" {
+		boardID = core.DefaultBoardID
+	}
+	logs, err := s.store.GetSyncLogs(r.Context(), boardID, 20)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if logs == nil {
+		logs = []core.SyncLog{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"logs": logs})
 }
 
 func (s *Server) handleDismissSuggestion(w http.ResponseWriter, r *http.Request) {

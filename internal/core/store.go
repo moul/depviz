@@ -254,6 +254,19 @@ func (s *Store) Migrate(ctx context.Context) error {
 		dismissed_at TEXT NOT NULL,
 		PRIMARY KEY (account_id, board_id, edge_id)
 	)`)
+	_, _ = s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS sync_logs (
+		id TEXT PRIMARY KEY,
+		board_id TEXT NOT NULL,
+		started_at TEXT NOT NULL,
+		completed_at TEXT NOT NULL DEFAULT '',
+		status TEXT NOT NULL,
+		items_synced INTEGER NOT NULL DEFAULT 0,
+		edges_synced INTEGER NOT NULL DEFAULT 0,
+		mode TEXT NOT NULL DEFAULT '',
+		error TEXT NOT NULL DEFAULT '',
+		rate_limit_remaining INTEGER NOT NULL DEFAULT 0,
+		rate_limit_reset TEXT NOT NULL DEFAULT ''
+	)`)
 	return nil
 }
 
@@ -1372,6 +1385,53 @@ func sourceURL(sourceID string) string {
 		return "https://github.com/" + strings.TrimPrefix(sourceID, "github:")
 	}
 	return ""
+}
+
+type SyncLog struct {
+	ID                 string `json:"id"`
+	BoardID            string `json:"board_id"`
+	StartedAt          string `json:"started_at"`
+	CompletedAt        string `json:"completed_at"`
+	Status             string `json:"status"`
+	ItemsSynced        int    `json:"items_synced"`
+	EdgesSynced        int    `json:"edges_synced"`
+	Mode               string `json:"mode"`
+	Error              string `json:"error"`
+	RateLimitRemaining int    `json:"rate_limit_remaining"`
+	RateLimitReset     string `json:"rate_limit_reset"`
+}
+
+func (s *Store) AddSyncLog(ctx context.Context, log SyncLog) error {
+	if log.ID == "" {
+		log.ID = fmt.Sprintf("sync-%d", time.Now().UnixNano())
+	}
+	if log.StartedAt == "" {
+		log.StartedAt = formatTime(nowUTC())
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT OR REPLACE INTO sync_logs(id, board_id, started_at, completed_at, status, items_synced, edges_synced, mode, error, rate_limit_remaining, rate_limit_reset)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		log.ID, log.BoardID, log.StartedAt, log.CompletedAt, log.Status, log.ItemsSynced, log.EdgesSynced, log.Mode, log.Error, log.RateLimitRemaining, log.RateLimitReset)
+	return err
+}
+
+func (s *Store) GetSyncLogs(ctx context.Context, boardID string, limit int) ([]SyncLog, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT id, board_id, started_at, completed_at, status, items_synced, edges_synced, mode, error, rate_limit_remaining, rate_limit_reset FROM sync_logs WHERE board_id=? ORDER BY started_at DESC LIMIT ?`, boardID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SyncLog
+	for rows.Next() {
+		var l SyncLog
+		if err := rows.Scan(&l.ID, &l.BoardID, &l.StartedAt, &l.CompletedAt, &l.Status, &l.ItemsSynced, &l.EdgesSynced, &l.Mode, &l.Error, &l.RateLimitRemaining, &l.RateLimitReset); err != nil {
+			return nil, err
+		}
+		out = append(out, l)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) DismissSuggestion(ctx context.Context, accountID, boardID, edgeID string) error {

@@ -990,8 +990,37 @@ function renderSyncPanel() {
   </dl>
   <div class="syncActions">
     <button type="button" id="syncFromPanelBtn">Sync now</button>
+  </div>
+  <div class="syncLogsSection">
+    <h4>Sync history</h4>
+    <div id="syncLogsList" class="syncLogsList"></div>
   </div>`;
   document.getElementById('syncFromPanelBtn')?.addEventListener('click', syncCurrentBoard);
+  loadSyncLogs();
+}
+
+async function loadSyncLogs() {
+  const el = document.getElementById('syncLogsList');
+  if (!el) return;
+  try {
+    const board = encodeURIComponent(state.currentBoardID || 'default');
+    const res = await fetch(`./api/board-sync-logs?board_id=${board}`, { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const logs = Array.isArray(data.logs) ? data.logs : [];
+    if (!logs.length) { el.innerHTML = '<div class="emptyState">No sync history yet</div>'; return; }
+    el.innerHTML = logs.map((log) => `<div class="syncLogEntry ${log.status === 'ok' ? 'syncLogOk' : 'syncLogFailed'}">
+      <div class="syncLogHead">
+        <strong>${esc(log.status)}</strong>
+        <span>${esc(log.mode || 'unknown')}</span>
+        <span>${esc(log.started_at ? new Date(log.started_at).toLocaleString() : '')}</span>
+      </div>
+      <div class="syncLogMeta">
+        ${log.items_synced ? `${log.items_synced} items · ` : ''}${log.edges_synced ? `${log.edges_synced} links · ` : ''}${log.rate_limit_remaining ? `${log.rate_limit_remaining} API calls remaining` : ''}
+      </div>
+      ${log.error ? `<div class="syncLogError">${esc(log.error)}</div>` : ''}
+    </div>`).join('');
+  } catch (_) {}
 }
 
 function currentBoard() {
