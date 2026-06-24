@@ -73,6 +73,17 @@ func (s *Store) Path() string {
 	return s.path
 }
 
+func (s *Store) Backup(ctx context.Context, outPath string) error {
+	if strings.TrimSpace(outPath) == "" {
+		return errors.New("backup output path is required")
+	}
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return err
+	}
+	_, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, outPath)
+	return err
+}
+
 func (s *Store) Migrate(ctx context.Context) error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS sources (

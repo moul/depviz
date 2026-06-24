@@ -1721,6 +1721,58 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 			errs = append(errs, "create: title is required")
 		}
 	}
+	snap, err := s.store.Snapshot(r.Context(), boardID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	nodes := map[string]bool{}
+	for _, node := range snap.Nodes {
+		nodes[node.ID] = true
+	}
+	edges := map[string]bool{}
+	for _, edge := range snap.Edges {
+		edges[edgeSelectionID(edge)] = true
+	}
+	for _, u := range in.Updates {
+		nodeID := strings.TrimSpace(u.NodeID)
+		if nodeID == "" {
+			errs = append(errs, "update: node_id is required")
+			continue
+		}
+		if !nodes[nodeID] {
+			errs = append(errs, "update: node not found: "+nodeID)
+		}
+		if strings.TrimSpace(u.Title) == "" {
+			errs = append(errs, "update: title is required for "+nodeID)
+		}
+		if strings.TrimSpace(u.Status) == "" {
+			errs = append(errs, "update: status is required for "+nodeID)
+		}
+	}
+	for _, d := range in.Deletes {
+		nodeID := strings.TrimSpace(d.NodeID)
+		if nodeID == "" {
+			errs = append(errs, "delete: node_id is required")
+			continue
+		}
+		if !nodes[nodeID] {
+			errs = append(errs, "delete: node not found: "+nodeID)
+		}
+		if !isLocalBoardNodeID(nodeID) {
+			errs = append(errs, "delete: refusing to remove GitHub-backed node: "+nodeID)
+		}
+	}
+	for _, ld := range in.LinkDeletes {
+		edgeID := strings.TrimSpace(ld.EdgeID)
+		if edgeID == "" {
+			errs = append(errs, "link delete: edge_id is required")
+			continue
+		}
+		if !edges[edgeID] {
+			errs = append(errs, "link delete: edge not found: "+edgeID)
+		}
+	}
 	if len(errs) > 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"errors": errs})
 		return
@@ -1742,7 +1794,10 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 		if kind == "" {
 			kind = "task"
 		}
-		_, _ = s.store.CreateStrategyNode(r.Context(), boardID, kind, title, c.Status, c.Owner, c.Description, c.TimeHorizon, c.Priority, c.Labels)
+		if _, err := s.store.CreateStrategyNode(r.Context(), boardID, kind, title, c.Status, c.Owner, c.Description, c.TimeHorizon, c.Priority, c.Labels); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "create failed: " + err.Error()})
+			return
+		}
 	}
 	for _, u := range in.Updates {
 		nodeID := strings.TrimSpace(u.NodeID)
@@ -1753,19 +1808,25 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 		status := u.Status
 		owner := u.Owner
 		description := u.Description
-		_, _ = s.store.UpdateNodeFields(r.Context(), nodeID, core.NodeFieldUpdate{
+		if _, err := s.store.UpdateNodeFields(r.Context(), nodeID, core.NodeFieldUpdate{
 			Title:       &title,
 			Status:      &status,
 			Owner:       &owner,
 			Description: &description,
-		})
+		}); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "update failed: " + err.Error()})
+			return
+		}
 	}
 	for _, d := range in.Deletes {
 		nodeID := strings.TrimSpace(d.NodeID)
 		if nodeID == "" {
 			continue
 		}
-		_ = s.store.ArchiveNode(r.Context(), nodeID)
+		if err := s.store.ArchiveNode(r.Context(), nodeID); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "delete failed: " + err.Error()})
+			return
+		}
 	}
 	for _, lc := range in.LinkCreates {
 		from := strings.TrimSpace(lc.FromID)
@@ -1775,13 +1836,19 @@ func (s *Server) handleBoardSourceApply(w http.ResponseWriter, r *http.Request) 
 			kind = "blocked_by"
 		}
 		if from != "" && to != "" {
-			_, _ = s.store.AddEdge(r.Context(), boardID, from, to, kind, "user", map[string]any{"note": lc.Notes})
+			if _, err := s.store.AddEdge(r.Context(), boardID, from, to, kind, "user", map[string]any{"note": lc.Notes}); err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "link create failed: " + err.Error()})
+				return
+			}
 		}
 	}
 	for _, ld := range in.LinkDeletes {
 		edgeID := strings.TrimSpace(ld.EdgeID)
 		if edgeID != "" {
-			_ = s.store.DeleteEdge(r.Context(), edgeID)
+			if err := s.store.DeleteEdge(r.Context(), edgeID); err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "link delete failed: " + err.Error()})
+				return
+			}
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "summary": summary, "errors": []string{}})
@@ -1912,6 +1979,29 @@ func (s *Server) handleDismissSuggestion(w http.ResponseWriter, r *http.Request)
 		w.Header().Set("Allow", http.MethodPost)
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 	}
+}
+
+func edgeSelectionID(edge core.Edge) string {
+	if edge.ID != "" {
+		return edge.ID
+	}
+	kind := strings.ToLower(strings.TrimSpace(edge.Kind))
+	if kind == "blocked_by" || kind == "depends_on" || kind == "depends" || kind == "after" {
+		return "blocking:" + edge.FromID + "->" + edge.ToID
+	}
+	if kind == "blocks" || kind == "unblocks" || kind == "precedes" {
+		return "blocking:" + edge.ToID + "->" + edge.FromID
+	}
+	return kind + ":" + edge.FromID + "->" + edge.ToID
+}
+
+func isLocalBoardNodeID(nodeID string) bool {
+	for _, prefix := range []string{"note:", "task:", "strategy:", "initiative:", "bet:", "project:", "workstream:", "risk:", "decision:", "question:", "metric:"} {
+		if strings.HasPrefix(nodeID, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

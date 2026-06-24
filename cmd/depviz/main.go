@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -323,7 +322,7 @@ func runLive(ctx context.Context, args []string) error {
 	return http.ListenAndServe(*addr, http.FileServer(http.FS(live.AppFS())))
 }
 
-func runBackup(_ context.Context, dbPath string, args []string) error {
+func runBackup(ctx context.Context, dbPath string, args []string) error {
 	fs := flag.NewFlagSet("backup", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	outDir := fs.String("out", "backups", "output directory for backup files")
@@ -338,17 +337,12 @@ func runBackup(_ context.Context, dbPath string, args []string) error {
 	if err := os.MkdirAll(*outDir, 0o755); err != nil {
 		return err
 	}
-	src, err := os.Open(dbPath)
+	s, err := core.OpenStore(ctx, dbPath)
 	if err != nil {
 		return err
 	}
-	defer src.Close()
-	dst, err := os.Create(outFile)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-	if _, err := io.Copy(dst, src); err != nil {
+	defer s.Close()
+	if err := s.Backup(ctx, outFile); err != nil {
 		return err
 	}
 	fmt.Printf("backup written to: %s\n", outFile)
