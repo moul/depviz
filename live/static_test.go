@@ -272,6 +272,11 @@ func TestLiveAssetsExposeStatefulMode(t *testing.T) {
 		{"add link form", string(index), `id="addBoardLinkForm"`},
 		{"stateful layout", string(style), `.shell.statefulMode`},
 		{"workspace layout", string(style), `.workspacePanel`},
+		{"stateful source reset", string(index), `id="resetSourceBtn"`},
+		{"stateful source preview", string(app), `updateStatefulSourcePreview`},
+		{"stateful source generator", string(app), `snapshotToFlow`},
+		{"stateful source dirty style", string(style), `.shell.sourceDirty .editorWrap`},
+		{"stateful source stays visible", string(style), `.shell.statefulMode .inputPane`},
 	} {
 		if !strings.Contains(tc.body, tc.want) {
 			t.Fatalf("%s: missing %q", tc.name, tc.want)

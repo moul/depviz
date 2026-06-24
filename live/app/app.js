@@ -8,6 +8,9 @@ const dom = {
   shell: document.getElementById('shell'),
   input: document.getElementById('sourceInput'),
   syntax: document.getElementById('syntaxLayer'),
+  sourcePaneTitle: document.getElementById('sourcePaneTitle'),
+  sourcePaneSubtitle: document.getElementById('sourcePaneSubtitle'),
+  resetSource: document.getElementById('resetSourceBtn'),
   status: document.getElementById('status'),
   lineCount: document.getElementById('lineCount'),
   error: document.getElementById('errorText'),
@@ -104,6 +107,8 @@ const state = {
   data: emptyExport(),
   inspectorEditMode: false,
   undoStack: [],
+  sourceBase: '',
+  sourceDirty: false,
 };
 
 function emptyExport() {
@@ -151,7 +156,7 @@ async function boot() {
 }
 
 function wireEvents() {
-  dom.input.addEventListener('input', update);
+  dom.input.addEventListener('input', updateSourceInput);
   dom.input.addEventListener('scroll', syncHighlightScroll);
   dom.filter.addEventListener('input', () => {
     state.filter = dom.filter.value.toLowerCase();
@@ -175,6 +180,7 @@ function wireEvents() {
     });
   }
   document.getElementById('sampleBtn').addEventListener('click', loadSample);
+  dom.resetSource.addEventListener('click', resetStatefulSourcePreview);
   document.getElementById('shareBtn').addEventListener('click', shareLink);
   document.getElementById('exportBtn').addEventListener('click', exportJSON);
   document.getElementById('fileInput').addEventListener('change', readFile);
@@ -296,6 +302,14 @@ function update() {
   render();
 }
 
+function updateSourceInput() {
+  if (state.mode === 'stateful') {
+    updateStatefulSourcePreview();
+    return;
+  }
+  update();
+}
+
 async function setMode(mode, options = {}) {
   const next = mode === 'stateful' && state.backendSession.available ? 'stateful' : 'stateless';
   state.mode = next;
@@ -305,6 +319,7 @@ async function setMode(mode, options = {}) {
   });
   dom.shell.classList.toggle('statefulMode', next === 'stateful');
   syncModeVisibility();
+  syncSourcePaneMode();
   refreshBackendAuthUI();
   if (next === 'stateful') {
     await loadBackendBoard();
@@ -328,6 +343,7 @@ function syncModeVisibility() {
 async function loadBackendBoard() {
   if (!state.backendSession.authenticated) {
     state.data = emptyExport();
+    setStatefulSourceFromSnapshot(state.data.snapshot);
     dom.status.textContent = state.backendSession.github_oauth_configured ? 'sign in for stateful graph' : 'stateful backend needs oauth config';
     dom.error.textContent = '';
     state.userPanelOpen = false;
@@ -344,13 +360,71 @@ async function loadBackendBoard() {
     const res = await fetch(`./api/export?board=${board}`, { credentials: 'same-origin' });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     state.data = normalizeExport(await res.json());
+    setStatefulSourceFromSnapshot(state.data.snapshot);
     dom.status.textContent = 'stateful backend graph';
   } catch (err) {
     state.data = emptyExport();
+    setStatefulSourceFromSnapshot(state.data.snapshot);
     dom.error.textContent = err.message;
     dom.status.textContent = 'stateful load failed';
   }
   render();
+}
+
+function syncSourcePaneMode() {
+  dom.sourcePaneTitle.textContent = state.mode === 'stateful' ? 'Board source' : 'Input';
+  dom.sourcePaneSubtitle.textContent = state.mode === 'stateful'
+    ? 'Editable preview of the current board. Changes update the UI locally and are not saved yet.'
+    : 'DepViz Flow, JSONL, or export JSON.';
+  dom.input.setAttribute('aria-label', state.mode === 'stateful'
+    ? 'Editable DepViz Flow preview for this board'
+    : 'DepViz Flow, JSONL, or export JSON');
+  dom.resetSource.classList.toggle('hidden', state.mode !== 'stateful');
+  updateSourceDirtyState();
+}
+
+function setStatefulSourceFromSnapshot(snapshot) {
+  if (state.mode !== 'stateful') return;
+  const source = snapshotToFlow(snapshot || emptyExport().snapshot);
+  state.sourceBase = source;
+  state.sourceDirty = false;
+  dom.input.value = source;
+  updateHighlight(source);
+  dom.lineCount.textContent = `${countLines(source)} lines`;
+  updateSourceDirtyState();
+}
+
+function resetStatefulSourcePreview() {
+  if (state.mode !== 'stateful') return;
+  dom.input.value = state.sourceBase;
+  updateStatefulSourcePreview();
+  dom.status.textContent = 'preview reset to server board';
+}
+
+function updateStatefulSourcePreview() {
+  const text = dom.input.value;
+  updateHighlight(text);
+  dom.lineCount.textContent = `${countLines(text)} lines`;
+  state.sourceDirty = text !== state.sourceBase;
+  updateSourceDirtyState();
+  try {
+    const preview = parseInput(text);
+    if (!preview.snapshot.board.id || preview.snapshot.board.id === 'default') {
+      preview.snapshot.board.id = state.currentBoardID || 'default';
+    }
+    state.data = preview;
+    dom.error.textContent = '';
+    dom.status.textContent = state.sourceDirty ? 'stateful source preview - unsaved' : 'stateful backend graph';
+    render();
+  } catch (err) {
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'source preview error';
+  }
+}
+
+function updateSourceDirtyState() {
+  dom.shell.classList.toggle('sourceDirty', state.mode === 'stateful' && state.sourceDirty);
+  dom.shell.classList.toggle('sourcePreviewMode', state.mode === 'stateful');
 }
 
 async function refreshBoards() {
@@ -1351,7 +1425,7 @@ function highlightJSON(text) {
 function highlightFlow(text) {
   return text.split(/(\r?\n)/).map((line) => {
     if (/^\s*(#\s|\/\/)/.test(line)) return `<span class="tok-comment">${esc(line)}</span>`;
-    const tokenRE = /"(?:\\.|[^"\\])*"|(?:gh:)?[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+[#!]\d+|[A-Za-z][A-Za-z0-9_.-]*[#!]\d+|[#][0-9]+|![0-9]+|@[A-Za-z0-9_.:-]+|<-|->|~>|--|\b(?:depviz|repo|board|note|task|as|depends|on|blocks|addresses|mentions|relates|to|closes|fixes|resolves|and)\b/g;
+    const tokenRE = /"(?:\\.|[^"\\])*"|(?:gh:)?[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+[#!]\d+|[A-Za-z][A-Za-z0-9_.-]*[#!]\d+|[#][0-9]+|![0-9]+|@[A-Za-z0-9_.:-]+|<-|->|~>|--|\b(?:depviz|repo|board|note|task|strategy|initiative|bet|project|workstream|risk|decision|question|metric|as|depends|on|blocks|addresses|mentions|relates|to|closes|fixes|resolves|and)\b/g;
     let out = '';
     let last = 0;
     let match;
@@ -1362,7 +1436,7 @@ function highlightFlow(text) {
       if (token.startsWith('"')) cls = 'tok-string';
       else if (token.startsWith('@')) cls = 'tok-tag';
       else if (['<-', '->', '~>', '--'].includes(token)) cls = 'tok-arrow';
-      else if (/^(depviz|repo|board|note|task|as|depends|on|blocks|addresses|mentions|relates|to|closes|fixes|resolves|and)$/.test(token)) cls = 'tok-keyword';
+      else if (/^(depviz|repo|board|note|task|strategy|initiative|bet|project|workstream|risk|decision|question|metric|as|depends|on|blocks|addresses|mentions|relates|to|closes|fixes|resolves|and)$/.test(token)) cls = 'tok-keyword';
       out += `<span class="${cls}">${esc(token)}</span>`;
       last = tokenRE.lastIndex;
     }
@@ -1389,6 +1463,86 @@ function parseInput(text) {
   return buildExportFromEvents(parseJSONL(trimmed));
 }
 
+function snapshotToFlow(snapshot) {
+  const board = snapshot.board || {};
+  const nodes = Array.isArray(snapshot.nodes) ? snapshot.nodes : [];
+  const edges = Array.isArray(snapshot.edges) ? snapshot.edges : [];
+  const repos = Array.from(new Set(nodes.map((node) => parseGitHubNodeID(node.id)?.repo).filter(Boolean))).sort();
+  const defaultRepo = repos[0] || '';
+  const lines = [
+    '// Stateful board preview. Edit to preview changes locally; persistence comes next.',
+    `board ${flowQuote(board.name || board.id || 'DepViz board')}`,
+  ];
+  for (const repo of repos) lines.push(`repo ${repo}`);
+  if (nodes.length) lines.push('');
+  for (const node of [...nodes].sort(compareNodesForSource)) {
+    lines.push(flowNodeLine(node, defaultRepo));
+  }
+  if (edges.length) lines.push('');
+  for (const edge of [...edges].sort(compareEdgesForSource)) {
+    const from = nodeRefForFlow(edge.from_id, defaultRepo);
+    const to = nodeRefForFlow(edge.to_id, defaultRepo);
+    lines.push(`${from} ${flowRelationVerb(edge.kind)} ${to}`);
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function flowNodeLine(node, defaultRepo) {
+  const ref = parseGitHubNodeID(node.id);
+  const data = nodeData(node);
+  const title = node.title && node.title !== node.id ? ` ${flowQuote(node.title)}` : '';
+  const status = node.state ? ` [${node.state}]` : '';
+  const owner = node.owner ? ` +${flowToken(node.owner)}` : '';
+  const labels = Array.isArray(data.labels) ? data.labels : [];
+  const labelText = labels.map((label) => ` @${flowToken(label)}`).join('');
+  if (ref) return `${nodeRefForFlow(node.id, defaultRepo)}${title}${status}${owner}${labelText}`;
+  const [kind, slugID] = localFlowParts(node);
+  return `${kind} ${slugID}${title}${status}${owner}${labelText}`;
+}
+
+function flowRelationVerb(kind) {
+  const normalized = String(kind || 'relates_to').toLowerCase();
+  if (normalized === 'blocked_by' || normalized === 'depends_on' || normalized === 'depends') return 'depends on';
+  if (normalized === 'relates_to' || normalized === 'related_to') return 'relates to';
+  return normalized.replace(/_/g, ' ');
+}
+
+function flowQuote(value) {
+  return JSON.stringify(String(value || ''));
+}
+
+function flowToken(value) {
+  return String(value || '').trim().replace(/\s+/g, '-').replace(/[^A-Za-z0-9_.:-]/g, '-');
+}
+
+function localFlowParts(node) {
+  const validKinds = localFlowKinds();
+  const [prefix, rest] = String(node.id || '').split(':', 2);
+  const kind = validKinds.has(node.kind) ? node.kind : (validKinds.has(prefix) ? prefix : 'task');
+  const slugID = flowToken(rest || slug(node.title || node.id || 'item'));
+  return [kind, slugID || 'item'];
+}
+
+function nodeRefForFlow(nodeID, defaultRepo) {
+  const ref = parseGitHubNodeID(nodeID);
+  if (!ref) return String(nodeID || '').replace(/\s+/g, '-');
+  if (ref.repo === defaultRepo) return `${ref.marker}${ref.number}`;
+  return `${ref.repo}${ref.marker}${ref.number}`;
+}
+
+function compareNodesForSource(a, b) {
+  if (isClosed(a) !== isClosed(b)) return isClosed(a) ? 1 : -1;
+  return String(a.id || '').localeCompare(String(b.id || ''));
+}
+
+function compareEdgesForSource(a, b) {
+  return relationSignature(a).localeCompare(relationSignature(b));
+}
+
+function localFlowKinds() {
+  return new Set(['note', 'task', 'strategy', 'initiative', 'bet', 'project', 'workstream', 'risk', 'decision', 'question', 'metric']);
+}
+
 function stripMarkdownFence(text) {
   const lines = text.split(/\r?\n/);
   if (lines.length >= 2 && /^```\w*\s*$/.test(lines[0].trim()) && /^```\s*$/.test(lines[lines.length - 1].trim())) {
@@ -1400,7 +1554,7 @@ function stripMarkdownFence(text) {
 function looksLikeFlow(text) {
   return text.split(/\r?\n/).some((line) => {
     const trimmed = line.trim();
-    return /^(depviz|repo|board|note|task)\b/.test(trimmed) || /\b(depends\s+on|blocks|addresses|mentions|relates\s+to|relates|closes|fixes|resolves)\b/i.test(trimmed) || /(?:^|\s)(?:gh:)?[\w.-]+\/[\w.-]+[#!]\d+\b/.test(trimmed) || /\s(?:->|<-|~>)\s/.test(trimmed);
+    return /^(depviz|repo|board|note|task|strategy|initiative|bet|project|workstream|risk|decision|question|metric)\b/.test(trimmed) || /\b(depends\s+on|blocks|addresses|mentions|relates\s+to|relates|closes|fixes|resolves)\b/i.test(trimmed) || /(?:^|\s)(?:gh:)?[\w.-]+\/[\w.-]+[#!]\d+\b/.test(trimmed) || /\s(?:->|<-|~>)\s/.test(trimmed);
   });
 }
 
@@ -1437,7 +1591,7 @@ function parseFlow(text) {
       parseFlowBoard(ctx, line, lineNo);
       continue;
     }
-    if (/^note\b/i.test(line) || /^task\b/i.test(line)) {
+    if (/^(note|task|strategy|initiative|bet|project|workstream|risk|decision|question|metric)\b/i.test(line)) {
       parseFlowLocalNode(ctx, line, lineNo);
       continue;
     }
@@ -1466,8 +1620,9 @@ function parseFlowBoard(ctx, line, lineNo) {
 }
 
 function parseFlowLocalNode(ctx, line, lineNo) {
-  const kind = /^note\b/i.test(line) ? 'note' : 'task';
-  const rest = line.replace(/^(note|task)\s+/i, '');
+  const kindMatch = /^(note|task|strategy|initiative|bet|project|workstream|risk|decision|question|metric)\b/i.exec(line);
+  const kind = kindMatch ? kindMatch[1].toLowerCase() : 'task';
+  const rest = line.replace(/^(note|task|strategy|initiative|bet|project|workstream|risk|decision|question|metric)\s+/i, '');
   const match = /^([A-Za-z][A-Za-z0-9_.:-]*)(?:\s+(.*))?$/.exec(rest);
   if (!match) throw new Error(`line ${lineNo}: expected ${kind} slug "title"`);
   const slugID = match[1];
@@ -1580,7 +1735,7 @@ function parseFlowRefList(ctx, text, lineNo) {
 }
 
 function resolveFlowRef(ctx, token, lineNo) {
-  if (/^(note|task):[A-Za-z0-9_.:-]+$/.test(token)) return { id: token, kind: 'local' };
+  if (/^(note|task|strategy|initiative|bet|project|workstream|risk|decision|question|metric):[A-Za-z0-9_.:-]+$/.test(token)) return { id: token, kind: 'local' };
   if (ctx.localAliases.has(token)) return { id: ctx.localAliases.get(token), kind: 'local' };
   const local = /^([A-Za-z][A-Za-z0-9_.:-]*)$/.exec(token);
   if (local && !ctx.aliases.has(local[1])) return { id: `task:${local[1]}`, kind: 'local' };
