@@ -1375,10 +1375,11 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var in struct {
-		NodeID string `json:"node_id"`
-		Repo   string `json:"repo"`
-		Title  string `json:"title"`
-		Body   string `json:"body"`
+		BoardID string `json:"board_id"`
+		NodeID  string `json:"node_id"`
+		Repo    string `json:"repo"`
+		Title   string `json:"title"`
+		Body    string `json:"body"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&in); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -1423,8 +1424,21 @@ func (s *Server) handleCreateGitHubIssue(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	issueURL, _ := ghResult["html_url"].(string)
-	issueNumber := ghResult["number"]
-	writeJSON(w, http.StatusOK, map[string]any{"url": issueURL, "number": issueNumber})
+	issueNumber := fmt.Sprint(ghResult["number"])
+	issueNumber = strings.TrimSuffix(issueNumber, ".0")
+	boardID := strings.TrimSpace(in.BoardID)
+	if boardID == "" {
+		boardID = core.DefaultBoardID
+	}
+	node, err := s.store.AddGitHubRefToBoard(r.Context(), boardID, in.Repo, "#", issueNumber, in.Title)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "github issue created, but depviz import failed: " + err.Error()})
+		return
+	}
+	if strings.TrimSpace(in.NodeID) != "" {
+		_, _ = s.store.AddEdge(r.Context(), boardID, strings.TrimSpace(in.NodeID), node.ID, "addresses", "user", map[string]any{"source": "github-create-issue"})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"url": issueURL, "number": issueNumber, "node": node})
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
