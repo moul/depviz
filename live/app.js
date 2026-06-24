@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.18-dev';
+const assetVersion = 'v4.1.19-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
