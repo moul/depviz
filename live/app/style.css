@@ -2572,3 +2572,27 @@ button.dangerAction:hover {
 /* --- Commit J: archived nodes --- */
 .archivedNode { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; font-size: 12px; border-bottom: 1px solid var(--line-soft); }
 .archivedNode span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- UX backlog 709: auth gate and onboarding --- */
+.authGate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--surface, #f9fafb);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  margin: 24px auto;
+  max-width: 480px;
+}
+.authGate h2 { font-size: 18px; margin: 0; }
+.authGate p { font-size: 13px; color: var(--muted); margin: 0; max-width: 320px; }
+.authGate .envVars { font-family: monospace; font-size: 12px; background: #f3f4f6; padding: 8px 12px; border-radius: 6px; text-align: left; }
+.onboardingChecklist { padding: 12px; border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; }
+.onboardingChecklist h3 { margin: 0 0 8px; font-size: 13px; }
+.onboardingChecklist ol { margin: 0; padding-left: 18px; }
+.checkItem { font-size: 12px; padding: 3px 0; color: var(--muted); }
+.checkItem.done { color: var(--green, #16a34a); text-decoration: line-through; }

@@ -331,6 +331,7 @@ async function loadBackendBoard() {
     dom.status.textContent = state.backendSession.github_oauth_configured ? 'sign in for stateful graph' : 'stateful backend needs oauth config';
     dom.error.textContent = '';
     state.userPanelOpen = false;
+    renderAuthGate();
     render();
     return;
   }
@@ -679,6 +680,7 @@ function renderManagePanel() {
   }
   if (state.githubPresets.loaded) renderGitHubPresets();
   renderDebugPanel();
+  renderAuthGate();
   renderWorkspaceSuggestions();
   if (state.mode === 'stateful' && state.backendSession.authenticated) {
     loadArchivedNodes();
@@ -732,6 +734,50 @@ function renderUserPanel() {
     session.github_app_configured ? 'App auth configured' : 'OAuth mode',
     session.github_webhook_configured ? 'webhook active' : 'webhook pending',
   ].join(' - ');
+  renderOnboardingChecklist();
+}
+
+function renderOnboardingChecklist() {
+  const el = document.getElementById('onboardingPanel');
+  if (!el) return;
+  if (!state.backendSession.authenticated) { el.classList.add('hidden'); return; }
+  const hasBoards = state.boards.some((b) => !isDraftBoard(b));
+  const hasSynced = state.boards.some((b) => b.metrics && b.metrics.items > 0);
+  const hasLocalItem = (state.data.snapshot.nodes || []).some((n) => n.kind === 'task' || n.kind === 'note');
+  const hasLinks = (state.data.snapshot.edges || []).length > 0;
+  if (hasSynced && hasBoards && hasLocalItem && hasLinks) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerHTML = `<div class="onboardingChecklist">
+    <h3>Get started</h3>
+    <ol>
+      <li class="checkItem ${hasBoards ? 'done' : ''}">Choose a repo or org in Sources tab</li>
+      <li class="checkItem ${hasSynced ? 'done' : ''}">Sync a board</li>
+      <li class="checkItem ${hasLocalItem ? 'done' : ''}">Add a local planning item</li>
+      <li class="checkItem ${hasLinks ? 'done' : ''}">Inspect a dependency link</li>
+    </ol>
+  </div>`;
+}
+
+function renderAuthGate() {
+  const el = document.getElementById('authGatePanel');
+  if (!el) return;
+  const session = state.backendSession || {};
+  if (session.authenticated) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const hasOAuth = session.github_oauth_configured;
+  el.innerHTML = `<div class="authGate">
+    <h2>Sign in to use live mode</h2>
+    <p>DepViz stateful mode lets you manage dependency boards backed by GitHub.</p>
+    ${hasOAuth
+      ? `<button type="button" class="primaryAction" id="authGateSignIn">Sign in with GitHub</button>`
+      : `<div class="envVars">DEPVIZ_GITHUB_CLIENT_ID<br>DEPVIZ_GITHUB_CLIENT_SECRET</div><p>Configure these env vars to enable GitHub OAuth.</p>`}
+    <a href="#" data-mode="stateless">Use stateless mode instead</a>
+  </div>`;
+  document.getElementById('authGateSignIn')?.addEventListener('click', signInWithBackendGitHub);
+  el.querySelector('[data-mode="stateless"]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    setMode('stateless', { renderNow: true });
+  });
 }
 
 function renderDebugPanel() {
