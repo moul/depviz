@@ -201,6 +201,7 @@ func runBrief(ctx context.Context, dbPath string, args []string) error {
 	fs := flag.NewFlagSet("brief", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	board := fs.String("board", core.DefaultBoardID, "board id")
+	workflow := fs.String("workflow", "", "workflow mode (board-status)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -209,6 +210,20 @@ func runBrief(ctx context.Context, dbPath string, args []string) error {
 		return err
 	}
 	defer s.Close()
+	switch strings.TrimSpace(*workflow) {
+	case "":
+	case "board-status":
+		brief, err := s.BuildBoardStatusBrief(ctx, *board)
+		if err != nil {
+			return err
+		}
+		if err := core.RenderBoardStatusBrief(os.Stdout, brief); err != nil {
+			return err
+		}
+		return s.RecordBoardStatusHistogram(ctx, *board, brief.Statuses)
+	default:
+		return fmt.Errorf("unknown brief workflow %q", *workflow)
+	}
 	brief, err := s.BuildBrief(ctx, *board)
 	if err != nil {
 		return err
@@ -457,7 +472,7 @@ Usage:
   depviz board note <board> <text>
   depviz edge add <from> <to> --kind blocked_by
   depviz query ready|blockers
-  depviz brief
+  depviz brief [--workflow=board-status]
   depviz gen html --board default --view graph --out dist/depviz.html
   depviz gen json --board default --out dist/depviz.json
   depviz live --addr 127.0.0.1:8686
