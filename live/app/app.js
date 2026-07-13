@@ -1,4 +1,4 @@
-const assetVersion = 'v4.1.23-dev';
+const assetVersion = 'v4.1.24-dev';
 const sampleURL = `./sample.depviz?v=${assetVersion}`;
 const githubTokenStorageKey = 'depviz.githubToken';
 const githubFineGrainedTokenURL = 'https://github.com/settings/personal-access-tokens/new';
@@ -8,6 +8,7 @@ const dom = {
   shell: document.getElementById('shell'),
   input: document.getElementById('sourceInput'),
   syntax: document.getElementById('syntaxLayer'),
+  toggleSourceBtn: document.getElementById('toggleSourceBtn'),
   sourcePaneTitle: document.getElementById('sourcePaneTitle'),
   sourcePaneSubtitle: document.getElementById('sourcePaneSubtitle'),
   resetSource: document.getElementById('resetSourceBtn'),
@@ -110,6 +111,7 @@ const state = {
   boardFilter: '',
   sourceBase: '',
   sourceDirty: false,
+  showSource: false,
   sourceSnapshot: null,
   paletteOpen: false,
   paletteQuery: '',
@@ -205,6 +207,10 @@ function wireEvents() {
   }
   document.getElementById('sampleBtn').addEventListener('click', loadSample);
   dom.resetSource.addEventListener('click', resetStatefulSourcePreview);
+  dom.toggleSourceBtn?.addEventListener('click', () => {
+    state.showSource = !state.showSource;
+    syncShowSource();
+  });
   document.getElementById('shareBtn').addEventListener('click', shareLink);
   document.getElementById('exportBtn').addEventListener('click', () => {
     const fmt = prompt('Export format: json, flow, md', 'json');
@@ -398,6 +404,7 @@ async function setMode(mode, options = {}) {
     if (item.dataset.mode === 'stateful') item.disabled = !state.backendSession.available;
   });
   dom.shell.classList.toggle('statefulMode', next === 'stateful');
+  if (next !== 'stateful') { state.showSource = false; }
   syncModeVisibility();
   syncSourcePaneMode();
   refreshBackendAuthUI();
@@ -512,9 +519,22 @@ function updateStatefulSourcePreview() {
   }
 }
 
+function syncShowSource() {
+  // Auto-reveal source pane when the source becomes dirty
+  if (state.mode === 'stateful' && state.sourceDirty && !state.showSource) {
+    state.showSource = true;
+  }
+  dom.shell.classList.toggle('showSource', state.mode === 'stateful' && state.showSource);
+  if (dom.toggleSourceBtn) {
+    dom.toggleSourceBtn.textContent = state.showSource ? 'Hide source' : 'Source';
+    dom.toggleSourceBtn.classList.toggle('active', state.showSource);
+  }
+}
+
 function updateSourceDirtyState() {
 	dom.shell.classList.toggle('sourceDirty', state.mode === 'stateful' && state.sourceDirty);
 	dom.shell.classList.toggle('sourcePreviewMode', state.mode === 'stateful');
+  syncShowSource();
 	renderSourceDirtyIndicator();
 }
 

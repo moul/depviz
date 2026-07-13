@@ -158,6 +158,18 @@ button:disabled {
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.10);
 }
 
+.toggleSourceBtn {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.toggleSourceBtn.active {
+  background: #e0f2fe;
+  color: #0369a1;
+  opacity: 1;
+}
+
 .githubAuth {
   display: flex;
   align-items: center;
@@ -212,10 +224,18 @@ button:disabled {
 }
 
 .shell.statefulMode {
-  grid-template-columns: minmax(240px, 22vw) 1fr;
+  grid-template-columns: 1fr;
+}
+
+.shell.statefulMode.showSource {
+  grid-template-columns: minmax(220px, 20vw) 1fr;
 }
 
 .shell.statefulMode .inputPane {
+  display: none;
+}
+
+.shell.statefulMode.showSource .inputPane {
   display: grid;
   background: #f8fafc;
 }
@@ -231,7 +251,7 @@ button:disabled {
 
 .shell.statefulMode .workPane {
   display: grid;
-  grid-template-columns: 286px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
     "header header"
@@ -885,14 +905,12 @@ textarea::selection {
 }
 
 .contentGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 8px;
-  align-items: start;
+  display: block;
+  min-width: 0;
 }
 
 .shell.emptyBoard .contentGrid {
-  grid-template-columns: minmax(0, 720px);
+  max-width: 720px;
 }
 
 .shell.emptyBoard .canvasTools {
@@ -2371,10 +2389,17 @@ tr:last-child td {
 }
 
 .itemInspector {
-  position: sticky;
-  top: 54px;
-  max-height: calc(100vh - 62px);
-  overflow: auto;
+  position: fixed;
+  top: 46px;
+  right: 0;
+  width: 290px;
+  height: calc(100vh - 46px);
+  overflow-y: auto;
+  z-index: 150;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  box-shadow: -3px 0 12px rgba(0,0,0,0.08);
+  padding: 8px;
 }
 
 .inspectorBox {
