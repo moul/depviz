@@ -8,6 +8,9 @@ services:
       - DEPVIZ_DB=/data/state.db
       - DEPVIZ_ADDR=0.0.0.0:8766
       - DEPVIZ_BASE_URL=${DEPVIZ_BASE_URL:-https://depviz.1789.tech}
+      # Set to "user:password" to gate the instance. Without it, and without a
+      # GitHub OAuth app, a deployed instance is world-readable to anyone.
+      - DEPVIZ_BASIC_AUTH=${DEPVIZ_BASIC_AUTH:-}
       - DEPVIZ_GITHUB_CLIENT_ID=${DEPVIZ_GITHUB_CLIENT_ID:-}
       - DEPVIZ_GITHUB_CLIENT_SECRET=${DEPVIZ_GITHUB_CLIENT_SECRET:-}
       - DEPVIZ_GITHUB_WEBHOOK_SECRET=${DEPVIZ_GITHUB_WEBHOOK_SECRET:-}

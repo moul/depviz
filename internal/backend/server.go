@@ -3,6 +3,7 @@ package backend
 import (
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -135,6 +136,11 @@ type Config struct {
 	GitHubAppPrivateKeyFile string
 	GitHubWebhookSecret     string
 	SessionTTL              time.Duration
+	// BasicAuthUser/BasicAuthPass gate every route except /api/health when set.
+	// Without them a deployed instance is world-readable: sessions only exist via
+	// GitHub OAuth, so an instance with no OAuth app configured has no other gate.
+	BasicAuthUser string
+	BasicAuthPass string
 }
 
 type Server struct {
@@ -183,7 +189,31 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/auth/logout", s.handleLogout)
 	mux.HandleFunc("/api/workspaces", s.handleWorkspaces)
 	mux.Handle("/", http.FileServer(http.FS(live.AppFS())))
-	return mux
+	return s.withBasicAuth(mux)
+}
+
+// withBasicAuth gates the whole instance when BasicAuthUser/BasicAuthPass are set.
+// /api/health stays open so deploy health checks and the post-deploy contract keep
+// working; it reports only booleans, never board data.
+func (s *Server) withBasicAuth(next http.Handler) http.Handler {
+	if s.cfg.BasicAuthUser == "" && s.cfg.BasicAuthPass == "" {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/health" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		user, pass, ok := r.BasicAuth()
+		userOK := subtle.ConstantTimeCompare([]byte(user), []byte(s.cfg.BasicAuthUser)) == 1
+		passOK := subtle.ConstantTimeCompare([]byte(pass), []byte(s.cfg.BasicAuthPass)) == 1
+		if !ok || !userOK || !passOK {
+			w.Header().Set("WWW-Authenticate", `Basic realm="depviz", charset="UTF-8"`)
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
