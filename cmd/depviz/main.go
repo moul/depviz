@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -202,6 +203,7 @@ func runBrief(ctx context.Context, dbPath string, args []string) error {
 	fs.SetOutput(os.Stderr)
 	board := fs.String("board", core.DefaultBoardID, "board id")
 	workflow := fs.String("workflow", "", "workflow mode (board-status)")
+	format := fs.String("format", "text", "output format (text, json)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -217,8 +219,19 @@ func runBrief(ctx context.Context, dbPath string, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := core.RenderBoardStatusBrief(os.Stdout, brief); err != nil {
-			return err
+		switch strings.TrimSpace(*format) {
+		case "", "text":
+			if err := core.RenderBoardStatusBrief(os.Stdout, brief); err != nil {
+				return err
+			}
+		case "json":
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(brief); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unknown brief format %q", *format)
 		}
 		return s.RecordBoardStatusHistogram(ctx, *board, brief.Statuses)
 	default:
@@ -439,9 +452,15 @@ func runServer(ctx context.Context, dbPath string, args []string) error {
 		return err
 	}
 	defer s.Close()
+	basicUser, basicPass, err := parseBasicAuth(os.Getenv("DEPVIZ_BASIC_AUTH"))
+	if err != nil {
+		return err
+	}
 	cfg := backend.Config{
 		Addr:                    *addr,
 		BaseURL:                 *baseURL,
+		BasicAuthUser:           basicUser,
+		BasicAuthPass:           basicPass,
 		GitHubClientID:          os.Getenv("DEPVIZ_GITHUB_CLIENT_ID"),
 		GitHubClientSecret:      os.Getenv("DEPVIZ_GITHUB_CLIENT_SECRET"),
 		GitHubAppID:             os.Getenv("DEPVIZ_GITHUB_APP_ID"),
@@ -452,6 +471,20 @@ func runServer(ctx context.Context, dbPath string, args []string) error {
 	srv := backend.NewServer(s, cfg)
 	fmt.Printf("serving DepViz backend at http://%s\n", *addr)
 	return http.ListenAndServe(*addr, srv.Handler())
+}
+
+// parseBasicAuth reads DEPVIZ_BASIC_AUTH as "user:password". Empty means no gate.
+// The password may contain ":"; the user may not.
+func parseBasicAuth(raw string) (string, string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", "", nil
+	}
+	user, pass, ok := strings.Cut(raw, ":")
+	if !ok || user == "" || pass == "" {
+		return "", "", errors.New(`DEPVIZ_BASIC_AUTH must look like "user:password"`)
+	}
+	return user, pass, nil
 }
 
 func envDefault(key, fallback string) string {

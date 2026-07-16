@@ -91,6 +91,7 @@ depviz edge add <from> <to> --kind blocked_by
 depviz query ready
 depviz query blockers
 depviz brief
+depviz brief --workflow=board-status [--format text|json]
 depviz gen html --board default --view graph --out dist/depviz.html
 depviz gen json --board default --out dist/depviz.json
 depviz live --addr 127.0.0.1:8686
@@ -193,6 +194,27 @@ When GitHub OAuth is configured, the daemon can create a local account, store
 the GitHub connection in `.depviz/state.db`, and issue an HTTP-only session
 cookie. The next backend slices can use that account connection for cached
 GitHub hydration and eventually write actions.
+
+### Gating a public instance
+
+Sessions only exist via GitHub OAuth, so an instance deployed on a public URL
+*without* an OAuth app has no gate at all: `/` and the board it renders are
+readable by anyone. Set `DEPVIZ_BASIC_AUTH` to require credentials on every
+route:
+
+```text
+DEPVIZ_BASIC_AUTH=user:password depviz server --addr 0.0.0.0:8766
+```
+
+`/api/health` deliberately stays open so deploy health checks keep working; it
+reports only booleans, never board data. Verify a deployment with:
+
+```text
+scripts/check-deploy.sh https://depviz.example
+```
+
+which asserts `/api/health` is `ok:true` *and* that `/` actually served the
+embedded Live app — a green health check alone does not prove the embed shipped.
 
 The Pages workflow publishes:
 
