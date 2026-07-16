@@ -1,0 +1,18 @@
+services:
+  depviz:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - DEPVIZ_DB=/data/state.db
+      - DEPVIZ_ADDR=0.0.0.0:8766
+      - DEPVIZ_BASE_URL=${DEPVIZ_BASE_URL:-https://depviz.1789.tech}
+      - DEPVIZ_GITHUB_CLIENT_ID=${DEPVIZ_GITHUB_CLIENT_ID:-}
+      - DEPVIZ_GITHUB_CLIENT_SECRET=${DEPVIZ_GITHUB_CLIENT_SECRET:-}
+      - DEPVIZ_GITHUB_WEBHOOK_SECRET=${DEPVIZ_GITHUB_WEBHOOK_SECRET:-}
+    volumes:
+      - depviz-data:/data
+
+volumes:
+  depviz-data:
