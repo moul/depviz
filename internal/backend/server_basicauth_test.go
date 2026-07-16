@@ -54,16 +54,22 @@ func TestBasicAuthGate(t *testing.T) {
 		want       int
 	}{
 		// Unset config must not change today's behavior.
-		{"unset config leaves SPA open", Config{}, "/", "", "", http.StatusOK},
+		{"unset config leaves SPA open", Config{}, "/app/", "", "", http.StatusOK},
+		{"unset config leaves landing open", Config{}, "/", "", "", http.StatusOK},
 		{"unset config leaves health open", Config{}, "/api/health", "", "", http.StatusOK},
 
-		{"gated SPA rejects anonymous", gated, "/", "", "", http.StatusUnauthorized},
+		{"gated SPA rejects anonymous", gated, "/app/", "", "", http.StatusUnauthorized},
+		{"gated SPA asset rejects anonymous", gated, "/app/app.js", "", "", http.StatusUnauthorized},
 		{"gated API rejects anonymous", gated, "/api/export", "", "", http.StatusUnauthorized},
-		{"gated rejects wrong password", gated, "/", "demo", "wrong", http.StatusUnauthorized},
-		{"gated rejects wrong user", gated, "/", "nope", "s3cret", http.StatusUnauthorized},
-		{"gated allows correct credentials", gated, "/", "demo", "s3cret", http.StatusOK},
+		{"gated rejects wrong password", gated, "/app/", "demo", "wrong", http.StatusUnauthorized},
+		{"gated rejects wrong user", gated, "/app/", "nope", "s3cret", http.StatusUnauthorized},
+		{"gated allows correct credentials", gated, "/app/", "demo", "s3cret", http.StatusOK},
 		// Health stays open so deploy checks keep working; it exposes no board data.
 		{"gated leaves health open", gated, "/api/health", "", "", http.StatusOK},
+		// The landing page is the product pitch and holds no board data: gating it
+		// would leave a gated instance looking like a broken host.
+		{"gated leaves landing open", gated, "/", "", "", http.StatusOK},
+		{"gated leaves landing css open", gated, "/site.css", "", "", http.StatusOK},
 	}
 
 	for _, tt := range tests {
@@ -81,7 +87,7 @@ func TestBasicAuthGate(t *testing.T) {
 // login prompt, which would make a gated instance look broken.
 func TestBasicAuthChallengeHeader(t *testing.T) {
 	ts := newBasicAuthTestServer(t, Config{BasicAuthUser: "demo", BasicAuthPass: "s3cret"})
-	res := get(t, ts.URL+"/", "", "")
+	res := get(t, ts.URL+"/app/", "", "")
 	if got := res.Header.Get("WWW-Authenticate"); got == "" {
 		t.Fatal("gated 401 must send a WWW-Authenticate challenge, got none")
 	}
