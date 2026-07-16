@@ -84,15 +84,15 @@ func OpenStore(ctx context.Context, path string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, err
 	}
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open("sqlite", storeDSN(path))
 	if err != nil {
 		return nil, err
 	}
+	// WAL lets the live server read while a sync writes; busy_timeout absorbs
+	// the remaining lock windows so concurrent runs retry instead of failing
+	// with SQLITE_BUSY. Both, plus foreign_keys, are set via the DSN so they
+	// apply to every pooled connection — not just the first one.
 	s := &Store{db: db, path: path}
-	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
 	if err := s.Migrate(ctx); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -102,6 +102,18 @@ func OpenStore(ctx context.Context, path string) (*Store, error) {
 		return nil, err
 	}
 	return s, nil
+}
+
+// storeDSN appends the connection pragmas the driver applies to every pooled
+// connection. busy_timeout is per-connection (so it must live here, not in a
+// one-off Exec), journal_mode=WAL is persisted on the database file, and
+// foreign_keys is per-connection too.
+func storeDSN(path string) string {
+	sep := "?"
+	if strings.Contains(path, "?") {
+		sep = "&"
+	}
+	return path + sep + "_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)"
 }
 
 func (s *Store) Close() error {

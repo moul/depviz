@@ -7,6 +7,39 @@ import (
 	"testing"
 )
 
+func TestOpenStoreConcurrencyPragmas(t *testing.T) {
+	ctx := context.Background()
+	s, err := OpenStore(ctx, t.TempDir()+"/state.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+
+	var journal string
+	if err := s.db.QueryRowContext(ctx, "PRAGMA journal_mode").Scan(&journal); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.EqualFold(journal, "wal") {
+		t.Fatalf("journal_mode = %q, want wal", journal)
+	}
+
+	var busy int
+	if err := s.db.QueryRowContext(ctx, "PRAGMA busy_timeout").Scan(&busy); err != nil {
+		t.Fatal(err)
+	}
+	if busy < 5000 {
+		t.Fatalf("busy_timeout = %d, want >= 5000", busy)
+	}
+
+	var fk int
+	if err := s.db.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&fk); err != nil {
+		t.Fatal(err)
+	}
+	if fk != 1 {
+		t.Fatalf("foreign_keys = %d, want 1", fk)
+	}
+}
+
 func TestBriefWithLocalNoteAndBlockedIssue(t *testing.T) {
 	ctx := context.Background()
 	s, err := OpenStore(ctx, t.TempDir()+"/state.db")
