@@ -182,8 +182,8 @@ func TestLiveAssetsExposeBackendSessionUI(t *testing.T) {
 		{"login button", string(index), `id="backendGithubLoginBtn"`},
 		{"logout button", string(index), `id="backendLogoutBtn"`},
 		{"session fetch", string(app), `function refreshBackendSession()`},
-		{"github start", string(app), `./api/auth/github/start`},
-		{"logout api", string(app), `./api/auth/logout`},
+		{"github start", string(app), `/api/auth/github/start`},
+		{"logout api", string(app), `/api/auth/logout`},
 	} {
 		if !strings.Contains(tc.body, tc.want) {
 			t.Fatalf("%s: missing %q", tc.name, tc.want)
@@ -212,16 +212,16 @@ func TestLiveAssetsExposeStatefulMode(t *testing.T) {
 	}{
 		{"stateful button", string(index), `data-mode="stateful"`},
 		{"stateless button", string(index), `data-mode="stateless"`},
-		{"backend export", string(app), `./api/export?board=${board}`},
+		{"backend export", string(app), `/api/export?board=${board}`},
 		{"mode setter", string(app), `async function setMode(`},
 		{"user button", string(index), `id="settingsBtn"`},
 		{"workspace panel", string(index), `id="workspacePanel"`},
 		{"workspace tabs", string(index), `data-workspace-tab="views"`},
 		{"suggestions tab", string(index), `data-workspace-tab="suggestions"`},
-		{"boards endpoint", string(app), `./api/boards`},
-		{"board items endpoint", string(app), `./api/board-items`},
-		{"board links endpoint", string(app), `./api/board-links`},
-		{"board sync endpoint", string(app), `./api/board-sync`},
+		{"boards endpoint", string(app), `/api/boards`},
+		{"board items endpoint", string(app), `/api/board-items`},
+		{"board links endpoint", string(app), `/api/board-links`},
+		{"board sync endpoint", string(app), `/api/board-sync`},
 		{"board metrics", string(app), `boardMetrics`},
 		{"freshness labels", string(app), `freshnessLabel`},
 		{"board url persistence", string(app), `writeURLBoard`},

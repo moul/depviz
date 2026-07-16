@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DepViz — what can move now?</title>
+  <meta name="description" content="DepViz turns scattered issues, PRs, plans and notes into a board-scoped execution graph that answers one question every morning: what can move now?">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64">
+  <link rel="apple-touch-icon" href="/logo-512.png">
+  <meta property="og:title" content="DepViz — what can move now?">
+  <meta property="og:description" content="A local-first work graph engine for humans, agents, and existing issue trackers.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://depviz.1789.tech/">
+  <link rel="stylesheet" href="/site.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="/">
+      <img src="/logo.svg" alt="" width="26" height="26">
+      <strong>DepViz</strong>
+    </a>
+    <nav>
+      <a href="#how">How</a>
+      <a href="#cli">CLI</a>
+      <a href="https://github.com/moul/depviz">GitHub</a>
+      <a class="cta" href="/app/">Open the app</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">v4 · local-first work graph</p>
+      <h1>What can move now?</h1>
+      <p class="lede">
+        Your work already has a shape: issues block issues, PRs wait on plans,
+        notes never reach the tracker. DepViz reads that shape and answers the
+        only three questions that matter at the start of a day.
+      </p>
+      <div class="qs">
+        <span>What can move now?</span>
+        <span>What is blocked?</span>
+        <span>What should happen next?</span>
+      </div>
+      <div class="ctas">
+        <a class="btn primary" href="/app/">Open the app</a>
+        <a class="btn" href="https://github.com/moul/depviz">Read the source</a>
+      </div>
+      <p class="note">The app opens on a stateless board — hit <em>Load sample</em> to see the graph with data. Sign in with GitHub only when you want to sync a real board.</p>
+    </section>
+
+    <section id="how" class="cards">
+      <article>
+        <h2>Ingest</h2>
+        <p>GitHub issues, PRs and Projects sync in. Local-only note cards and manual dependency edges cover everything the tracker never knew about.</p>
+      </article>
+      <article>
+        <h2>Resolve</h2>
+        <p>Everything lands in one board-scoped graph. Dependencies are computed, not vibed — ready vs. blocked falls out of the edges.</p>
+      </article>
+      <article>
+        <h2>Act</h2>
+        <p>A ready queue, a blocker list, and a morning brief. Create issues, comment, and push changes back to GitHub without leaving the board.</p>
+      </article>
+    </section>
+
+    <section class="split">
+      <div>
+        <h2>Local-first, boringly</h2>
+        <p>
+          State is a SQLite file. Events are JSONL. The whole engine is a single
+          static Go binary with the web app embedded — no runtime, no cluster,
+          no database to operate.
+        </p>
+        <p>
+          It runs on your laptop against <code>.depviz/state.db</code>, or as a
+          server like this one. Same binary either way.
+        </p>
+      </div>
+      <div>
+        <h2>Built for agents too</h2>
+        <p>
+          The graph is exportable as JSON and every read has an HTTP endpoint.
+          Coding agents ask DepViz what is unblocked instead of guessing from a
+          flat issue list.
+        </p>
+        <p>
+          The point of the POC is not a pretty graph. The point is a useful
+          daily answer.
+        </p>
+      </div>
+    </section>
+
+    <section id="cli" class="cli">
+      <h2>Or stay in the terminal</h2>
+      <pre><code>make install
+
+depviz sync            <span class="c"># pull GitHub issues, PRs, projects</span>
+depviz ready           <span class="c"># what can move now</span>
+depviz blocked         <span class="c"># what is stuck, and on what</span>
+depviz brief           <span class="c"># the morning answer</span>
+depviz server          <span class="c"># this web app, locally</span></code></pre>
+    </section>
+
+    <section class="last">
+      <h2>Open the board</h2>
+      <p>The live instance is running right here.</p>
+      <a class="btn primary" href="/app/">Open the app</a>
+    </section>
+  </main>
+
+  <footer>
+    <span>DepViz v4 — a <a href="https://1789.tech">1789</a> product.</span>
+    <span><a href="https://github.com/moul/depviz">Source</a> · Apache-2.0 / MIT</span>
+  </footer>
+</body>
+</html>

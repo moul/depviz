@@ -188,19 +188,32 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/auth/github/callback", s.handleGitHubCallback)
 	mux.HandleFunc("/api/auth/logout", s.handleLogout)
 	mux.HandleFunc("/api/workspaces", s.handleWorkspaces)
-	mux.Handle("/", http.FileServer(http.FS(live.AppFS())))
+	mux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.FS(live.AppFS()))))
+	mux.Handle("/", http.FileServer(http.FS(live.SiteFS())))
 	return s.withBasicAuth(mux)
 }
 
-// withBasicAuth gates the whole instance when BasicAuthUser/BasicAuthPass are set.
-// /api/health stays open so deploy health checks and the post-deploy contract keep
-// working; it reports only booleans, never board data.
+// isPublicPath reports whether a path stays reachable when the instance is gated
+// by basic auth. Two things stay open, and both are board-data-free by
+// construction: /api/health (booleans only, so deploy health checks and the
+// post-deploy contract keep working) and everything served from live.SiteFS —
+// the landing page, whose whole job is to say what this instance is. The board
+// lives under /app/ and the rest of /api/, which stay behind the gate.
+func isPublicPath(p string) bool {
+	if p == "/api/health" {
+		return true
+	}
+	return !strings.HasPrefix(p, "/api/") && !strings.HasPrefix(p, "/app/")
+}
+
+// withBasicAuth gates the whole instance when BasicAuthUser/BasicAuthPass are set,
+// except for the paths isPublicPath allows.
 func (s *Server) withBasicAuth(next http.Handler) http.Handler {
 	if s.cfg.BasicAuthUser == "" && s.cfg.BasicAuthPass == "" {
 		return next
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/health" {
+		if isPublicPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}

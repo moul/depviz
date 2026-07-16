@@ -446,7 +446,7 @@ async function loadBackendBoard() {
   try {
     if (state.boards.length === 0) await refreshBoards();
     const board = encodeURIComponent(state.currentBoardID || 'default');
-    const res = await fetch(`./api/export?board=${board}`, { credentials: 'same-origin' });
+    const res = await fetch(`/api/export?board=${board}`, { credentials: 'same-origin' });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     state.data = normalizeExport(await res.json());
     setStatefulSourceFromSnapshot(state.data.snapshot);
@@ -540,7 +540,7 @@ function updateSourceDirtyState() {
 
 async function refreshBoards() {
   if (!state.backendSession.authenticated) return;
-  const res = await fetch('./api/boards', { credentials: 'same-origin' });
+  const res = await fetch('/api/boards', { credentials: 'same-origin' });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   const payload = await res.json();
   state.boards = sortBoards(Array.isArray(payload.boards) ? payload.boards.map(normalizeBoard) : []);
@@ -586,7 +586,7 @@ async function createBoard(event) {
 }
 
 async function createBoardFromPreset(input) {
-  const res = await fetch('./api/boards', {
+  const res = await fetch('/api/boards', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
@@ -627,7 +627,7 @@ async function addBoardItem(event) {
   const labelsRaw = dom.newItemLabels ? dom.newItemLabels.value.trim() : '';
   const itemLabels = labelsRaw ? labelsRaw.split(',').map((l) => l.trim()).filter(Boolean) : [];
   try {
-    const res = await fetch('./api/board-items', {
+    const res = await fetch('/api/board-items', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
@@ -675,7 +675,7 @@ async function addBoardLink(event) {
     return;
   }
   try {
-    const res = await fetch('./api/board-links', {
+    const res = await fetch('/api/board-links', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
@@ -719,9 +719,9 @@ async function loadGitHubPresets() {
   dom.githubPresetList.innerHTML = '<div class="emptyState">Loading GitHub repositories, orgs, and projects...</div>';
   try {
     const [reposRes, orgsRes, projectsRes] = await Promise.all([
-      fetch('./api/github/repos', { credentials: 'same-origin' }),
-      fetch('./api/github/orgs', { credentials: 'same-origin' }),
-      fetch('./api/github/projects', { credentials: 'same-origin' }),
+      fetch('/api/github/repos', { credentials: 'same-origin' }),
+      fetch('/api/github/orgs', { credentials: 'same-origin' }),
+      fetch('/api/github/projects', { credentials: 'same-origin' }),
     ]);
     if (!reposRes.ok) throw new Error(`repos: ${await responseErrorMessage(reposRes)}`);
     if (!orgsRes.ok) throw new Error(`orgs: ${await responseErrorMessage(orgsRes)}`);
@@ -827,7 +827,7 @@ function stopActivityPolling() {
 async function pollActivities() {
   if (state.mode !== 'stateful' || !state.backendSession?.authenticated) return;
   try {
-    const res = await fetch('./api/activities', { credentials: 'same-origin' });
+    const res = await fetch('/api/activities', { credentials: 'same-origin' });
     if (!res.ok) return;
     const data = await res.json();
     state.activities = data.activities || [];
@@ -906,7 +906,7 @@ async function syncBoard(boardID, options = {}) {
   }
   setSyncIndicator('syncing');
   try {
-    const res = await fetch('./api/board-sync', {
+    const res = await fetch('/api/board-sync', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
@@ -1181,7 +1181,7 @@ function renderSyncPanel() {
 async function loadWorkspaces() {
   if (!state.backendSession.authenticated) return;
   try {
-    const res = await fetch('./api/workspaces', { credentials: 'same-origin' });
+    const res = await fetch('/api/workspaces', { credentials: 'same-origin' });
     if (!res.ok) return;
     const data = await res.json();
     const workspaces = Array.isArray(data.workspaces) ? data.workspaces : [];
@@ -1199,7 +1199,7 @@ async function loadSyncLogs() {
   if (!el) return;
   try {
     const board = encodeURIComponent(state.currentBoardID || 'default');
-    const res = await fetch(`./api/board-sync-logs?board_id=${board}`, { credentials: 'same-origin' });
+    const res = await fetch(`/api/board-sync-logs?board_id=${board}`, { credentials: 'same-origin' });
     if (!res.ok) return;
     const data = await res.json();
     const logs = Array.isArray(data.logs) ? data.logs : [];
@@ -1342,7 +1342,7 @@ function refreshGitHubAuthUI() {
 
 async function refreshBackendSession() {
   try {
-    const res = await fetch('./api/session', { credentials: 'same-origin' });
+    const res = await fetch('/api/session', { credentials: 'same-origin' });
     if (!res.ok) throw new Error(String(res.status));
     state.backendSession = { available: true, ...await res.json() };
   } catch {
@@ -1386,12 +1386,12 @@ function signInWithBackendGitHub() {
     return;
   }
   const returnTo = `${location.pathname}${location.search}${location.hash}`;
-  location.href = `./api/auth/github/start?return_to=${encodeURIComponent(returnTo)}`;
+  location.href = `/api/auth/github/start?return_to=${encodeURIComponent(returnTo)}`;
 }
 
 async function signOutBackend() {
   try {
-    await fetch('./api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
     await refreshBackendSession();
     dom.status.textContent = 'signed out';
     if (state.mode === 'stateful') await loadBackendBoard();
@@ -3901,7 +3901,7 @@ function renderItemInspector(snapshot) {
     notesEl.addEventListener('blur', () => {
       const val = notesEl.value.trim();
       if (state.mode === 'stateful' && state.backendSession.authenticated) {
-        fetch('./api/overrides', {
+        fetch('/api/overrides', {
           method: 'POST', credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ owner_type: 'node', owner_id: state.selectedNodeID, data: { notes: val } }),
@@ -4021,7 +4021,7 @@ async function saveNodeEdit() {
   try {
     // If convert_kind is set, do a kind conversion first
     if (data.convert_kind) {
-      const res2 = await fetch('./api/board-items', {
+      const res2 = await fetch('/api/board-items', {
         method: 'PATCH',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
@@ -4031,7 +4031,7 @@ async function saveNodeEdit() {
     }
     const labelsStr = data.labels || '';
     const labelsList = labelsStr ? labelsStr.split(',').map((l) => l.trim()).filter(Boolean) : [];
-    const res = await fetch('./api/board-items', {
+    const res = await fetch('/api/board-items', {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
@@ -4064,7 +4064,7 @@ async function deleteNodeFromBoard(nodeID) {
   if (!confirm(`Remove "${label.slice(0, 60)}" from this board?`)) return;
   try {
     const nodeSnap = node;
-    const res = await fetch('./api/board-items', {
+    const res = await fetch('/api/board-items', {
       method: 'DELETE',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
@@ -4090,7 +4090,7 @@ async function archiveNodeFromBoard(nodeID) {
   const label = node ? (node.title || node.id) : nodeID;
   if (!confirm(`Archive "${label.slice(0, 60)}"? You can restore it later.`)) return;
   try {
-    const res = await fetch('./api/board-items', {
+    const res = await fetch('/api/board-items', {
       method: 'DELETE',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
@@ -4133,7 +4133,7 @@ async function deleteLinkFromBoard(edgeID) {
   if (!confirm(`Delete this link (${edge ? relationLabel(edge.kind) : edgeID})?`)) return;
   try {
     const edgeSnap = edge;
-    const res = await fetch('./api/board-links', {
+    const res = await fetch('/api/board-links', {
       method: 'DELETE',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
@@ -4193,7 +4193,7 @@ async function dismissSuggestedEdge(edgeID) {
   dom.status.textContent = 'suggested relation hidden';
   if (state.mode === 'stateful' && state.backendSession.authenticated) {
     try {
-      await fetch('./api/suggestions/dismiss', {
+      await fetch('/api/suggestions/dismiss', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ edge_id: edgeID, board_id: state.currentBoardID || 'default' }),
@@ -4207,7 +4207,7 @@ async function promoteSuggestedEdge(edgeID) {
   if (!edge) return;
   if (state.mode === 'stateful' && state.backendSession.authenticated) {
     try {
-      const res = await fetch('./api/board-links', {
+      const res = await fetch('/api/board-links', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
@@ -4985,14 +4985,14 @@ async function undoLastOp() {
   if (!op) { dom.status.textContent = 'nothing to undo'; return; }
   try {
     if (op.type === 'add-node') {
-      await fetch('./api/board-items', {
+      await fetch('/api/board-items', {
         method: 'DELETE', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: op.nodeID }),
       });
     } else if (op.type === 'remove-node') {
       const nd = nodeData(op.snapshot || {});
-      await fetch('./api/board-items', {
+      await fetch('/api/board-items', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -5005,13 +5005,13 @@ async function undoLastOp() {
         }),
       });
     } else if (op.type === 'edit-node') {
-      await fetch('./api/board-items', {
+      await fetch('/api/board-items', {
         method: 'PATCH', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ node_id: op.nodeID, ...op.before }),
       });
     } else if (op.type === 'delete-link') {
-      await fetch('./api/board-links', {
+      await fetch('/api/board-links', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -5022,7 +5022,7 @@ async function undoLastOp() {
         }),
       });
     } else if (op.type === 'restore-node') {
-      await fetch('./api/board-items', {
+      await fetch('/api/board-items', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'restore', node_id: op.nodeID }),
@@ -5047,7 +5047,7 @@ function inputFocused() {
 
 async function duplicateNode(nodeID) {
   try {
-    const res = await fetch('./api/board-items', {
+    const res = await fetch('/api/board-items', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'duplicate', board_id: state.currentBoardID || 'default', node_id: nodeID }),
@@ -5094,7 +5094,7 @@ async function handleBulkImport(e) {
   let created = 0;
   for (const t of tasks) {
     try {
-      const res = await fetch('./api/board-items', {
+      const res = await fetch('/api/board-items', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ board_id: boardID, kind: t.kind, title: t.title, status: t.status }),
@@ -5183,7 +5183,7 @@ async function loadArchivedNodes() {
   if (!container) return;
   try {
     const board = encodeURIComponent(state.currentBoardID || 'default');
-    const res = await fetch(`./api/board-items?board_id=${board}&archived=true`, { credentials: 'same-origin' });
+    const res = await fetch(`/api/board-items?board_id=${board}&archived=true`, { credentials: 'same-origin' });
     if (!res.ok) return;
     const payload = await res.json();
     const nodes = Array.isArray(payload.nodes) ? payload.nodes : [];
@@ -5197,7 +5197,7 @@ async function loadArchivedNodes() {
     </div>`).join('');
     container.querySelectorAll('[data-restore-id]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        const res2 = await fetch('./api/board-items', {
+        const res2 = await fetch('/api/board-items', {
           method: 'POST', credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'restore', node_id: btn.dataset.restoreId }),
@@ -5216,7 +5216,7 @@ async function loadSavedViews() {
   if (!el || !state.backendSession.authenticated) return;
   try {
     const board = encodeURIComponent(state.currentBoardID || 'default');
-    const res = await fetch(`./api/board-views?board_id=${board}`, { credentials: 'same-origin' });
+    const res = await fetch(`/api/board-views?board_id=${board}`, { credentials: 'same-origin' });
     if (!res.ok) return;
     const data = await res.json();
     const views = Array.isArray(data.views) ? data.views : [];
@@ -5252,7 +5252,7 @@ async function loadSavedViews() {
     });
     el.querySelectorAll('[data-delete-view-id]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        await fetch(`./api/board-views?id=${encodeURIComponent(btn.dataset.deleteViewId)}`, { method: 'DELETE', credentials: 'same-origin' });
+        await fetch(`/api/board-views?id=${encodeURIComponent(btn.dataset.deleteViewId)}`, { method: 'DELETE', credentials: 'same-origin' });
         loadSavedViews();
       });
     });
@@ -5270,7 +5270,7 @@ async function saveCurrentView(name) {
     show_local: state.showLocal,
   };
   try {
-    const res = await fetch('./api/board-views', {
+    const res = await fetch('/api/board-views', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ board_id: state.currentBoardID || 'default', name, config }),
@@ -5296,7 +5296,7 @@ function resolveNodeByRef(ref) {
 
 async function addBoardLinkDirect(from, kind, to) {
   try {
-    const res = await fetch('./api/board-links', {
+    const res = await fetch('/api/board-links', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ board_id: state.currentBoardID || 'default', from, to, kind }),
@@ -5311,7 +5311,7 @@ async function addBoardLinkDirect(from, kind, to) {
 
 async function createGitHubIssueFromNode(nodeID, repo, title, body, labels = [], assignees = [], archiveLocal = false) {
 	try {
-		const res = await fetch('./api/github/create-issue', {
+		const res = await fetch('/api/github/create-issue', {
 			method: 'POST', credentials: 'same-origin',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ board_id: state.currentBoardID || 'default', node_id: nodeID, repo, title, body, labels, assignees, archive_local: archiveLocal }),
@@ -5329,7 +5329,7 @@ async function createGitHubIssueFromNode(nodeID, repo, title, body, labels = [],
 
 async function closeOrReopenGitHubIssue(repo, issueNumber, issueState) {
   try {
-    const res = await fetch('./api/github/update-issue', {
+    const res = await fetch('/api/github/update-issue', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repo, issue_number: issueNumber, state: issueState }),
@@ -5345,7 +5345,7 @@ async function closeOrReopenGitHubIssue(repo, issueNumber, issueState) {
 
 async function submitGitHubComment(repo, issueNumber, body) {
   try {
-    const res = await fetch('./api/github/comment', {
+    const res = await fetch('/api/github/comment', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repo, issue_number: issueNumber, body }),
@@ -5537,7 +5537,7 @@ async function applySourcePatch() {
   const patch = computeSourcePatch(baseSnap.nodes, baseSnap.edges, currSnap.nodes, currSnap.edges);
   const boardID = state.currentBoardID || 'default';
   try {
-    const res = await fetch('./api/board-source/apply', {
+    const res = await fetch('/api/board-source/apply', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ board_id: boardID, dry_run: true, base_updated_at: state.boardLastLoadedAt || '', ...patch }),
@@ -5545,7 +5545,7 @@ async function applySourcePatch() {
     if (!res.ok) throw new Error(await responseErrorMessage(res));
     renderSourcePatchModal(patch, async () => {
       try {
-        const res2 = await fetch('./api/board-source/apply', {
+        const res2 = await fetch('/api/board-source/apply', {
           method: 'POST', credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ board_id: boardID, dry_run: false, base_updated_at: state.boardLastLoadedAt || '', ...patch }),
