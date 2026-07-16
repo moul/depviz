@@ -1,11 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title id="title">DepViz</title>
-  <desc id="desc">A linked dependency graph mark, close to the system link emoji fallback.</desc>
-  <rect width="512" height="512" rx="112" fill="#0f172a"/>
-  <path d="M205 196l102 120" fill="none" stroke="#94a3b8" stroke-width="40" stroke-linecap="round"/>
-  <path d="M167 310l-18 18c-39 39-102 39-141 0s-39-102 0-141l54-54c39-39 102-39 141 0 18 18 28 41 29 65" transform="translate(98 23)" fill="none" stroke="#f8fafc" stroke-width="42" stroke-linecap="round"/>
-  <path d="M167 310l-18 18c-39 39-102 39-141 0s-39-102 0-141l54-54c39-39 102-39 141 0 18 18 28 41 29 65" transform="translate(413 489) rotate(180)" fill="none" stroke="#f8fafc" stroke-width="42" stroke-linecap="round"/>
-  <circle cx="169" cy="343" r="34" fill="#14b8a6"/>
-  <circle cx="343" cy="169" r="34" fill="#60a5fa"/>
-  <circle cx="256" cy="256" r="28" fill="#f8fafc"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" aria-labelledby="title desc" role="img" viewBox="0 0 512 512"><title id="title">DepViz</title><desc id="desc">A linked dependency graph mark, close to the system link emoji fallback.</desc><rect width="512" height="512" fill="#0f172a" rx="112"/><path fill="none" stroke="#94a3b8" stroke-linecap="round" stroke-width="40" d="M205 196l102 120"/><path fill="none" stroke="#f8fafc" stroke-linecap="round" stroke-width="42" d="M167 310l-18 18c-39 39-102 39-141 0s-39-102 0-141l54-54c39-39 102-39 141 0 18 18 28 41 29 65" transform="translate(98 23)"/><path fill="none" stroke="#f8fafc" stroke-linecap="round" stroke-width="42" d="M167 310l-18 18c-39 39-102 39-141 0s-39-102 0-141l54-54c39-39 102-39 141 0 18 18 28 41 29 65" transform="translate(413 489) rotate(180)"/><circle cx="169" cy="343" r="34" fill="#14b8a6"/><circle cx="343" cy="169" r="34" fill="#60a5fa"/><circle cx="256" cy="256" r="28" fill="#f8fafc"/></svg>
