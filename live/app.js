@@ -173,7 +173,10 @@ async function boot() {
     return;
   }
   await refreshBackendSession();
-  if (state.backendSession.available) {
+  // Every board route answers 401 until authenticated, so an available-but-
+  // anonymous backend can only render an empty stateful canvas. Fall through
+  // to the sample instead: without an OAuth app configured, nobody can sign in.
+  if (state.backendSession.available && state.backendSession.authenticated) {
     await setMode('stateful', { renderNow: true });
     return;
   }
