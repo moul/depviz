@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -137,6 +138,47 @@ func TestDemoBoardPutReplacesSnapshot(t *testing.T) {
 	}
 	if payload.Brief.Counts.Pullable != 1 {
 		t.Fatalf("pullable after PUT = %d, want 1", payload.Brief.Counts.Pullable)
+	}
+}
+
+func TestDemoBoardSnapshotDoneRowsAreClosed(t *testing.T) {
+	generatedAt := time.Now().UTC()
+	payload, err := parseDemoBoard(strings.NewReader(`{
+  "generated_at": "`+generatedAt.Format(time.RFC3339)+`",
+  "queue": [
+    {"number": 112, "title": "Claimed private brief", "url": "https://github.com/1789-tech/job-board/issues/112", "project": "depviz", "status": "active", "prio": "normal", "type": "build", "rank": 1},
+    {"number": 100, "title": "Closed duplicate in queue", "url": "https://github.com/1789-tech/job-board/issues/100", "project": "depviz", "status": "ready", "prio": "normal", "type": "build", "rank": 2}
+  ],
+  "open": [
+    {"number": 112, "title": "Claimed private brief", "url": "https://github.com/1789-tech/job-board/issues/112", "project": "depviz", "status": "active", "prio": "normal", "type": "build", "rank": 1},
+    {"number": 113, "title": "Untriaged open private brief", "url": "https://github.com/1789-tech/job-board/issues/113", "project": "boussole", "prio": "normal", "type": "brief", "rank": 3}
+  ],
+  "done": [
+    {"number": 100, "title": "Done private brief", "url": "https://github.com/1789-tech/job-board/issues/100", "project": "depviz", "ClosedAt": "2026-07-09T11:04:00Z"},
+    {"number": 101, "title": "Done lower-case private brief", "url": "https://github.com/1789-tech/job-board/issues/101", "project": "depviz", "closed_at": "2026-07-08T08:06:05Z"}
+  ]
+}`), time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if payload.Brief.Counts.Open != 2 {
+		t.Fatalf("open = %d, want 2", payload.Brief.Counts.Open)
+	}
+	if payload.Brief.Counts.Closed != 2 {
+		t.Fatalf("closed = %d, want 2", payload.Brief.Counts.Closed)
+	}
+	if payload.Brief.Counts.Untriaged != 1 {
+		t.Fatalf("untriaged = %d, want 1", payload.Brief.Counts.Untriaged)
+	}
+	for _, item := range payload.Brief.Untriaged {
+		if strings.HasSuffix(item.ID, "#100") || strings.HasSuffix(item.ID, "#101") {
+			t.Fatalf("closed issue listed as untriaged: %+v", item)
+		}
+	}
+	for _, node := range payload.Snapshot.Nodes {
+		if node.ExternalID == "#100" && node.State != "closed" {
+			t.Fatalf("done row duplicated in queue should stay closed: %+v", node)
+		}
 	}
 }
 

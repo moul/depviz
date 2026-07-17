@@ -35,14 +35,31 @@ type hermesBoardSnapshot struct {
 }
 
 type hermesBoardIssue struct {
-	Number  int    `json:"number"`
-	Title   string `json:"title"`
-	URL     string `json:"url"`
-	Project string `json:"project"`
-	Status  string `json:"status"`
-	Prio    string `json:"prio"`
-	Type    string `json:"type"`
-	Rank    int    `json:"rank"`
+	Number   int    `json:"number"`
+	Title    string `json:"title"`
+	URL      string `json:"url"`
+	Project  string `json:"project"`
+	Status   string `json:"status"`
+	Prio     string `json:"prio"`
+	Type     string `json:"type"`
+	Rank     int    `json:"rank"`
+	ClosedAt string `json:"closed_at"`
+}
+
+func (i *hermesBoardIssue) UnmarshalJSON(data []byte) error {
+	type issueAlias hermesBoardIssue
+	var raw struct {
+		issueAlias
+		LegacyClosedAt string `json:"ClosedAt"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*i = hermesBoardIssue(raw.issueAlias)
+	if i.ClosedAt == "" {
+		i.ClosedAt = raw.LegacyClosedAt
+	}
+	return nil
 }
 
 func (s *Server) demoBoardConfigured() bool {
@@ -173,15 +190,26 @@ func parseDemoBoard(r io.Reader, maxAge time.Duration) (demoBoardPayload, error)
 }
 
 func (h hermesBoardSnapshot) toDepVizSnapshot(generatedAt time.Time) core.Snapshot {
-	issues := map[int]hermesBoardIssue{}
-	for _, rows := range [][]hermesBoardIssue{h.Open, h.Done, h.Queue} {
+	type issueEntry struct {
+		issue  hermesBoardIssue
+		closed bool
+	}
+	issues := map[int]issueEntry{}
+	addIssues := func(rows []hermesBoardIssue, closed bool) {
 		for _, issue := range rows {
 			if issue.Number == 0 {
 				continue
 			}
-			issues[issue.Number] = issue
+			prev, exists := issues[issue.Number]
+			if exists && prev.closed {
+				continue
+			}
+			issues[issue.Number] = issueEntry{issue: issue, closed: closed}
 		}
 	}
+	addIssues(h.Open, false)
+	addIssues(h.Queue, false)
+	addIssues(h.Done, true)
 	numbers := make([]int, 0, len(issues))
 	for n := range issues {
 		numbers = append(numbers, n)
@@ -189,7 +217,8 @@ func (h hermesBoardSnapshot) toDepVizSnapshot(generatedAt time.Time) core.Snapsh
 	sort.Ints(numbers)
 	nodes := make([]core.Node, 0, len(numbers))
 	for _, number := range numbers {
-		nodes = append(nodes, hermesIssueToNode(issues[number], generatedAt))
+		entry := issues[number]
+		nodes = append(nodes, hermesIssueToNode(entry.issue, generatedAt, entry.closed))
 	}
 	return core.Snapshot{
 		Board: core.Board{
@@ -212,9 +241,13 @@ func (h hermesBoardSnapshot) toDepVizSnapshot(generatedAt time.Time) core.Snapsh
 	}
 }
 
-func hermesIssueToNode(issue hermesBoardIssue, generatedAt time.Time) core.Node {
+func hermesIssueToNode(issue hermesBoardIssue, generatedAt time.Time, closed bool) core.Node {
 	status := strings.TrimPrefix(issue.Status, "status:")
 	state := status
+	if closed || strings.TrimSpace(issue.ClosedAt) != "" {
+		state = "closed"
+		status = firstNonEmpty(status, "done")
+	}
 	if state == "" {
 		state = "open"
 	}
@@ -246,6 +279,15 @@ func hermesIssueToNode(issue hermesBoardIssue, generatedAt time.Time) core.Node 
 		SourceID:   "github:1789-tech/job-board",
 		ExternalID: fmt.Sprintf("#%d", issue.Number),
 	}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func countOpen(nodes []core.Node) int {
