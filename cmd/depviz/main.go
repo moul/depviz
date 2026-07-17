@@ -456,11 +456,17 @@ func runServer(ctx context.Context, dbPath string, args []string) error {
 	if err != nil {
 		return err
 	}
+	demoBoardMaxAge, err := parseOptionalDuration(os.Getenv("DEPVIZ_DEMO_BOARD_MAX_AGE"))
+	if err != nil {
+		return err
+	}
 	cfg := backend.Config{
 		Addr:                    *addr,
 		BaseURL:                 *baseURL,
 		BasicAuthUser:           basicUser,
 		BasicAuthPass:           basicPass,
+		DemoBoardSnapshotFile:   os.Getenv("DEPVIZ_DEMO_BOARD_SNAPSHOT_FILE"),
+		DemoBoardMaxAge:         demoBoardMaxAge,
 		GitHubClientID:          os.Getenv("DEPVIZ_GITHUB_CLIENT_ID"),
 		GitHubClientSecret:      os.Getenv("DEPVIZ_GITHUB_CLIENT_SECRET"),
 		GitHubAppID:             os.Getenv("DEPVIZ_GITHUB_APP_ID"),
@@ -485,6 +491,18 @@ func parseBasicAuth(raw string) (string, string, error) {
 		return "", "", errors.New(`DEPVIZ_BASIC_AUTH must look like "user:password"`)
 	}
 	return user, pass, nil
+}
+
+func parseOptionalDuration(raw string) (time.Duration, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, nil
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("DEPVIZ_DEMO_BOARD_MAX_AGE must be a Go duration like 30m: %w", err)
+	}
+	return d, nil
 }
 
 func envDefault(key, fallback string) string {
@@ -517,6 +535,10 @@ Environment:
   DEPVIZ_DB                    override .depviz/state.db
   DEPVIZ_ADDR                  default server listen address
   DEPVIZ_BASE_URL              public server URL for OAuth callbacks
+  DEPVIZ_BASIC_AUTH            optional "user:password" gate for /app and private APIs
+  DEPVIZ_DEMO_BOARD_SNAPSHOT_FILE
+                               private hermes board-snapshot.json served after basic auth
+  DEPVIZ_DEMO_BOARD_MAX_AGE    stale threshold for demo snapshot, default 30m
   DEPVIZ_GITHUB_CLIENT_ID      GitHub OAuth app client id
   DEPVIZ_GITHUB_CLIENT_SECRET  GitHub OAuth app client secret
   DEPVIZ_GITHUB_APP_ID         GitHub App id

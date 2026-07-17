@@ -2,8 +2,8 @@
 # Post-deploy contract for a depviz server (BRIEF-112).
 #
 # A green /api/health only proves the process is up. It says nothing about whether
-# the embedded Live SPA actually embedded, so this also fetches / and asserts the
-# app really shipped. Health-green + /-broken is the failure this exists to catch.
+# the landing and embedded app actually shipped, so this checks /, /app/, and the
+# authenticated demo-board data path when credentials are provided.
 #
 # Usage: scripts/check-deploy.sh [base-url]
 #   BASE_URL           default https://depviz.1789.tech
@@ -28,33 +28,49 @@ case "${health}" in
   *) fail "/api/health did not report ok:true: ${health}" ;;
 esac
 
-# 2. / serves the SPA. Separate the status code from the body so a 401 on a gated
-#    instance is reported as "credentials needed", not as a missing embed.
+# 2. / serves the public landing. It must stay open even when /app/ is gated.
 root_body="$("${CURL[@]}" --write-out '\n%{http_code}' "${BASE_URL}/")" || fail "/ unreachable"
 root_code="${root_body##*$'\n'}"
 root_html="${root_body%$'\n'*}"
-if [[ "${root_code}" == "401" ]]; then
-  fail "/ returned 401 — instance is gated, set DEPVIZ_BASIC_AUTH to check it"
-fi
 [[ "${root_code}" == "200" ]] || fail "/ returned ${root_code}, want 200"
 printf '  ok: / returned 200\n'
-
-# 3. the response is really the Live app, not a stray index or an error page.
-#    This is the "embed didn't embed" check: the binary serves live/app via go:embed.
 case "${root_html}" in
-  *'app.js'*) printf '  ok: / served the embedded Live SPA\n' ;;
-  *) fail "/ returned 200 but no app.js reference — the embedded Live FS did not embed" ;;
+  *'DepViz'*) printf '  ok: / served the landing page\n' ;;
+  *) fail "/ returned 200 but does not look like the DepViz landing page" ;;
+esac
+
+# 3. /app/ serves the embedded Live app. On a gated instance, missing
+#    DEPVIZ_BASIC_AUTH should fail clearly.
+app_body="$("${CURL[@]}" --write-out '\n%{http_code}' "${BASE_URL}/app/")" || fail "/app/ unreachable"
+app_code="${app_body##*$'\n'}"
+app_html="${app_body%$'\n'*}"
+if [[ "${app_code}" == "401" ]]; then
+  fail "/app/ returned 401 — instance is gated, set DEPVIZ_BASIC_AUTH to check it"
+fi
+[[ "${app_code}" == "200" ]] || fail "/app/ returned ${app_code}, want 200"
+case "${app_html}" in
+  *'app.js'*) printf '  ok: /app/ served the embedded Live SPA\n' ;;
+  *) fail "/app/ returned 200 but no app.js reference — the embedded Live FS did not embed" ;;
 esac
 
 # 4. the SPA's own assets resolve, which a partial embed would break.
 for asset in app.js style.css; do
-  code="$("${CURL[@]}" --output /dev/null --write-out '%{http_code}' "${BASE_URL}/${asset}")" || fail "/${asset} unreachable"
-  [[ "${code}" == "200" ]] || fail "/${asset} returned ${code}, want 200"
-  printf '  ok: /%s returned 200\n' "${asset}"
+  code="$("${CURL[@]}" --output /dev/null --write-out '%{http_code}' "${BASE_URL}/app/${asset}")" || fail "/app/${asset} unreachable"
+  [[ "${code}" == "200" ]] || fail "/app/${asset} returned ${code}, want 200"
+  printf '  ok: /app/%s returned 200\n' "${asset}"
 done
 
-# NOTE: the brief's fourth assertion — "the demo board renders >=1 card" — is not
-# checked yet: there is no demo board to render. It is blocked on the access
-# decision in BRIEF-112 and lands with that slice.
+# 5. The private board endpoint must not degrade to a public 200-empty response.
+demo_code="$("${CURL[@]}" --output /tmp/depviz-demo-board.json --write-out '%{http_code}' "${BASE_URL}/api/demo-board")" || fail "/api/demo-board unreachable"
+if [[ -n "${DEPVIZ_BASIC_AUTH:-}" ]]; then
+  [[ "${demo_code}" == "200" ]] || fail "/api/demo-board returned ${demo_code}, want 200 with credentials"
+  case "$(cat /tmp/depviz-demo-board.json)" in
+    *'"brief_type":"board-status"'*|*'"brief_type": "board-status"'*) printf '  ok: authenticated demo board returned board-status data\n' ;;
+    *) fail "/api/demo-board returned 200 but no board-status payload" ;;
+  esac
+else
+  [[ "${demo_code}" == "401" || "${demo_code}" == "403" || "${demo_code}" == "404" ]] || fail "/api/demo-board returned ${demo_code}, want 401/403/404 without credentials"
+  printf '  ok: anonymous demo board did not return private data (%s)\n' "${demo_code}"
+fi
 
 printf 'post-deploy contract passed\n'
