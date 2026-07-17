@@ -141,6 +141,10 @@ type Config struct {
 	// GitHub OAuth, so an instance with no OAuth app configured has no other gate.
 	BasicAuthUser string
 	BasicAuthPass string
+	// DemoBoardSnapshotFile points at a private hermes board-snapshot.json file.
+	// It is only served to requests that passed Basic Auth.
+	DemoBoardSnapshotFile string
+	DemoBoardMaxAge       time.Duration
 }
 
 type Server struct {
@@ -167,6 +171,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/health", s.handleHealth)
 	mux.HandleFunc("/api/session", s.handleSession)
 	mux.HandleFunc("/api/export", s.handleExport)
+	mux.HandleFunc("/api/demo-board", s.handleDemoBoard)
 	mux.HandleFunc("/api/boards", s.handleBoards)
 	mux.HandleFunc("/api/board-items", s.handleBoardItems)
 	mux.HandleFunc("/api/board-links", s.handleBoardLinks)
@@ -217,16 +222,30 @@ func (s *Server) withBasicAuth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		user, pass, ok := r.BasicAuth()
-		userOK := subtle.ConstantTimeCompare([]byte(user), []byte(s.cfg.BasicAuthUser)) == 1
-		passOK := subtle.ConstantTimeCompare([]byte(pass), []byte(s.cfg.BasicAuthPass)) == 1
-		if !ok || !userOK || !passOK {
+		if !s.basicAuthAuthorized(r) {
 			w.Header().Set("WWW-Authenticate", `Basic realm="depviz", charset="UTF-8"`)
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (s *Server) basicAuthConfigured() bool {
+	return s.cfg.BasicAuthUser != "" || s.cfg.BasicAuthPass != ""
+}
+
+func (s *Server) basicAuthAuthorized(r *http.Request) bool {
+	if !s.basicAuthConfigured() {
+		return false
+	}
+	user, pass, ok := r.BasicAuth()
+	if !ok {
+		return false
+	}
+	userOK := subtle.ConstantTimeCompare([]byte(user), []byte(s.cfg.BasicAuthUser)) == 1
+	passOK := subtle.ConstantTimeCompare([]byte(pass), []byte(s.cfg.BasicAuthPass)) == 1
+	return userOK && passOK
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -335,6 +354,8 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 	}
 	out := map[string]any{
 		"authenticated":             ok,
+		"basic_authenticated":       s.basicAuthAuthorized(r),
+		"demo_board_available":      s.demoBoardConfigured() && s.basicAuthAuthorized(r),
 		"github_oauth_configured":   s.githubOAuthConfigured(),
 		"github_app_configured":     s.githubAppConfigured(),
 		"github_webhook_configured": s.githubWebhookConfigured(),

@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestParseBasicAuth(t *testing.T) {
 	tests := []struct {
@@ -35,5 +38,21 @@ func TestParseBasicAuth(t *testing.T) {
 				t.Fatalf("parseBasicAuth(%q) = (%q, %q), want (%q, %q)", tt.raw, user, pass, tt.user, tt.pass)
 			}
 		})
+	}
+}
+
+func TestParseOptionalDuration(t *testing.T) {
+	d, err := parseOptionalDuration("45m")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d != 45*time.Minute {
+		t.Fatalf("duration = %s, want 45m", d)
+	}
+	if d, err := parseOptionalDuration(" "); err != nil || d != 0 {
+		t.Fatalf("blank duration = %s, %v; want zero nil", d, err)
+	}
+	if _, err := parseOptionalDuration("soon"); err == nil {
+		t.Fatal("invalid duration returned nil error")
 	}
 }

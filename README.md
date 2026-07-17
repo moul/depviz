@@ -207,14 +207,32 @@ DEPVIZ_BASIC_AUTH=user:password depviz server --addr 0.0.0.0:8766
 ```
 
 `/api/health` deliberately stays open so deploy health checks keep working; it
-reports only booleans, never board data. Verify a deployment with:
+reports only booleans, never board data. The public landing page at `/` also
+stays open; `/app/` and private API routes require Basic Auth when the gate is
+configured.
+
+For the 1789 dogfood instance, a private Hermes `board-snapshot.json` can be
+pushed into the server and rendered at cold open for authenticated users:
+
+```text
+DEPVIZ_BASIC_AUTH=user:password
+DEPVIZ_DEMO_BOARD_SNAPSHOT_FILE=/data/board-snapshot.json
+DEPVIZ_DEMO_BOARD_MAX_AGE=90m
+```
+
+`GET /api/demo-board` returns that board-status payload only after Basic Auth.
+`PUT /api/demo-board` uses the same Basic Auth gate and atomically replaces the
+configured snapshot file; anonymous writes never create or change the file.
+
+Verify a deployment with:
 
 ```text
 scripts/check-deploy.sh https://depviz.example
 ```
 
-which asserts `/api/health` is `ok:true` *and* that `/` actually served the
-embedded Live app — a green health check alone does not prove the embed shipped.
+which asserts `/api/health` is `ok:true`, `/` serves the landing page, `/app/`
+serves the embedded Live app, and the private demo-board endpoint does not
+degrade into a public empty 200.
 
 The Pages workflow publishes:
 

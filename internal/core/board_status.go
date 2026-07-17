@@ -61,6 +61,18 @@ func (s *Store) BuildBoardStatusBrief(ctx context.Context, boardID string) (Boar
 	if err != nil {
 		return BoardStatusBrief{}, err
 	}
+	b := BuildBoardStatusBriefFromSnapshot(snap, s.lastBoardStatusCounts(ctx, boardID))
+	if repo := boardStatusRepo(snap.Nodes); repo == "1789-tech/job-board" {
+		check := checkBoardSnapshot(ctx, repo, b.Pullable)
+		b.SnapshotCheck = &check
+		if check.Disagreement {
+			b.Warnings = append(b.Warnings, check.Message)
+		}
+	}
+	return b, nil
+}
+
+func BuildBoardStatusBriefFromSnapshot(snap Snapshot, previous map[string]int) BoardStatusBrief {
 	nodes := map[string]Node{}
 	for _, n := range snap.Nodes {
 		nodes[n.ID] = n
@@ -112,19 +124,12 @@ func (s *Store) BuildBoardStatusBrief(ctx context.Context, boardID string) (Boar
 			DroppedEdge: droppedEdges,
 		},
 		Statuses:  statuses,
-		Deltas:    deltas(statuses, s.lastBoardStatusCounts(ctx, boardID)),
+		Deltas:    deltas(statuses, previous),
 		Pullable:  limitItems(pullable, 12),
 		Blocked:   limitItems(blocked, 12),
 		Untriaged: limitItems(untriaged, 12),
 	}
-	if repo := boardStatusRepo(snap.Nodes); repo == "1789-tech/job-board" {
-		check := checkBoardSnapshot(ctx, repo, pullable)
-		b.SnapshotCheck = &check
-		if check.Disagreement {
-			b.Warnings = append(b.Warnings, check.Message)
-		}
-	}
-	return b, nil
+	return b
 }
 
 func RenderBoardStatusBrief(w io.Writer, b BoardStatusBrief) error {

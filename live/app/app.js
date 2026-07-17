@@ -89,7 +89,8 @@ const state = {
   showClosed: true,
   githubRefresh: [],
   githubFailures: [],
-  backendSession: { available: false, authenticated: false, github_oauth_configured: false, github_app_configured: false },
+  backendSession: { available: false, authenticated: false, basic_authenticated: false, demo_board_available: false, github_oauth_configured: false, github_app_configured: false },
+  demoBoardMeta: null,
   userPanelOpen: false,
   workspaceTab: 'views',
   currentBoardID: 'default',
@@ -173,6 +174,11 @@ async function boot() {
     return;
   }
   await refreshBackendSession();
+  if (state.backendSession.available && state.backendSession.basic_authenticated && state.backendSession.demo_board_available) {
+    setMode('stateless', { renderNow: false });
+    await loadDemoBoard();
+    return;
+  }
   // Every board route answers 401 until authenticated, so an available-but-
   // anonymous backend can only render an empty stateful canvas. Fall through
   // to the sample instead: without an OAuth app configured, nobody can sign in.
@@ -358,7 +364,31 @@ function wireEvents() {
 async function loadSample() {
   const res = await fetch(sampleURL);
   dom.input.value = await res.text();
+  state.demoBoardMeta = null;
   update();
+}
+
+async function loadDemoBoard() {
+  try {
+    const res = await fetch('/api/demo-board', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const payload = await res.json();
+    state.data = normalizeExport(payload);
+    state.data.brief_type = payload.brief_type || '';
+    state.demoBoardMeta = {
+      generated_at: payload.snapshot_generated_at || '',
+      stale: Boolean(payload.snapshot_stale),
+      age_sec: Number(payload.snapshot_age_sec || 0),
+    };
+    dom.input.value = snapshotToFlow(state.data.snapshot);
+    dom.status.textContent = payload.snapshot_stale ? 'private board snapshot loaded - stale' : 'private board snapshot loaded';
+    render();
+  } catch (err) {
+    state.demoBoardMeta = null;
+    dom.error.textContent = err.message;
+    dom.status.textContent = 'private board load failed';
+    loadSample();
+  }
 }
 
 function readFile(event) {
@@ -1349,7 +1379,7 @@ async function refreshBackendSession() {
     if (!res.ok) throw new Error(String(res.status));
     state.backendSession = { available: true, ...await res.json() };
   } catch {
-    state.backendSession = { available: false, authenticated: false, github_oauth_configured: false, github_app_configured: false };
+    state.backendSession = { available: false, authenticated: false, basic_authenticated: false, demo_board_available: false, github_oauth_configured: false, github_app_configured: false };
   }
   refreshBackendAuthUI();
   document.querySelector('[data-mode="stateful"]').disabled = !state.backendSession.available;
@@ -2577,7 +2607,10 @@ function render() {
   const graphSelection = graphVisibleNodeSelection(snapshot, nodes);
   dom.shell.classList.toggle('emptyBoard', snapshot.nodes.length === 0);
   dom.boardTitle.textContent = snapshot.board.name || 'Default';
-  dom.boardMeta.textContent = `${snapshot.nodes.length} nodes - ${snapshot.edges.length} edges`;
+  const freshness = state.demoBoardMeta?.generated_at
+    ? ` - snapshot ${state.demoBoardMeta.stale ? 'stale ' : ''}${state.demoBoardMeta.generated_at}`
+    : '';
+  dom.boardMeta.textContent = `${snapshot.nodes.length} nodes - ${snapshot.edges.length} edges${freshness}`;
   renderFilterChips();
   renderWorkspaceSummary();
   renderStats(brief.counts || {}, snapshot);
@@ -2634,6 +2667,18 @@ function renderStatefulSignedOut() {
 }
 
 function renderStats(counts, snapshot) {
+  if (isBoardStatusBrief(state.data.brief)) {
+    const values = [
+      ['● Open', counts.open || 0],
+      ['✅ Ready', counts.pullable || 0],
+      ['🟢 Active', statusCount(state.data.brief, 'active')],
+      ['👀 Review', statusCount(state.data.brief, 'review')],
+      ['⛔ Blocked', statusCount(state.data.brief, 'blocked')],
+      ['⚠ Untriaged', counts.untriaged || 0],
+    ];
+    dom.stats.innerHTML = values.map(([label, value]) => `<div class="stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
+    return;
+  }
   const values = [
     ['● Nodes', counts.nodes || 0],
     ['💡 Suggested', suggestedEdges(snapshot).length],
@@ -2650,6 +2695,19 @@ function renderBrief(brief) {
     renderEmptyBoardBrief();
     return;
   }
+  if (isBoardStatusBrief(brief)) {
+    const freshness = state.demoBoardMeta?.generated_at
+      ? [{ id: state.demoBoardMeta.stale ? 'stale' : 'fresh', title: state.demoBoardMeta.generated_at, reason: state.demoBoardMeta.stale ? 'serving last private snapshot; no live fallback attempted' : 'private snapshot freshness' }]
+      : [];
+    dom.brief.innerHTML = `<div class="briefGrid">
+      ${freshness.length ? briefSection('Snapshot freshness', freshness, true) : ''}
+      ${statusHistogramSection(brief)}
+      ${briefSection('Pullable now', brief.pullable || [], true)}
+      ${briefSection('Blocked ready', brief.blocked || [], false)}
+      ${briefSection('Untriaged', brief.untriaged || [], false)}
+    </div>`;
+    return;
+  }
   const githubRefresh = state.githubRefresh.length
     ? briefSection('GitHub refresh', state.githubRefresh, false)
     : '';
@@ -2663,6 +2721,24 @@ function renderBrief(brief) {
     ${briefSection('Local-only', brief.local_only || [], false)}
     ${briefSection('Stale external state', brief.stale || [], false)}
   </div>`;
+}
+
+function isBoardStatusBrief(brief) {
+  return Boolean(brief && brief.counts && Array.isArray(brief.statuses) && Array.isArray(brief.pullable));
+}
+
+function statusCount(brief, status) {
+  const row = (brief.statuses || []).find((item) => item.status === status);
+  return row ? Number(row.count || 0) : 0;
+}
+
+function statusHistogramSection(brief) {
+  const items = (brief.statuses || []).map((item) => ({
+    id: `status:${item.status}`,
+    title: String(item.count || 0),
+    reason: 'workflow status count',
+  }));
+  return briefSection('Status histogram', items, true);
 }
 
 function renderEmptyBoardBrief() {
