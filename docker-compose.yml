@@ -11,6 +11,8 @@ services:
       # Set to "user:password" to gate the instance. Without it, and without a
       # GitHub OAuth app, a deployed instance is world-readable to anyone.
       - DEPVIZ_BASIC_AUTH=${DEPVIZ_BASIC_AUTH:-}
+      - DEPVIZ_DEMO_BOARD_SNAPSHOT_FILE=${DEPVIZ_DEMO_BOARD_SNAPSHOT_FILE:-/data/board-snapshot.json}
+      - DEPVIZ_DEMO_BOARD_MAX_AGE=${DEPVIZ_DEMO_BOARD_MAX_AGE:-90m}
       - DEPVIZ_GITHUB_CLIENT_ID=${DEPVIZ_GITHUB_CLIENT_ID:-}
       - DEPVIZ_GITHUB_CLIENT_SECRET=${DEPVIZ_GITHUB_CLIENT_SECRET:-}
       - DEPVIZ_GITHUB_WEBHOOK_SECRET=${DEPVIZ_GITHUB_WEBHOOK_SECRET:-}

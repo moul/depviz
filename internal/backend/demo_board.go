@@ -1,11 +1,13 @@
 package backend
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -16,13 +18,13 @@ import (
 const defaultDemoBoardMaxAge = 30 * time.Minute
 
 type demoBoardPayload struct {
-	Snapshot            core.Snapshot          `json:"snapshot"`
-	Brief               core.BoardStatusBrief  `json:"brief"`
-	BriefType           string                 `json:"brief_type"`
-	SnapshotGeneratedAt string                 `json:"snapshot_generated_at"`
-	SnapshotStale       bool                   `json:"snapshot_stale"`
-	SnapshotAgeSec      int                    `json:"snapshot_age_sec,omitempty"`
-	Warnings            []string               `json:"warnings,omitempty"`
+	Snapshot            core.Snapshot         `json:"snapshot"`
+	Brief               core.BoardStatusBrief `json:"brief"`
+	BriefType           string                `json:"brief_type"`
+	SnapshotGeneratedAt string                `json:"snapshot_generated_at"`
+	SnapshotStale       bool                  `json:"snapshot_stale"`
+	SnapshotAgeSec      int                   `json:"snapshot_age_sec,omitempty"`
+	Warnings            []string              `json:"warnings,omitempty"`
 }
 
 type hermesBoardSnapshot struct {
@@ -48,8 +50,8 @@ func (s *Server) demoBoardConfigured() bool {
 }
 
 func (s *Server) handleDemoBoard(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
+	if r.Method != http.MethodGet && r.Method != http.MethodPut {
+		w.Header().Set("Allow", "GET, PUT")
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
 	}
@@ -61,12 +63,33 @@ func (s *Server) handleDemoBoard(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "demo board requires basic auth"})
 		return
 	}
+	if r.Method == http.MethodPut {
+		s.handleDemoBoardPut(w, r)
+		return
+	}
 	payload, err := s.loadDemoBoard()
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 	writeJSON(w, http.StatusOK, payload)
+}
+
+func (s *Server) handleDemoBoardPut(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 10<<20))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read demo board snapshot: " + err.Error()})
+		return
+	}
+	if _, err := parseDemoBoard(bytes.NewReader(body), s.demoBoardMaxAge()); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	if err := writeDemoBoardSnapshotFile(s.cfg.DemoBoardSnapshotFile, body); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 func (s *Server) loadDemoBoard() (demoBoardPayload, error) {
@@ -76,6 +99,34 @@ func (s *Server) loadDemoBoard() (demoBoardPayload, error) {
 	}
 	defer f.Close()
 	return parseDemoBoard(f, s.demoBoardMaxAge())
+}
+
+func writeDemoBoardSnapshotFile(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create demo board snapshot directory: %w", err)
+	}
+	tmp, err := os.CreateTemp(dir, ".board-snapshot-*.json")
+	if err != nil {
+		return fmt.Errorf("create demo board snapshot temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return fmt.Errorf("write demo board snapshot temp file: %w", err)
+	}
+	if err := tmp.Chmod(0o600); err != nil {
+		tmp.Close()
+		return fmt.Errorf("chmod demo board snapshot temp file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close demo board snapshot temp file: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("replace demo board snapshot: %w", err)
+	}
+	return nil
 }
 
 func (s *Server) demoBoardMaxAge() time.Duration {

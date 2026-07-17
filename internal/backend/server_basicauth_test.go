@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"moul.io/depviz/v4/internal/core"
@@ -32,6 +33,24 @@ func get(t *testing.T, url, user, pass string) *http.Response {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if user != "" || pass != "" {
+		req.SetBasicAuth(user, pass)
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = res.Body.Close() })
+	return res
+}
+
+func put(t *testing.T, url, user, pass, body string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPut, url, strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
 	if user != "" || pass != "" {
 		req.SetBasicAuth(user, pass)
 	}
