@@ -32,15 +32,15 @@ It currently supports:
 
 - SQLite local state in `.depviz/state.db`
 - JSONL/DepCrumb-style event ingest
-- a default board
-- local-only note cards
-- manual dependency edges
+- A default board
+- Local-only note cards
+- Manual dependency edges
 - GitHub sync through `gh`
-- ready/blocker queries
-- morning `depviz brief`
+- Ready/blocker queries
+- Morning `depviz brief`
 - JSON export for tools and live mode
-- single-file static HTML export
-- stateless `depviz live` web app
+- Single-file static HTML export
+- Stateless `depviz live` web app
 
 The point of the POC is not a pretty graph. The point is a useful daily answer.
 
