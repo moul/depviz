@@ -1,0 +1,7 @@
+{"type":"node","id":"gh:moul/depviz2#47","kind":"issue","title":"Bootstrap SQLite work graph","state":"open","source":"github:moul/depviz2","external_id":"#47","url":"https://github.com/moul/depviz2/issues/47","labels":["poc","core"]}
+{"type":"node","id":"gh:moul/depviz2#51","kind":"issue","title":"Static HTML export","state":"open","source":"github:moul/depviz2","external_id":"#51","url":"https://github.com/moul/depviz2/issues/51","labels":["poc","html"]}
+{"type":"node","id":"gh:moul/depviz2#60","kind":"issue","title":"JSONL fixture ingestion","state":"open","source":"github:moul/depviz2","external_id":"#60","url":"https://github.com/moul/depviz2/issues/60","labels":["poc","ingest"]}
+{"type":"note","id":"note:decide-live-input-format","title":"Decide Live input format","board":"default"}
+{"type":"edge","from":"gh:moul/depviz2#51","to":"gh:moul/depviz2#47","kind":"blocked_by"}
+{"type":"edge","from":"gh:moul/depviz2#47","to":"gh:moul/depviz2#60","kind":"blocked_by"}
+{"type":"edge","from":"note:decide-live-input-format","to":"gh:moul/depviz2#60","kind":"blocked_by"}
