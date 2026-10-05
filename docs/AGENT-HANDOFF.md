@@ -2,7 +2,29 @@
 
 This is the public handoff for agents continuing DepViz v4 work.
 
-Last updated: 2026-06-18.
+Last updated: 2026-10-05.
+
+## Current Checkpoint
+
+The working repository is `/Users/moul/p/gh/moul/depviz` and the canonical
+remote is `https://github.com/moul/depviz`. Some environments mention a
+parallel `depviz2` path, but the active v4 line and current `master` are in
+this `depviz` repository.
+
+At this checkpoint:
+
+- `master` is clean and matches `origin/master` at `f60b56b`
+- the latest commit says `chore: disable dependency automation (repo is unmaintained)`
+- open PRs are #724 (setup-go 7), #726 (README capitalization), and #730
+  (modernc.org/sqlite 1.58.0); all currently report clean/successful checks
+- open issue #703 is the stateful UX roadmap and the best product backlog
+- the old edge-inspector PR stack (#688/#689/#690) is historical, not open
+- release tags include `v4.0.0`, `v3-final`, and `v3.20.0`; the `v3` branch
+  still preserves the former implementation
+
+Treat the repository's “unmaintained” commit as an explicit resumption
+checkpoint: first decide whether to revive product work or only do maintenance,
+then update this handoff when that decision is made.
 
 ## Current State
 
@@ -18,6 +40,17 @@ The current product direction is:
 - multiple views over the same graph, starting with Brief, Graph, and Table
 - stateless Live mode that can run from GitHub Pages before a backend exists
 - inferred/source relations that stay soft until a human promotes them
+
+The implementation has moved beyond the original stateless POC. It now has a
+stateful backend foundation alongside Live:
+
+- `depviz server` serves the embedded app and `/api/*` endpoints
+- GitHub OAuth/App account plumbing creates local HTTP-only sessions
+- Basic Auth can gate public deployments without an OAuth app
+- stateful boards, repo/org presets, sync metadata, board-status JSON, and
+  private demo-board snapshots support a dogfood deployment
+- the root route is a public landing page; the application lives under `/app/`
+- the static Pages workflow still publishes `/live/` and per-PR previews
 
 The useful mental model is "a GitHub Project board, but graph-native, local
 first, multi-source, and view-specialized." The same GitHub issue or PR can
@@ -45,7 +78,7 @@ Merged v4 work currently supports:
 - relation-aware graph layout for realistic imports
 - Pages previews for PRs
 
-Important recent merged PRs:
+Important merged milestones:
 
 - #679 `feat: bootstrap depviz v4`
 - #682 `feat: hydrate live GitHub refs`
@@ -53,17 +86,37 @@ Important recent merged PRs:
 - #685 `fix: keep soft github relations nonblocking`
 - #686 `feat: add suggested relation review`
 - #687 `feat: improve live graph layout`
+- #699 `feat: add backend account foundation`
+- #700 `feat: add stateful live mode`
+- #702 `support GitHub App auth`
+- #705 `Relations UX + clickable filters, confidence tiers, sync quality panel`
+- #706 `interactive strategy cockpit`
+- #710 `DepViz UX backlog — all 20 stateful cockpit improvements`
+- #712 `persistence, GitHub writes, sync reliability, and production-grade cockpit`
+- #714 `correctness, workspaces, webhooks, and daily-use hardening`
+- #715 `real-time activity progress bar`
+- #716 `board-status brief workflow`
+- #717 `SQLite WAL + busy_timeout`
+- #718 `deployment gate + board-status JSON + post-deploy contract`
+- #719 `landing page at /, app at /app/`
+- #721 `cold-open sample-board fallback`
+- #722 `private demo board behind auth`
+- #723 `count demo-board done rows as closed`
 
-## Open PR Stack
+## Open PRs And Backlog
 
-As of this handoff, the open edge-inspector loop is:
+The current open PRs are maintenance-only:
 
-- #688 `feat: make graph edges selectable`
-- #689 `feat: show selected edge inspector`
-- #690 `feat: add live edge inspector workflow`
+- #724 `chore(deps): bump actions/setup-go from 6 to 7`
+- #726 `docs: capitalize bullet list items in README.md`
+- #730 `chore(deps): bump modernc.org/sqlite from 1.53.0 to 1.58.0`
 
-Review #690 first. It targets `master` and includes the full result. #688 and
-#689 are smaller step PRs for precise review comments.
+Their checks were green at the time of this handoff. They are independent of
+the product roadmap; review and merge them only after deciding whether the
+repository is being resumed. Issue #703 is the active product roadmap. Its
+recommended sequence is Relations-first UX and filters, sync quality and
+per-view settings, GitHub write actions, webhook/background sync, then shared
+cache and personal overrides.
 
 The intended loop for future UI work is:
 
@@ -81,12 +134,15 @@ Key files:
 
 - `cmd/depviz/main.go`: CLI entrypoint
 - `internal/core/`: local model, store, brief/export/render logic, GitHub sync
+- `internal/backend/`: HTTP server, GitHub auth, sessions, Basic Auth, and
+  authenticated demo-board snapshot APIs
 - `live/static.go`: embedded Live assets
 - `live/app/index.html`: Live shell
 - `live/app/app.js`: Live parser, renderer, GitHub hydration, graph UI
 - `live/app/style.css`: Live styling
 - `docs/DEPVIZ-FLOW.md`: human input format
 - `docs/POC.md`: POC success criteria and next slices
+- `docs/meta-repo-strategy.md`: multi-repo/meta-repo direction
 - `testdata/simple/`: small fixture
 - `testdata/realistic/gno-last-100/`: realistic GitHub import fixture
 
@@ -156,6 +212,7 @@ Baseline:
 ```text
 make test
 node --check live/app/app.js
+go vet ./...
 ```
 
 Local Live:
@@ -183,6 +240,16 @@ testdata/realistic/gno-last-100/export.json
 That fixture has 103 nodes and 11 inferred edges. It is useful for checking that
 the graph, Suggested relations, and filtering are still usable on non-toy data.
 
+For backend/deployment checks, use:
+
+```text
+go test ./...
+scripts/check-deploy.sh https://depviz.example
+```
+
+The CI fixture smoke also exercises `init`, event ingest, local notes, edges,
+brief output, JSON export, and HTML export in a temporary database.
+
 ## Product Decisions To Preserve
 
 - DepViz should not force one canonical board for everything. Independent boards
@@ -201,15 +268,28 @@ the graph, Suggested relations, and filtering are still usable on non-toy data.
 
 ## Good Next Slices
 
-Good next work after the edge-inspector loop:
+Good next work if the project is explicitly resumed:
 
-1. Better graph ergonomics: pan/zoom, fit-to-selection, selected edge scroll.
-2. Saved board/view config files under `.depviz/views/*.toml`.
-3. Better GitHub stale/placeholder hydration diagnostics.
-4. Shared parser/golden fixtures for CLI and Live Flow parsing.
-5. Local `depviz mcp` for agent use.
-6. `depviz.io/live` routing to the Pages Live app.
-7. Gantt view over the same snapshot.
-8. Dark mode.
+1. Re-open the product loop with issue #703: make Relations the primary
+   stateful surface and add label/assignee/status/link filters.
+2. Add explicit sync-quality diagnostics and per-view refresh settings.
+3. Finish the GitHub write-action surface: comment, labels, assignment,
+   milestone, and create/link workflows.
+4. Reconcile webhook ingestion and background jobs with the existing auth,
+   workspace, and cache model.
+5. Add saved `.depviz/views/*.toml` configs and preserve board/view/selection
+   context across reloads.
+6. Keep the parser and Live/CLI golden fixtures in lockstep.
+7. Start local `depviz mcp` once the stateful model is stable enough for agents.
+8. Add the shared-graph zoom/filter model, then Gantt and dark mode.
 
 Prefer small PR loops with visible Manual QA over large unreviewable drops.
+
+## Handoff Procedure
+
+Before changing code, inspect `git status`, `git log -10`, open PRs, and issue
+#703. Confirm whether the goal is maintenance or product revival. For frontend
+changes, run the local Live app and the stateful server when relevant, include
+exact manual QA steps and a preview URL in the PR, and use a cache-buster if
+Pages appears stale. Keep commits conventional and single-purpose; never add
+an AI co-author line.
