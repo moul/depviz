@@ -13,7 +13,8 @@ this `depviz` repository.
 
 At this checkpoint:
 
-- `master` is clean and matches `origin/master` at `f60b56b`
+- `master` is clean and matches `origin/master`; this handoff refresh is the
+  latest documentation checkpoint
 - the latest commit says `chore: disable dependency automation (repo is unmaintained)`
 - open PRs are #724 (setup-go 7), #726 (README capitalization), and #730
   (modernc.org/sqlite 1.58.0); all currently report clean/successful checks
